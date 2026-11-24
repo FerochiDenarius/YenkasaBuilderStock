@@ -7918,6 +7918,10 @@ const X = createLucideIcon("X", [
   ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
 ]);
 const LOCAL_API_URL = window.desktopBridge?.apiBaseUrl ?? void 0 ?? "http://127.0.0.1:8765";
+function ownerHeaders() {
+  const token = sessionStorage.getItem("yenkasa-owner-session");
+  return token ? { "X-Owner-Session": token } : { "X-Role": "HQ_ADMIN" };
+}
 async function request(path, init) {
   const response = await fetch(`${LOCAL_API_URL}${path}`, {
     ...init,
@@ -7935,53 +7939,61 @@ const companyApi = {
   get: () => request("/api/company"),
   save: (company) => request("/api/company", {
     method: "PUT",
+    headers: ownerHeaders(),
     body: JSON.stringify(company)
   })
 };
 const ownerApi = {
-  get: () => request("/api/owner"),
+  get: () => request("/api/owner", { headers: ownerHeaders() }),
   save: (owner) => request("/api/owner", {
     method: "PUT",
+    headers: ownerHeaders(),
     body: JSON.stringify(owner)
   }),
+  status: () => request("/api/owner/status"),
+  login: (username, password) => request("/api/owner/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password })
+  }),
+  logout: () => request("/api/owner/logout", { method: "POST", headers: ownerHeaders() }),
   getSecurity: () => request("/api/owner/security", {
-    headers: { "X-Role": "HQ_ADMIN" }
+    headers: ownerHeaders()
   }),
   saveSecurity: (security) => request("/api/owner/security", {
     method: "PUT",
-    headers: { "X-Role": "HQ_ADMIN" },
+    headers: ownerHeaders(),
     body: JSON.stringify(security)
   }),
   activity: () => request("/api/owner/activity", {
-    headers: { "X-Role": "HQ_ADMIN" }
+    headers: ownerHeaders()
   })
 };
 const branchApi = {
-  list: () => request("/api/branches"),
+  list: () => request("/api/branches", { headers: ownerHeaders() }),
   activatedList: () => request("/api/activated-branches"),
   create: (branch) => request("/api/branches", {
     method: "POST",
-    headers: { "X-Role": "HQ_ADMIN" },
+    headers: ownerHeaders(),
     body: JSON.stringify(branch)
   }),
   update: (id2, branch) => request(`/api/branches/${id2}`, {
     method: "PATCH",
-    headers: { "X-Role": "HQ_ADMIN" },
+    headers: ownerHeaders(),
     body: JSON.stringify(branch)
   })
 };
 const deviceApi = {
   list: () => request("/api/devices", {
-    headers: { "X-Role": "HQ_ADMIN" }
+    headers: ownerHeaders()
   }),
   create: (payload) => request("/api/devices", {
     method: "POST",
-    headers: { "X-Role": "HQ_ADMIN" },
+    headers: ownerHeaders(),
     body: JSON.stringify(payload)
   }),
   update: (id2, active) => request(`/api/devices/${id2}`, {
     method: "PATCH",
-    headers: { "X-Role": "HQ_ADMIN" },
+    headers: ownerHeaders(),
     body: JSON.stringify({ active })
   })
 };
@@ -8016,7 +8028,7 @@ const syncApi = {
 };
 const staffApi = {
   companyUsers: () => request("/api/company-users", {
-    headers: { "X-Role": "HQ_ADMIN" }
+    headers: ownerHeaders()
   }),
   list: (branchId, userId) => request(
     `/api/staff?branchId=${encodeURIComponent(branchId)}`,
@@ -8040,7 +8052,7 @@ const staffApi = {
   audit: (branchId, userId) => request(
     branchId ? `/api/audit-log?branchId=${encodeURIComponent(branchId)}` : "/api/company-audit-log",
     {
-      headers: branchId ? { "X-User-Id": userId ?? "", "X-Branch-Id": branchId } : { "X-Role": "HQ_ADMIN" }
+      headers: branchId ? { "X-User-Id": userId ?? "", "X-Branch-Id": branchId } : ownerHeaders()
     }
   )
 };
@@ -8228,6 +8240,20 @@ function ConnectedBranding() {
       )
     );
   }, []);
+  reactExports.useEffect(() => {
+    const root = document.documentElement;
+    if (!value.useBrandColours) {
+      root.style.setProperty("--brand-primary", "#0b9438");
+      root.style.setProperty("--brand-primary-dark", "#147536");
+      root.style.setProperty("--brand-secondary", "#f7b500");
+      root.style.setProperty("--brand-accent", "#d7263d");
+      return;
+    }
+    root.style.setProperty("--brand-primary", value.brandColor);
+    root.style.setProperty("--brand-primary-dark", value.brandColor);
+    root.style.setProperty("--brand-secondary", value.secondaryColor);
+    root.style.setProperty("--brand-accent", value.accentColor);
+  }, [value.brandColor, value.secondaryColor, value.accentColor, value.useBrandColours]);
   const update = (key, next) => {
     setValue((current) => ({ ...current, [key]: next }));
     setStatus("");
@@ -10450,6 +10476,11 @@ function OwnerSecuritySection() {
         ...value,
         password: password || void 0
       });
+      if (saved.ownerSession?.token) {
+        sessionStorage.setItem("yenkasa-owner-session", saved.ownerSession.token);
+        sessionStorage.setItem("yenkasa-owner-session-data", JSON.stringify(saved.ownerSession));
+        window.dispatchEvent(new Event("yenkasa-owner-session-changed"));
+      }
       setValue(saved);
       setSavedValue(saved);
       setPassword("");
@@ -11742,6 +11773,58 @@ function BranchLoginPage({
     /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "offline-login-note", children: "Offline login uses the securely provisioned local account for this activated company, branch and device." })
   ] }) });
 }
+function OwnerLoginPage({
+  onAuthenticated
+}) {
+  const [username, setUsername] = reactExports.useState("");
+  const [password, setPassword] = reactExports.useState("");
+  const [showPassword, setShowPassword] = reactExports.useState(false);
+  const [error, setError] = reactExports.useState("");
+  const [busy, setBusy] = reactExports.useState(false);
+  const login = async () => {
+    if (!username.trim() || !password) {
+      setError("Enter the owner username or email and password.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const session = await ownerApi.login(username, password);
+      sessionStorage.setItem("yenkasa-owner-session", session.token);
+      sessionStorage.setItem("yenkasa-owner-session-data", JSON.stringify(session));
+      window.dispatchEvent(new Event("yenkasa-owner-session-changed"));
+      onAuthenticated(session);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Owner login failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("section", { className: "owner-login-page", "aria-labelledby": "owner-login-title", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "owner-login-card", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "owner-login-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Crown, { size: 30 }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { id: "owner-login-title", children: "Owner Login" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Authenticate to reopen Company Setup and owner-only controls." }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "login-field", children: [
+      "Username or Email",
+      /* @__PURE__ */ jsxRuntimeExports.jsx("input", { value: username, onChange: (event) => setUsername(event.target.value), autoComplete: "username" })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "login-field", children: [
+      "Password",
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "owner-password-field", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(LockKeyhole, { size: 17 }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: showPassword ? "text" : "password", value: password, onChange: (event) => setPassword(event.target.value), autoComplete: "current-password", onKeyDown: (event) => {
+          if (event.key === "Enter") void login();
+        } }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", "aria-label": showPassword ? "Hide password" : "Show password", onClick: () => setShowPassword((current) => !current), children: showPassword ? /* @__PURE__ */ jsxRuntimeExports.jsx(EyeOff, { size: 17 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 17 }) })
+      ] })
+    ] }),
+    error && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "login-error", role: "alert", children: error }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "primary-button owner-login-submit", type: "button", disabled: busy, onClick: () => void login(), children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Crown, { size: 17 }),
+      busy ? "Signing in…" : "Unlock Company Setup"
+    ] })
+  ] }) });
+}
 const permissionOptions = [
   ["sales", "Sales & Invoices"],
   ["quotations", "Quotations"],
@@ -12974,9 +13057,14 @@ function SalesPage({ session }) {
   const printInvoice = async () => {
     if (window.desktopBridge?.print) {
       setStatus("Opening the system print dialog…");
-      const printed = await window.desktopBridge.print();
+      const printed = await window.desktopBridge.print().catch(() => false);
+      if (!printed) {
+        window.print();
+        setStatus("System print dialog opened.");
+        return;
+      }
       setStatus(
-        printed ? "Invoice sent to the system print dialog." : "Print dialog closed without sending the invoice."
+        "Invoice sent to the system print dialog."
       );
       return;
     }
@@ -13845,9 +13933,14 @@ function CashierPage({ session }) {
     setError("");
     if (window.desktopBridge?.print) {
       setStatus("Opening the system print dialog…");
-      const printed = await window.desktopBridge.print();
+      const printed = await window.desktopBridge.print().catch(() => false);
+      if (!printed) {
+        window.print();
+        setStatus("System print dialog opened.");
+        return;
+      }
       setStatus(
-        printed ? "Receipt sent to the system print dialog." : "Print dialog closed without sending the receipt."
+        "Receipt sent to the system print dialog."
       );
       return;
     }
@@ -14211,9 +14304,14 @@ function MaterialReleasePage({ session }) {
     setError("");
     if (window.desktopBridge?.print) {
       setStatus("Opening the system print dialog…");
-      const printed = await window.desktopBridge.print();
+      const printed = await window.desktopBridge.print().catch(() => false);
+      if (!printed) {
+        window.print();
+        setStatus("System print dialog opened.");
+        return;
+      }
       setStatus(
-        printed ? "Release slip sent to the system print dialog." : "Print dialog closed without sending the release slip."
+        "Release slip sent to the system print dialog."
       );
       return;
     }
@@ -15434,6 +15532,32 @@ function Dashboard() {
       return null;
     }
   });
+  const [ownerSession, setOwnerSession] = reactExports.useState(() => {
+    try {
+      const token = sessionStorage.getItem("yenkasa-owner-session");
+      return token ? JSON.parse(sessionStorage.getItem("yenkasa-owner-session-data") ?? "null") : null;
+    } catch {
+      return null;
+    }
+  });
+  const [ownerSetupComplete, setOwnerSetupComplete] = reactExports.useState(false);
+  const [ownerStatusLoaded, setOwnerStatusLoaded] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    companyApi.get().then((company) => {
+      const root = document.documentElement;
+      if (!company?.useBrandColours) {
+        root.style.setProperty("--brand-primary", "#0b9438");
+        root.style.setProperty("--brand-primary-dark", "#147536");
+        root.style.setProperty("--brand-secondary", "#f7b500");
+        root.style.setProperty("--brand-accent", "#d7263d");
+        return;
+      }
+      root.style.setProperty("--brand-primary", company?.brandColor || "#0b9438");
+      root.style.setProperty("--brand-primary-dark", company?.brandColor || "#147536");
+      root.style.setProperty("--brand-secondary", company?.secondaryColor || "#f7b500");
+      root.style.setProperty("--brand-accent", company?.accentColor || "#d7263d");
+    }).catch(() => void 0);
+  }, []);
   reactExports.useEffect(() => {
     const sync = () => {
       try {
@@ -15445,9 +15569,21 @@ function Dashboard() {
       }
     };
     sync();
+    const ownerSync = () => {
+      try {
+        const token = sessionStorage.getItem("yenkasa-owner-session");
+        setOwnerSession(token ? JSON.parse(sessionStorage.getItem("yenkasa-owner-session-data") ?? "null") : null);
+      } catch {
+        setOwnerSession(null);
+      }
+    };
+    ownerSync();
+    fetch(`${window.desktopBridge?.apiBaseUrl ?? void 0 ?? "http://127.0.0.1:8765"}/api/owner/status`).then((response) => response.ok ? response.json() : Promise.reject(new Error("Unable to read owner setup status"))).then((status) => setOwnerSetupComplete(status.passwordSet)).catch(() => setOwnerSetupComplete(false)).finally(() => setOwnerStatusLoaded(true));
     window.addEventListener("yenkasa-session-changed", sync);
+    window.addEventListener("yenkasa-owner-session-changed", ownerSync);
     return () => {
       window.removeEventListener("yenkasa-session-changed", sync);
+      window.removeEventListener("yenkasa-owner-session-changed", ownerSync);
     };
   }, []);
   const hasBranchAccess = (label) => {
@@ -15464,13 +15600,17 @@ function Dashboard() {
     return roleNavigation[branchSession.role]?.includes(label) ?? false;
   };
   const visibleNav = branchSession ? navItems.filter(([, label]) => hasBranchAccess(label)) : [];
-  const visibleSetup = branchSession ? [] : setupItems;
+  const setupUnlocked = !ownerSetupComplete || !!ownerSession;
+  const visibleSetup = !branchSession && setupUnlocked ? setupItems : [];
   const branchSetup = branchSession?.role === "BRANCH_MANAGER" ? [[Users, "Staff Accounts"]] : [];
   const branchSettings = branchSession?.role === "BRANCH_MANAGER" ? ["Dashboard Preferences", "Sync Settings"] : ["Dashboard Preferences"];
   const logout = () => {
     const userId = branchSession?.userId;
     sessionStorage.removeItem("yenkasa-session");
+    sessionStorage.removeItem("yenkasa-owner-session");
+    sessionStorage.removeItem("yenkasa-owner-session-data");
     setBranchSession(null);
+    setOwnerSession(null);
     setActive("Branch Login");
     if (userId)
       fetch(
@@ -15482,10 +15622,30 @@ function Dashboard() {
         }
       ).catch(() => void 0);
   };
+  const ownerLogout = () => {
+    void fetch(`${window.desktopBridge?.apiBaseUrl ?? void 0 ?? "http://127.0.0.1:8765"}/api/owner/logout`, {
+      method: "POST",
+      headers: { "X-Owner-Session": sessionStorage.getItem("yenkasa-owner-session") ?? "" }
+    }).catch(() => void 0);
+    sessionStorage.removeItem("yenkasa-owner-session");
+    sessionStorage.removeItem("yenkasa-owner-session-data");
+    setOwnerSession(null);
+    setActive("Branch Login");
+  };
   const navigate = (page) => {
+    if (!ownerStatusLoaded) return;
+    if (page === "Owner Login" && branchSession) {
+      sessionStorage.removeItem("yenkasa-session");
+      setBranchSession(null);
+    }
+    if (setupItems.some(([, label]) => label === page) && (!setupUnlocked || !!branchSession)) {
+      setActive("Owner Login");
+      return;
+    }
     setActive(page);
     setSidebarOpen(false);
   };
+  const canRenderSetup = !branchSession && setupUnlocked && setupItems.some(([, label]) => label === active) || branchSession && active === "Staff Accounts" && branchSession.role === "BRANCH_MANAGER";
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
@@ -15568,6 +15728,19 @@ function Dashboard() {
                   ]
                 }
               ) })
+            ] }) : !setupUnlocked ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "nav-section-label", children: "OWNER ACCOUNT" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "setup-subnav", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "button",
+                {
+                  className: active === "Owner Login" ? "selected" : "",
+                  onClick: () => navigate("Owner Login"),
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(Crown, { size: 16 }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Owner Login" })
+                  ]
+                }
+              ) })
             ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs(
                 "button",
@@ -15613,12 +15786,12 @@ function Dashboard() {
             {
               className: "user-card",
               type: "button",
-              onClick: branchSession ? logout : void 0,
+              onClick: branchSession ? logout : ownerSession ? ownerLogout : void 0,
               children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "avatar", children: branchSession ? branchSession.fullName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase() : "KO" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "avatar", children: branchSession ? branchSession.fullName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase() : ownerSession ? ownerSession.fullName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase() : "KO" }),
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: branchSession?.fullName ?? "Kofi Osei" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: branchSession ? branchSession.role.replaceAll("_", " ") : "Owner / Administrator" })
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: branchSession?.fullName ?? ownerSession?.fullName ?? "Kofi Osei" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: branchSession ? branchSession.role.replaceAll("_", " ") : ownerSession ? "OWNER · Sign out" : "Setup locked" })
                 ] }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronDown, { size: 16 })
               ]
@@ -15655,8 +15828,22 @@ function Dashboard() {
             BranchLoginPage,
             {
               onAuthenticated: (session) => {
+                sessionStorage.removeItem("yenkasa-owner-session");
+                sessionStorage.removeItem("yenkasa-owner-session-data");
+                setOwnerSession(null);
                 setBranchSession(session);
                 setActive("Dashboard");
+              }
+            }
+          ) : active === "Owner Login" && !branchSession ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+            OwnerLoginPage,
+            {
+              onAuthenticated: (session) => {
+                sessionStorage.setItem("yenkasa-owner-session-data", JSON.stringify(session));
+                sessionStorage.removeItem("yenkasa-session");
+                setBranchSession(null);
+                setOwnerSession(session);
+                setActive("Owner Account");
               }
             }
           ) : active === "Dashboard" ? branchSession ? /* @__PURE__ */ jsxRuntimeExports.jsx(DashboardHome, { session: branchSession, onNavigate: navigate }) : /* @__PURE__ */ jsxRuntimeExports.jsx(DashboardHome, {}) : branchSession && protectedOperationalLabels.has(active) && !hasBranchAccess(active) ? /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "placeholder-page", role: "alert", children: [
@@ -15676,7 +15863,12 @@ function Dashboard() {
                 children: "Open Branch Login"
               }
             )
-          ] }) : active === "Cloud Database" ? /* @__PURE__ */ jsxRuntimeExports.jsx(CloudDatabaseSetupPage, {}) : setupItems.some(([, label]) => label === active) || active === "Staff Accounts" ? /* @__PURE__ */ jsxRuntimeExports.jsx(SetupPage, { page: active, onNavigate: setActive }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "placeholder-page", children: [
+          ] }) : active === "Cloud Database" ? /* @__PURE__ */ jsxRuntimeExports.jsx(CloudDatabaseSetupPage, {}) : canRenderSetup ? /* @__PURE__ */ jsxRuntimeExports.jsx(SetupPage, { page: active, onNavigate: setActive }) : setupItems.some(([, label]) => label === active) && (branchSession || !setupUnlocked) ? /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "placeholder-page", role: "alert", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "placeholder-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LockKeyhole, {}) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Owner login required" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Company Setup is locked after owner credentials are created. Sign in as the owner to continue." }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-button", type: "button", onClick: () => navigate("Owner Login"), children: "Open Owner Login" })
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "placeholder-page", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "placeholder-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Settings, {}) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: active }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "This module is reserved for the next approved development milestone." }),

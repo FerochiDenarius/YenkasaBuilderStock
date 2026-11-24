@@ -279,6 +279,20 @@ export function ConnectedBranding() {
         ),
       );
   }, []);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!value.useBrandColours) {
+      root.style.setProperty('--brand-primary', '#0b9438');
+      root.style.setProperty('--brand-primary-dark', '#147536');
+      root.style.setProperty('--brand-secondary', '#f7b500');
+      root.style.setProperty('--brand-accent', '#d7263d');
+      return;
+    }
+    root.style.setProperty('--brand-primary', value.brandColor);
+    root.style.setProperty('--brand-primary-dark', value.brandColor);
+    root.style.setProperty('--brand-secondary', value.secondaryColor);
+    root.style.setProperty('--brand-accent', value.accentColor);
+  }, [value.brandColor, value.secondaryColor, value.accentColor, value.useBrandColours]);
   const update = (key: keyof CompanyRegistration, next: string | boolean) => {
     setValue((current) => ({ ...current, [key]: next }));
     setStatus('');

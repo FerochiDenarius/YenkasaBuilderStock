@@ -107,11 +107,18 @@ ipcMain.handle("cloud:save-config", async (_event, input) => {
 ipcMain.handle("desktop:print", async (event) => {
   const window = BrowserWindow.fromWebContents(event.sender);
   if (!window) return false;
+  if (!window.isVisible()) window.show();
+  window.focus();
   return new Promise((resolve) => {
-    window.webContents.print(
-      { silent: false, printBackground: true },
-      (success) => resolve(success)
-    );
+    try {
+      window.webContents.print(
+        { silent: false, printBackground: true },
+        (success) => resolve(success)
+      );
+    } catch (error) {
+      console.error("[print] failed to open system print dialog", error instanceof Error ? error.message : "unknown error");
+      resolve(false);
+    }
   });
 });
 ipcMain.handle(

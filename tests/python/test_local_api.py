@@ -6,6 +6,21 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).parents[2] / 'services' / 'local-api'))
 from app.main import app
 
+OWNER_SETUP = {
+    'username': 'secure.owner', 'email': 'secure@example.com', 'password': 'SecurePass123',
+    'twoFactorEnabled': True, 'emailNotifications': True, 'smsNotifications': False,
+    'recoveryPhone': '+233 20 111 2222', 'recoveryEmail': 'recovery@example.com',
+}
+
+def owner_headers(client):
+    status = client.get('/api/owner/status').json()
+    if not status['passwordSet']:
+        response = client.put('/api/owner/security', headers={'X-Role': 'HQ_ADMIN'}, json=OWNER_SETUP)
+        assert response.status_code == 200
+    login = client.post('/api/owner/login', json={'username': OWNER_SETUP['username'], 'password': OWNER_SETUP['password']})
+    assert login.status_code == 200
+    return {'X-Owner-Session': login.json()['token']}
+
 def test_health():
     response = TestClient(app).get('/health')
     assert response.status_code == 200
@@ -63,27 +78,46 @@ def test_owner_account_persists_and_validates_photo():
 
 def test_owner_security_persists_without_plaintext_password_and_activity_is_available_to_hq_only():
     client = TestClient(app)
-    assert client.get('/api/owner/security').status_code == 403
-    saved = client.put('/api/owner/security', headers={'X-Role': 'HQ_ADMIN'}, json={
-        'username': 'secure.owner', 'email': 'secure@example.com', 'password': 'SecurePass123',
-        'twoFactorEnabled': True, 'emailNotifications': True, 'smsNotifications': False,
-        'recoveryPhone': '+233 20 111 2222', 'recoveryEmail': 'recovery@example.com',
-    })
+    assert client.get('/api/owner/security').status_code == 200
+    saved = client.put('/api/owner/security', headers={'X-Role': 'HQ_ADMIN'}, json=OWNER_SETUP)
     assert saved.status_code == 200
     assert saved.json()['username'] == 'secure.owner'
     assert saved.json()['passwordSet'] is True
-    persisted = client.get('/api/owner/security', headers={'X-Role': 'HQ_ADMIN'})
+    assert client.get('/api/owner/security', headers={'X-Role': 'HQ_ADMIN'}).status_code == 403
+    headers = owner_headers(client)
+    persisted = client.get('/api/owner/security', headers=headers)
     assert persisted.status_code == 200
     assert persisted.json()['email'] == 'secure@example.com'
     assert 'SecurePass123' not in persisted.text
-    activity = client.get('/api/owner/activity', headers={'X-Role': 'HQ_ADMIN'})
+    activity = client.get('/api/owner/activity', headers=headers)
     assert activity.status_code == 200
     assert any(row['activityType'] == 'Security' and row['action'] == 'owner_security_updated' for row in activity.json())
+
+def test_owner_setup_is_locked_after_credentials_exist_and_owner_logout_relocks_it():
+    client = TestClient(app)
+    headers = owner_headers(client)
+    branch = client.post('/api/branches', json={
+        'name': 'Lock Test Branch', 'code': 'LOCK', 'location': 'Accra',
+        'manager': 'Lock Manager', 'managerUsername': 'lock.manager', 'managerPassword': 'LockManager123',
+    }, headers=headers)
+    assert branch.status_code == 200
+    manager = client.post('/api/auth/login', json={
+        'branchId': branch.json()['id'], 'username': 'lock.manager',
+        'password': 'LockManager123', 'loginRole': 'BRANCH_MANAGER',
+    }).json()
+    branch_headers = {'X-User-Id': manager['userId'], 'X-Branch-Id': manager['branchId']}
+    assert client.get('/api/owner/security', headers=branch_headers).status_code == 403
+    assert client.get('/api/owner/security', headers={'X-Role': 'HQ_ADMIN'}).status_code == 403
+    assert client.post('/api/owner/logout', headers=headers).json()['ok'] is True
+    assert client.get('/api/owner/security', headers=headers).status_code == 403
+    relogin = client.post('/api/owner/login', json={'username': OWNER_SETUP['username'], 'password': OWNER_SETUP['password']})
+    assert relogin.status_code == 200
+    assert client.get('/api/owner/security', headers={'X-Owner-Session': relogin.json()['token']}).status_code == 200
 
 def test_cloud_configuration_is_hq_only_and_rejects_invalid_connection_without_secret_leak():
     client = TestClient(app)
     assert client.get('/api/cloud/configuration').status_code == 403
-    response = client.post('/api/cloud/test', headers={'X-Role': 'HQ_ADMIN'}, json={
+    response = client.post('/api/cloud/test', headers=owner_headers(client), json={
         'projectUrl': 'not-a-url', 'projectRef': 'dev-project',
         'databaseHost': 'db.example.com', 'databasePort': 5432,
         'databaseName': 'postgres', 'databaseUser': 'postgres',
@@ -97,11 +131,11 @@ def test_branches_require_headquarters_role_and_persist():
     payload = {'name': 'Validation Branch', 'code': 'VB', 'location': 'Accra', 'phone': '+233 20 000 0000', 'manager': 'Validation Manager'}
     forbidden = client.post('/api/branches', json=payload)
     assert forbidden.status_code == 403
-    created = client.post('/api/branches', json=payload, headers={'X-Role': 'HQ_ADMIN'})
+    created = client.post('/api/branches', json=payload, headers=owner_headers(client))
     assert created.status_code == 200
     assert created.json()['code'] == 'VB'
-    assert any(branch['code'] == 'VB' for branch in client.get('/api/branches').json())
-    duplicate = client.post('/api/branches', json=payload, headers={'X-Role': 'HQ_ADMIN'})
+    assert any(branch['code'] == 'VB' for branch in client.get('/api/branches', headers=owner_headers(client)).json())
+    duplicate = client.post('/api/branches', json=payload, headers=owner_headers(client))
     assert duplicate.status_code == 409
 
 def test_branch_authentication_enforces_role_and_branch_manager_staff_scope():
@@ -111,7 +145,7 @@ def test_branch_authentication_enforces_role_and_branch_manager_staff_scope():
         'managerUsername': 'auth.manager', 'managerPassword': 'ManagerPass123', 'managerRole': 'BRANCH_MANAGER',
         'deviceName': 'AUTH-PC-01', 'activateDevice': True,
     }
-    created = client.post('/api/branches', json=payload, headers={'X-Role': 'HQ_ADMIN'})
+    created = client.post('/api/branches', json=payload, headers=owner_headers(client))
     assert created.status_code == 200
     branch_id = created.json()['id']
     assert any(branch['id'] == branch_id for branch in client.get('/api/activated-branches').json())
@@ -136,7 +170,7 @@ def test_branch_authentication_enforces_role_and_branch_manager_staff_scope():
     assert client.post('/api/branch-actions/purchases', headers={'X-User-Id': stock['userId'], 'X-Branch-Id': branch_id}).status_code == 200
     assert client.post('/api/branch-actions/staff_management', headers={'X-User-Id': stock['userId'], 'X-Branch-Id': branch_id}).status_code == 403
     assert client.get('/api/company-users').status_code == 403
-    company_users = client.get('/api/company-users', headers={'X-Role': 'HQ_ADMIN'})
+    company_users = client.get('/api/company-users', headers=owner_headers(client))
     assert company_users.status_code == 200
     assert any(user['username'] == 'stock.auth' and user['branchName'] == 'Auth Branch' for user in company_users.json())
     assert client.patch(f'/api/staff/{staff_id}', json={'active': False}, headers={'X-User-Id': manager['userId'], 'X-Branch-Id': branch_id}).status_code == 200
@@ -145,20 +179,20 @@ def test_branch_authentication_enforces_role_and_branch_manager_staff_scope():
 
 def test_cross_branch_staff_access_is_rejected():
     client = TestClient(app)
-    first = client.post('/api/branches', json={'name': 'Isolation One', 'code': 'ISO1', 'location': 'Accra', 'manager': 'Iso One', 'managerUsername': 'iso.one', 'managerPassword': 'IsoPass123'}, headers={'X-Role': 'HQ_ADMIN'}).json()
-    second = client.post('/api/branches', json={'name': 'Isolation Two', 'code': 'ISO2', 'location': 'Tema', 'manager': 'Iso Two', 'managerUsername': 'iso.two', 'managerPassword': 'IsoPass123'}, headers={'X-Role': 'HQ_ADMIN'}).json()
+    first = client.post('/api/branches', json={'name': 'Isolation One', 'code': 'ISO1', 'location': 'Accra', 'manager': 'Iso One', 'managerUsername': 'iso.one', 'managerPassword': 'IsoPass123'}, headers=owner_headers(client)).json()
+    second = client.post('/api/branches', json={'name': 'Isolation Two', 'code': 'ISO2', 'location': 'Tema', 'manager': 'Iso Two', 'managerUsername': 'iso.two', 'managerPassword': 'IsoPass123'}, headers=owner_headers(client)).json()
     manager = client.post('/api/auth/login', json={'branchId': first['id'], 'username': 'iso.one', 'password': 'IsoPass123', 'loginRole': 'BRANCH_MANAGER'}).json()
     cross_branch = client.post('/api/staff', json={'branchId': second['id'], 'username': 'cross.try', 'fullName': 'Cross Try', 'role': 'SALES_CASHIER', 'password': 'CrossPass123'}, headers={'X-User-Id': manager['userId'], 'X-Branch-Id': second['id']})
     assert cross_branch.status_code == 403
 
 def test_device_activation_requires_hq_and_persists_status():
     client = TestClient(app)
-    branch = client.post('/api/branches', json={'name': 'Device Branch', 'code': 'DEV1', 'location': 'Accra', 'manager': 'Device Manager', 'managerUsername': 'device.manager', 'managerPassword': 'DevicePass123'}, headers={'X-Role': 'HQ_ADMIN'}).json()
+    branch = client.post('/api/branches', json={'name': 'Device Branch', 'code': 'DEV1', 'location': 'Accra', 'manager': 'Device Manager', 'managerUsername': 'device.manager', 'managerPassword': 'DevicePass123'}, headers=owner_headers(client)).json()
     assert client.get('/api/devices').status_code == 403
-    created = client.post('/api/devices', json={'branchId': branch['id'], 'deviceName': 'DEV-PC-02', 'deviceType': 'macOS', 'validity': 'Permanent'}, headers={'X-Role': 'HQ_ADMIN'})
+    created = client.post('/api/devices', json={'branchId': branch['id'], 'deviceName': 'DEV-PC-02', 'deviceType': 'macOS', 'validity': 'Permanent'}, headers=owner_headers(client))
     assert created.status_code == 200
     assert created.json()['activationCode'].startswith('YK-')
-    revoked = client.patch(f"/api/devices/{created.json()['id']}", json={'active': False}, headers={'X-Role': 'HQ_ADMIN'})
+    revoked = client.patch(f"/api/devices/{created.json()['id']}", json={'active': False}, headers=owner_headers(client))
     assert revoked.status_code == 200
     assert revoked.json()['active'] is False
 
@@ -176,8 +210,8 @@ def test_sales_uses_branch_catalogue_prices_and_company_invoice_template_snapsho
             'discountPercent': '0', 'vatPercent': '15', 'amountPaid': '0',
         }, 'styles': {'headingFontFamily': 'Arial', 'headingFontSize': '20', 'headingColor': '#0B7E34', 'headingBold': True, 'logoWidth': '170', 'logoHeight': '88', 'logoOffsetX': '0', 'logoOffsetY': '0'},
     }
-    assert client.put('/api/company', json=company).status_code == 200
-    branch = client.post('/api/branches', json={'name': 'Sales Catalog Branch', 'code': 'SALCAT', 'location': 'Accra', 'manager': 'Sales Catalog Manager', 'managerUsername': 'sales.catalog.manager', 'managerPassword': 'SalesCatalogPass123'}, headers={'X-Role': 'HQ_ADMIN'}).json()
+    assert client.put('/api/company', json=company, headers=owner_headers(client)).status_code == 200
+    branch = client.post('/api/branches', json={'name': 'Sales Catalog Branch', 'code': 'SALCAT', 'location': 'Accra', 'manager': 'Sales Catalog Manager', 'managerUsername': 'sales.catalog.manager', 'managerPassword': 'SalesCatalogPass123'}, headers=owner_headers(client)).json()
     branch_id = branch['id']
     manager = client.post('/api/auth/login', json={'branchId': branch_id, 'username': 'sales.catalog.manager', 'password': 'SalesCatalogPass123', 'loginRole': 'BRANCH_MANAGER'}).json()
     products = client.get(f'/api/products?branchId={branch_id}', headers={'X-User-Id': manager['userId'], 'X-Branch-Id': branch_id})
@@ -193,7 +227,7 @@ def test_sales_uses_branch_catalogue_prices_and_company_invoice_template_snapsho
 
 def test_separate_branch_roles_receive_only_authorized_permissions():
     client = TestClient(app)
-    branch = client.post('/api/branches', json={'name': 'Role Separation Branch', 'code': 'ROLESEP', 'location': 'Accra', 'manager': 'Role Manager', 'managerUsername': 'role.manager', 'managerPassword': 'RoleManagerPass123'}, headers={'X-Role': 'HQ_ADMIN'}).json()
+    branch = client.post('/api/branches', json={'name': 'Role Separation Branch', 'code': 'ROLESEP', 'location': 'Accra', 'manager': 'Role Manager', 'managerUsername': 'role.manager', 'managerPassword': 'RoleManagerPass123'}, headers=owner_headers(client)).json()
     branch_id = branch['id']
     manager = client.post('/api/auth/login', json={'branchId': branch_id, 'username': 'role.manager', 'password': 'RoleManagerPass123', 'loginRole': 'BRANCH_MANAGER'}).json()
     created = {}
@@ -217,7 +251,7 @@ def test_branch_manager_controls_sync_settings_and_owner_sees_branch_status(monk
         'name': 'Sync Validation Branch', 'code': 'SYNCV', 'location': 'Accra',
         'manager': 'Sync Manager', 'managerUsername': 'sync.manager',
         'managerPassword': 'SyncManagerPass123',
-    }, headers={'X-Role': 'HQ_ADMIN'}).json()
+    }, headers=owner_headers(client)).json()
     branch_id = branch['id']
     manager = client.post('/api/auth/login', json={
         'branchId': branch_id, 'username': 'sync.manager',
@@ -257,7 +291,7 @@ def test_branch_manager_controls_sync_settings_and_owner_sees_branch_status(monk
     })
     assert denied.status_code == 403
 
-    activity = client.get('/api/owner/activity', headers={'X-Role': 'HQ_ADMIN'})
+    activity = client.get('/api/owner/activity', headers=owner_headers(client))
     assert activity.status_code == 200
     sync_rows = [row for row in activity.json() if row['activityType'] == 'Branch Sync' and branch['name'] in row['details']]
     assert sync_rows
@@ -270,7 +304,7 @@ def test_configured_cloud_database_is_reflected_in_sync_status(monkeypatch):
         'name': 'Configured Cloud Branch', 'code': 'CLOUDV', 'location': 'Accra',
         'manager': 'Cloud Manager', 'managerUsername': 'cloud.manager',
         'managerPassword': 'CloudManagerPass123',
-    }, headers={'X-Role': 'HQ_ADMIN'}).json()
+    }, headers=owner_headers(client)).json()
     manager = client.post('/api/auth/login', json={
         'branchId': branch['id'], 'username': 'cloud.manager',
         'password': 'CloudManagerPass123', 'loginRole': 'BRANCH_MANAGER',
@@ -287,7 +321,7 @@ def test_cashier_payment_workflow_is_branch_scoped_and_idempotent():
         'name': 'Cashier Workflow Branch', 'code': 'CASHWF', 'location': 'Accra',
         'manager': 'Cashier Workflow Manager', 'managerUsername': 'cash.workflow.manager',
         'managerPassword': 'CashWorkflowManager123',
-    }, headers={'X-Role': 'HQ_ADMIN'}).json()
+    }, headers=owner_headers(client)).json()
     branch_id = branch['id']
     manager = client.post('/api/auth/login', json={
         'branchId': branch_id, 'username': 'cash.workflow.manager',

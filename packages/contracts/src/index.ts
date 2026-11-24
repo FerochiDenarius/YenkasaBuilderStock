@@ -96,6 +96,14 @@ export interface OwnerSecurity {
   recoveryPhone: string;
   recoveryEmail: string;
 }
+export interface OwnerSession {
+  token: string;
+  ownerId: number;
+  companyId: number;
+  fullName: string;
+  username: string;
+  role: 'OWNER';
+}
 export interface OwnerActivity {
   id: string;
   activityType: string;

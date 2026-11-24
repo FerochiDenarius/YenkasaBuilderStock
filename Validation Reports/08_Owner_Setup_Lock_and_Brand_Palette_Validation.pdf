@@ -1,0 +1,341 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Length 2319 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 15 Tf
+36 806 Td
+(Owner Setup Lock and Brand Palette) Tj
+0 -11 Td
+/F1 8 Tf
+0 -18 Td
+(YenkasaBuildersStock | Validation date: 24 November 2026) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(A. Page Information) Tj
+0 -11 Td
+/F1 8 Tf
+(--------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(Scope: Company Setup access after owner credentials are created, owner login/logout session) Tj
+0 -11 Td
+/F1 8 Tf
+(handling, branch-session isolation, and saved branding color propagation.) Tj
+0 -11 Td
+/F1 8 Tf
+(Implementation: backend owner session tokens with initial-setup exception, owner) Tj
+0 -11 Td
+/F1 8 Tf
+(login/logout endpoints, protected setup API headers, renderer setup lock, Owner Login) Tj
+0 -11 Td
+/F1 8 Tf
+(screen, and shared CSS brand variables applied from the saved company record.) Tj
+0 -11 Td
+/F1 8 Tf
+(Relevant source files: services/local-api/app/main.py;) Tj
+0 -11 Td
+/F1 8 Tf
+(apps/desktop/src/renderer/Dashboard.tsx; apps/desktop/src/renderer/OwnerLoginPage.tsx;) Tj
+0 -11 Td
+/F1 8 Tf
+(apps/desktop/src/renderer/OwnerAccountPage.tsx;) Tj
+0 -11 Td
+/F1 8 Tf
+(apps/desktop/src/renderer/ConnectedSetup.tsx; apps/desktop/src/renderer/api.ts;) Tj
+0 -11 Td
+/F1 8 Tf
+(apps/desktop/src/renderer/styles.css; packages/contracts/src/index.ts.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(B. Functionality Checklist) Tj
+0 -11 Td
+/F1 8 Tf
+(--------------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(Initial setup remains available while no owner password exists | IMPLEMENTED.) Tj
+0 -11 Td
+/F1 8 Tf
+(Owner credential creation returns a temporary owner session so setup can continue |) Tj
+0 -11 Td
+/F1 8 Tf
+(IMPLEMENTED.) Tj
+0 -11 Td
+/F1 8 Tf
+(After credentials exist, Company Setup is hidden unless a valid owner session exists |) Tj
+0 -11 Td
+/F1 8 Tf
+(IMPLEMENTED in renderer and backend.) Tj
+0 -11 Td
+/F1 8 Tf
+(Branch Manager, Sales, Cashier and Stock sessions cannot call owner setup APIs | PASS in) Tj
+0 -11 Td
+/F1 8 Tf
+(backend test.) Tj
+0 -11 Td
+/F1 8 Tf
+(Owner logout removes local owner session and invalidates the backend token | PASS in backend) Tj
+0 -11 Td
+/F1 8 Tf
+(test.) Tj
+0 -11 Td
+/F1 8 Tf
+(Saved primary, secondary and accent colors populate shared CSS variables and reload from) Tj
+0 -11 Td
+/F1 8 Tf
+(SQLite | IMPLEMENTED; live visual screenshot pending.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+ET
+endstream
+endobj
+3 0 obj
+<< /Length 2978 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 15 Tf
+36 806 Td
+(Owner Setup Lock and Brand Palette) Tj
+0 -11 Td
+/F1 8 Tf
+0 -18 Td
+(YenkasaBuildersStock | Validation date: 24 November 2026) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(C. Backend Integration and Authorization) Tj
+0 -11 Td
+/F1 8 Tf
+(----------------------------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(POST /api/owner/login verifies the stored password hash and issues an in-memory owner) Tj
+0 -11 Td
+/F1 8 Tf
+(session token. Plaintext passwords are never returned or stored.) Tj
+0 -11 Td
+/F1 8 Tf
+(POST /api/owner/logout invalidates the token and records an audit event. Protected owner) Tj
+0 -11 Td
+/F1 8 Tf
+(routes accept X-Owner-Session, not a forged branch role header, after credentials exist.) Tj
+0 -11 Td
+/F1 8 Tf
+(GET /api/owner/status returns only ownerExists/passwordSet so the shell can choose locked) Tj
+0 -11 Td
+/F1 8 Tf
+(versus initial-setup navigation without disclosing credentials.) Tj
+0 -11 Td
+/F1 8 Tf
+(Company, owner, branch, device, company-user, audit and cloud setup operations require owner) Tj
+0 -11 Td
+/F1 8 Tf
+(authentication after setup completion. Initial setup is permitted only while no owner) Tj
+0 -11 Td
+/F1 8 Tf
+(password exists.) Tj
+0 -11 Td
+/F1 8 Tf
+(The renderer loads saved company brandColor, secondaryColor and accentColor and applies them) Tj
+0 -11 Td
+/F1 8 Tf
+(to the shared primary UI color variables. Branding preview and document-specific colors) Tj
+0 -11 Td
+/F1 8 Tf
+(remain controlled by their saved template settings.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(D. Test Results) Tj
+0 -11 Td
+/F1 8 Tf
+(--------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(SEC-01 | First-time owner security save | Save owner credentials during initial setup |) Tj
+0 -11 Td
+/F1 8 Tf
+(Password hash persists and an owner session is returned | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SEC-02 | Owner login | Valid username/password | Owner session token returned; incorrect) Tj
+0 -11 Td
+/F1 8 Tf
+(credentials rejected | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SEC-03 | Role mismatch isolation | Branch manager headers call owner security endpoint |) Tj
+0 -11 Td
+/F1 8 Tf
+(HTTP 403 | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SEC-04 | Forged HQ header | X-Role HQ_ADMIN after owner password exists | HTTP 403 | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SEC-05 | Owner logout | Reuse the prior owner token after logout | HTTP 403 | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SEC-06 | Backend regression | services/local-api/.venv/bin/pytest -q) Tj
+0 -11 Td
+/F1 8 Tf
+(tests/python/test_local_api.py | 17 passed | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SEC-07 | Renderer lint | npm run lint | Clean | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SEC-08 | Desktop build | npm run build:desktop | Electron Vite production build completed |) Tj
+0 -11 Td
+/F1 8 Tf
+(PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SEC-09 | Running Electron visual lock check | Attach to existing CDP window and inspect) Tj
+0 -11 Td
+/F1 8 Tf
+(navigation | CDP attachment did not complete in this environment | NOT TESTED) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+ET
+endstream
+endobj
+4 0 obj
+<< /Length 1983 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 15 Tf
+36 806 Td
+(Owner Setup Lock and Brand Palette) Tj
+0 -11 Td
+/F1 8 Tf
+0 -18 Td
+(YenkasaBuildersStock | Validation date: 24 November 2026) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(E. Proof of Validation) Tj
+0 -11 Td
+/F1 8 Tf
+(----------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(The 17-test local API run exercised owner credential creation, owner login, branch login,) Tj
+0 -11 Td
+/F1 8 Tf
+(branch isolation, forged HQ-header rejection and owner-token invalidation. The output was) Tj
+0 -11 Td
+/F1 8 Tf
+(captured from the actual FastAPI TestClient against SQLite.) Tj
+0 -11 Td
+/F1 8 Tf
+(The renderer lint and Electron Vite production build completed against the modified) Tj
+0 -11 Td
+/F1 8 Tf
+(TypeScript and CSS. The brand propagation implementation is in the compiled renderer bundle.) Tj
+0 -11 Td
+/F1 8 Tf
+(No screenshot or live Electron result is fabricated. A running Electron CDP target was) Tj
+0 -11 Td
+/F1 8 Tf
+(present, but Playwright attachment stalled; the visual sidebar and color-change check) Tj
+0 -11 Td
+/F1 8 Tf
+(remains explicitly NOT TESTED.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+/F1 8 Tf
+(F. Outstanding Issues) Tj
+0 -11 Td
+/F1 8 Tf
+(---------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(Run the owner lock flow in the installed/running desktop application: branch login, branch) Tj
+0 -11 Td
+/F1 8 Tf
+(logout, verify Company Setup is hidden, Owner Login, verify setup reappears, Owner Logout,) Tj
+0 -11 Td
+/F1 8 Tf
+(verify it locks again.) Tj
+0 -11 Td
+/F1 8 Tf
+(Change the saved brand colors in Business Branding and capture a before/after screenshot) Tj
+0 -11 Td
+/F1 8 Tf
+(across the sidebar, primary buttons and document preview.) Tj
+0 -11 Td
+/F1 8 Tf
+(The existing local owner session store is process-memory scoped; restarting the local API) Tj
+0 -11 Td
+/F1 8 Tf
+(intentionally requires owner login again. A production deployment may replace this with a) Tj
+0 -11 Td
+/F1 8 Tf
+(secure OS-backed session mechanism.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Pages /Kids [6 0 R 7 0 R 8 0 R] /Count 3 >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595 842] /Contents 2 0 R >>
+endobj
+7 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595 842] /Contents 3 0 R >>
+endobj
+8 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595 842] /Contents 4 0 R >>
+endobj
+9 0 obj
+<< /Type /Catalog /Pages 5 0 R >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000002489 00000 n 
+0000005558 00000 n 
+0000007632 00000 n 
+0000007701 00000 n 
+0000007788 00000 n 
+0000007875 00000 n 
+0000007962 00000 n 
+trailer
+<< /Size 10 /Root 9 0 R >>
+startxref
+8011
+%%EOF

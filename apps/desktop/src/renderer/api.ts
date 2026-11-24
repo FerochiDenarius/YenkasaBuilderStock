@@ -5,6 +5,7 @@ import type {
   OwnerAccount,
   OwnerActivity,
   OwnerSecurity,
+  OwnerSession,
   PaymentRecord,
   PurchaseRecord,
   ReceiptRecord,
@@ -29,6 +30,11 @@ export interface DeviceRecord {
 export const LOCAL_API_URL =
   window.desktopBridge?.apiBaseUrl ?? import.meta.env.VITE_LOCAL_API_URL ?? 'http://127.0.0.1:8765';
 
+function ownerHeaders(): HeadersInit {
+  const token = sessionStorage.getItem('yenkasa-owner-session');
+  return token ? { 'X-Owner-Session': token } : { 'X-Role': 'HQ_ADMIN' };
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${LOCAL_API_URL}${path}`, {
     ...init,
@@ -48,20 +54,30 @@ export const companyApi = {
   save: (company: CompanyRegistration) =>
     request<CompanyRegistration>('/api/company', {
       method: 'PUT',
+      headers: ownerHeaders(),
       body: JSON.stringify(company),
     }),
 };
 
 export const ownerApi = {
-  get: () => request<OwnerAccount | null>('/api/owner'),
+  get: () => request<OwnerAccount | null>('/api/owner', { headers: ownerHeaders() }),
   save: (owner: OwnerAccount) =>
     request<OwnerAccount>('/api/owner', {
       method: 'PUT',
+      headers: ownerHeaders(),
       body: JSON.stringify(owner),
     }),
+  status: () => request<{ ownerExists: boolean; passwordSet: boolean }>('/api/owner/status'),
+  login: (username: string, password: string) =>
+    request<OwnerSession>('/api/owner/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+  logout: () =>
+    request<{ ok: boolean }>('/api/owner/logout', { method: 'POST', headers: ownerHeaders() }),
   getSecurity: () =>
-    request<OwnerSecurity>('/api/owner/security', {
-      headers: { 'X-Role': 'HQ_ADMIN' },
+    request<OwnerSecurity & { ownerSession?: OwnerSession }>('/api/owner/security', {
+      headers: ownerHeaders(),
     }),
   saveSecurity: (security: {
     username: string;
@@ -73,30 +89,30 @@ export const ownerApi = {
     recoveryPhone: string;
     recoveryEmail: string;
   }) =>
-    request<OwnerSecurity>('/api/owner/security', {
+    request<OwnerSecurity & { ownerSession?: OwnerSession }>('/api/owner/security', {
       method: 'PUT',
-      headers: { 'X-Role': 'HQ_ADMIN' },
+      headers: ownerHeaders(),
       body: JSON.stringify(security),
     }),
   activity: () =>
     request<OwnerActivity[]>('/api/owner/activity', {
-      headers: { 'X-Role': 'HQ_ADMIN' },
+      headers: ownerHeaders(),
     }),
 };
 
 export const branchApi = {
-  list: () => request<Branch[]>('/api/branches'),
+  list: () => request<Branch[]>('/api/branches', { headers: ownerHeaders() }),
   activatedList: () => request<Branch[]>('/api/activated-branches'),
   create: (branch: Record<string, unknown>) =>
     request<Branch>('/api/branches', {
       method: 'POST',
-      headers: { 'X-Role': 'HQ_ADMIN' },
+      headers: ownerHeaders(),
       body: JSON.stringify(branch),
     }),
   update: (id: string, branch: Record<string, unknown>) =>
     request<Branch>(`/api/branches/${id}`, {
       method: 'PATCH',
-      headers: { 'X-Role': 'HQ_ADMIN' },
+      headers: ownerHeaders(),
       body: JSON.stringify(branch),
     }),
 };
@@ -104,7 +120,7 @@ export const branchApi = {
 export const deviceApi = {
   list: () =>
     request<DeviceRecord[]>('/api/devices', {
-      headers: { 'X-Role': 'HQ_ADMIN' },
+      headers: ownerHeaders(),
     }),
   create: (payload: {
     branchId: string;
@@ -114,13 +130,13 @@ export const deviceApi = {
   }) =>
     request<DeviceRecord>('/api/devices', {
       method: 'POST',
-      headers: { 'X-Role': 'HQ_ADMIN' },
+      headers: ownerHeaders(),
       body: JSON.stringify(payload),
     }),
   update: (id: string, active: boolean) =>
     request<DeviceRecord>(`/api/devices/${id}`, {
       method: 'PATCH',
-      headers: { 'X-Role': 'HQ_ADMIN' },
+      headers: ownerHeaders(),
       body: JSON.stringify({ active }),
     }),
 };
@@ -178,7 +194,7 @@ export const syncApi = {
 export const staffApi = {
   companyUsers: () =>
     request<StaffAccount[]>('/api/company-users', {
-      headers: { 'X-Role': 'HQ_ADMIN' },
+      headers: ownerHeaders(),
     }),
   list: (branchId: string, userId: string) =>
     request<StaffAccount[]>(
@@ -245,7 +261,7 @@ export const staffApi = {
       {
         headers: branchId
           ? { 'X-User-Id': userId ?? '', 'X-Branch-Id': branchId }
-          : { 'X-Role': 'HQ_ADMIN' },
+          : ownerHeaders(),
       },
     ),
 };

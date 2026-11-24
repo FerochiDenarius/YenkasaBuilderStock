@@ -587,6 +587,11 @@ function OwnerSecuritySection() {
         ...value,
         password: password || undefined,
       });
+      if (saved.ownerSession?.token) {
+        sessionStorage.setItem('yenkasa-owner-session', saved.ownerSession.token);
+        sessionStorage.setItem('yenkasa-owner-session-data', JSON.stringify(saved.ownerSession));
+        window.dispatchEvent(new Event('yenkasa-owner-session-changed'));
+      }
       setValue(saved);
       setSavedValue(saved);
       setPassword('');

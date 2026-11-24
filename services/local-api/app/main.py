@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 import shutil
 from urllib.parse import quote, urlsplit, urlunsplit
 from datetime import datetime, timezone
@@ -46,6 +47,7 @@ engine_options = {'connect_args': {'check_same_thread': False} if settings.local
 if settings.local_database_url in {'sqlite://', 'sqlite:///:memory:'}:
     engine_options['poolclass'] = StaticPool
 engine = create_engine(settings.local_database_url, **engine_options)
+owner_sessions: dict[str, int] = {}
 
 class Base(DeclarativeBase): pass
 class Company(Base):
@@ -333,6 +335,10 @@ class OwnerSecurityPayload(BaseModel):
     recoveryPhone: str = ''
     recoveryEmail: str = ''
 
+class OwnerLoginPayload(BaseModel):
+    username: str
+    password: str
+
 class BranchPayload(BaseModel):
     name: str
     code: str
@@ -615,7 +621,8 @@ def get_company() -> Optional[dict]:
         return to_payload(company)
 
 @app.put('/api/company')
-def save_company(payload: CompanyPayload) -> dict:
+def save_company(payload: CompanyPayload, request: Request) -> dict:
+    require_hq(request, allow_initial_setup=True)
     required_fields = {'registeredName': payload.registeredName, 'tradingName': payload.tradingName, 'category': payload.category, 'phone': payload.phone, 'country': payload.country, 'address': payload.address, 'currency': payload.currency, 'timezone': payload.timezone}
     if any(not value.strip() for value in required_fields.values()): raise HTTPException(422, 'All required company details must be provided')
     if payload.logoRef:
@@ -629,13 +636,15 @@ def save_company(payload: CompanyPayload) -> dict:
         session.commit(); session.refresh(company); return to_payload(company)
 
 @app.get('/api/owner')
-def get_owner() -> Optional[dict]:
+def get_owner(request: Request) -> Optional[dict]:
+    require_hq(request, allow_initial_setup=True)
     with Session(engine) as session:
         owner = session.scalar(select(Owner).order_by(Owner.id))
         return None if owner is None else to_owner_payload(owner)
 
 @app.put('/api/owner')
-def save_owner(payload: OwnerPayload) -> dict:
+def save_owner(payload: OwnerPayload, request: Request) -> dict:
+    require_hq(request, allow_initial_setup=True)
     required_fields = {'fullName': payload.fullName, 'role': payload.role, 'phone': payload.phone}
     if any(not value.strip() for value in required_fields.values()): raise HTTPException(422, 'Full name, role and phone are required')
     if payload.photoRef:
@@ -650,7 +659,7 @@ def save_owner(payload: OwnerPayload) -> dict:
 
 @app.get('/api/owner/security')
 def get_owner_security(request: Request) -> dict:
-    require_hq(request)
+    require_hq(request, allow_initial_setup=True)
     with Session(engine) as session:
         owner = session.scalar(select(Owner).order_by(Owner.id))
         if owner is None:
@@ -659,7 +668,7 @@ def get_owner_security(request: Request) -> dict:
 
 @app.put('/api/owner/security')
 def save_owner_security(payload: OwnerSecurityPayload, request: Request) -> dict:
-    require_hq(request)
+    require_hq(request, allow_initial_setup=True)
     if not payload.username.strip():
         raise HTTPException(422, 'Username is required')
     if payload.password and len(payload.password) < 8:
@@ -671,6 +680,7 @@ def save_owner_security(payload: OwnerSecurityPayload, request: Request) -> dict
         if owner is None:
             owner = Owner(company_id=1, full_name='Business Owner', role='Business Owner', phone='', email=str(payload.email).strip())
             session.add(owner)
+        was_configured = bool(owner.password_hash)
         owner.username = payload.username.strip().lower()
         owner.email = str(payload.email).strip()
         if payload.password:
@@ -682,7 +692,42 @@ def save_owner_security(payload: OwnerSecurityPayload, request: Request) -> dict
         owner.recovery_email = payload.recoveryEmail.strip().lower()
         session.add(AuditLog(id=str(uuid4()), company_id=1, branch_id='', actor_user_id='HQ_OWNER', action='owner_security_updated', target_user_id='', created_at=now_iso()))
         session.commit(); session.refresh(owner)
-        return to_owner_security_payload(owner)
+        response = to_owner_security_payload(owner)
+        if not was_configured and owner.password_hash:
+            response['ownerSession'] = create_owner_session(owner)
+        return response
+
+@app.get('/api/owner/status')
+def owner_status() -> dict:
+    """Return only the lock state needed to choose the initial application shell."""
+    with Session(engine) as session:
+        owner = session.scalar(select(Owner).order_by(Owner.id))
+        return {'ownerExists': owner is not None, 'passwordSet': bool(owner and owner.password_hash)}
+
+@app.post('/api/owner/login')
+def owner_login(payload: OwnerLoginPayload, request: Request) -> dict:
+    username = payload.username.strip().lower()
+    with Session(engine) as session:
+        owner = session.scalar(select(Owner).where((Owner.username == username) | (Owner.email == username)).order_by(Owner.id))
+        if owner is None or not owner.password_hash or not verify_password(payload.password, owner.password_hash):
+            raise HTTPException(401, 'Incorrect owner username/email or password')
+        token = secrets.token_urlsafe(32)
+        owner_sessions[token] = owner.id
+        session.add(AuditLog(id=str(uuid4()), company_id=owner.company_id, branch_id='', actor_user_id='HQ_OWNER', action='login_success', target_user_id=str(owner.id), created_at=now_iso()))
+        session.commit()
+        return {'token': token, 'ownerId': owner.id, 'companyId': owner.company_id, 'fullName': owner.full_name, 'username': owner.username, 'role': 'OWNER'}
+
+@app.post('/api/owner/logout')
+def owner_logout(request: Request) -> dict:
+    token = request.headers.get('x-owner-session', '')
+    owner_id = owner_sessions.pop(token, None)
+    if owner_id is not None:
+        with Session(engine) as session:
+            owner = session.get(Owner, owner_id)
+            if owner:
+                session.add(AuditLog(id=str(uuid4()), company_id=owner.company_id, branch_id='', actor_user_id='HQ_OWNER', action='logout', target_user_id=str(owner.id), created_at=now_iso()))
+                session.commit()
+    return {'ok': True}
 
 @app.get('/api/owner/activity')
 def owner_activity(request: Request) -> list[dict]:
@@ -820,7 +865,8 @@ def run_sync(payload: SyncRunPayload, request: Request) -> dict:
         return result
 
 @app.get('/api/branches')
-def list_branches() -> list[dict]:
+def list_branches(request: Request) -> list[dict]:
+    require_hq(request)
     with Session(engine) as session:
         return [to_branch_payload(branch) for branch in session.scalars(select(Branch).where(Branch.company_id == 1).order_by(Branch.name))]
 
@@ -832,14 +878,14 @@ def list_activated_branches() -> list[dict]:
 
 @app.get('/api/devices')
 def list_devices(request: Request) -> list[dict]:
-    if request.headers.get('x-role') != 'HQ_ADMIN': raise HTTPException(403, 'Headquarters administrator permission is required')
+    require_hq(request)
     with Session(engine) as session:
         branches = {branch.id: branch.name for branch in session.scalars(select(Branch).where(Branch.company_id == 1))}
         return [to_device_payload(device, branches.get(device.branch_id, 'Unknown branch')) for device in session.scalars(select(DeviceActivation).where(DeviceActivation.company_id == 1).order_by(DeviceActivation.created_at.desc()))]
 
 @app.post('/api/devices')
 def create_device(payload: DevicePayload, request: Request) -> dict:
-    if request.headers.get('x-role') != 'HQ_ADMIN': raise HTTPException(403, 'Headquarters administrator permission is required')
+    require_hq(request)
     if not payload.deviceName.strip(): raise HTTPException(422, 'Device name is required')
     with Session(engine) as session:
         branch = session.scalar(select(Branch).where(Branch.company_id == 1, Branch.id == payload.branchId, Branch.status == 'Active'))
@@ -850,7 +896,7 @@ def create_device(payload: DevicePayload, request: Request) -> dict:
 
 @app.patch('/api/devices/{device_id}')
 def update_device(device_id: str, payload: dict, request: Request) -> dict:
-    if request.headers.get('x-role') != 'HQ_ADMIN': raise HTTPException(403, 'Headquarters administrator permission is required')
+    require_hq(request)
     with Session(engine) as session:
         device = session.scalar(select(DeviceActivation).where(DeviceActivation.id == device_id, DeviceActivation.company_id == 1))
         if device is None: raise HTTPException(404, 'Device not found')
@@ -860,7 +906,7 @@ def update_device(device_id: str, payload: dict, request: Request) -> dict:
 
 @app.post('/api/branches')
 def create_branch(payload: BranchPayload, request: Request) -> dict:
-    if request.headers.get('x-role') != 'HQ_ADMIN': raise HTTPException(403, 'Headquarters administrator permission is required')
+    require_hq(request)
     required_fields = {'name': payload.name, 'code': payload.code, 'location': payload.location, 'manager': payload.manager}
     if any(not value.strip() for value in required_fields.values()): raise HTTPException(422, 'Branch name, code, location and manager are required')
     with Session(engine) as session:
@@ -886,7 +932,7 @@ def create_branch(payload: BranchPayload, request: Request) -> dict:
 
 @app.patch('/api/branches/{branch_id}')
 def update_branch(branch_id: str, payload: BranchUpdatePayload, request: Request) -> dict:
-    if request.headers.get('x-role') != 'HQ_ADMIN': raise HTTPException(403, 'Headquarters administrator permission is required')
+    require_hq(request)
     required_fields = {'name': payload.name, 'code': payload.code, 'location': payload.location, 'manager': payload.manager}
     if any(not value.strip() for value in required_fields.values()): raise HTTPException(422, 'Branch name, code, location and manager are required')
     if payload.status not in {'Active', 'Suspended'}: raise HTTPException(422, 'Branch status must be Active or Suspended')
@@ -1319,7 +1365,7 @@ def list_staff(branchId: str, request: Request) -> list[dict]:
 
 @app.get('/api/company-users')
 def list_company_users(request: Request) -> list[dict]:
-    if request.headers.get('x-role') != 'HQ_ADMIN': raise HTTPException(403, 'Headquarters administrator permission is required')
+    require_hq(request)
     with Session(engine) as session:
         branches = {branch.id: branch.name for branch in session.scalars(select(Branch).where(Branch.company_id == 1))}
         return [dict(to_staff_payload(user), branchName=branches.get(user.branch_id, 'Unassigned')) for user in session.scalars(select(UserAccount).where(UserAccount.company_id == 1).order_by(UserAccount.created_at.desc()))]
@@ -1370,7 +1416,7 @@ def audit_log(request: Request, branchId: str = '') -> list[dict]:
 
 @app.get('/api/company-audit-log')
 def company_audit_log(request: Request) -> list[dict]:
-    if request.headers.get('x-role') != 'HQ_ADMIN': raise HTTPException(403, 'Headquarters administrator permission is required')
+    require_hq(request)
     with Session(engine) as session:
         rows = session.scalars(select(AuditLog).where(AuditLog.company_id == 1).order_by(AuditLog.created_at.desc())).all()
         return [{'id': row.id, 'action': row.action, 'actorUserId': row.actor_user_id, 'targetUserId': row.target_user_id, 'createdAt': row.created_at} for row in rows]
@@ -1544,6 +1590,30 @@ def require_actor(request: Request, allowed_roles: set[str], branch_id: str, per
                 raise HTTPException(403, f'Permission {permission} is not assigned to this account')
         return user
 
-def require_hq(request: Request) -> None:
-    if request.headers.get('x-role') != 'HQ_ADMIN':
-        raise HTTPException(403, 'Headquarters administrator permission is required')
+def create_owner_session(owner: Owner) -> dict:
+    token = secrets.token_urlsafe(32)
+    owner_sessions[token] = owner.id
+    return {
+        'token': token,
+        'ownerId': owner.id,
+        'companyId': owner.company_id,
+        'fullName': owner.full_name,
+        'username': owner.username,
+        'role': 'OWNER',
+    }
+
+def require_hq(request: Request, allow_initial_setup: bool = False) -> None:
+    token = request.headers.get('x-owner-session', '')
+    owner_id = owner_sessions.get(token)
+    if owner_id is not None:
+        with Session(engine) as session:
+            owner = session.scalar(select(Owner).where(Owner.id == owner_id, Owner.company_id == 1))
+            if owner is not None and owner.password_hash:
+                return
+        owner_sessions.pop(token, None)
+    if allow_initial_setup:
+        with Session(engine) as session:
+            owner = session.scalar(select(Owner).order_by(Owner.id))
+            if owner is None or not owner.password_hash:
+                return
+    raise HTTPException(403, 'Owner authentication is required to access Company Setup')

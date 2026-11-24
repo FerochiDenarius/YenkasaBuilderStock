@@ -32,6 +32,7 @@ import { BusinessInfoPage as ValidatedBusinessInfoPage } from './BusinessInfoPag
 import { OwnerAccountPage as ConnectedOwnerAccountPage } from './OwnerAccountPage';
 import { BranchesPage as ConnectedBranchesPage } from './BranchesPage';
 import { BranchLoginPage } from './BranchLoginPage';
+import { OwnerLoginPage } from './OwnerLoginPage';
 import { StaffAccountsPage } from './StaffAccountsPage';
 import { DeviceActivationPage as ConnectedDeviceActivationPage } from './DeviceActivationPage';
 import { SalesPage } from './SalesPage';
@@ -41,8 +42,8 @@ import { InventoryPage } from './InventoryPage';
 import { PurchasingPage } from './PurchasingPage';
 import { SyncSettingsPage } from './SyncSettingsPage';
 import { CloudDatabaseSetupPage } from './CloudDatabaseSetupPage';
-import { salesApi } from './api';
-import type { AuthSession, SaleRecord, SalesProduct } from '@yenkasa/contracts';
+import { companyApi, salesApi } from './api';
+import type { AuthSession, OwnerSession, SaleRecord, SalesProduct } from '@yenkasa/contracts';
 
 const inventory = [
   {
@@ -170,6 +171,32 @@ export function Dashboard() {
       return null;
     }
   });
+  const [ownerSession, setOwnerSession] = useState<OwnerSession | null>(() => {
+    try {
+      const token = sessionStorage.getItem('yenkasa-owner-session');
+      return token ? JSON.parse(sessionStorage.getItem('yenkasa-owner-session-data') ?? 'null') : null;
+    } catch {
+      return null;
+    }
+  });
+  const [ownerSetupComplete, setOwnerSetupComplete] = useState(false);
+  const [ownerStatusLoaded, setOwnerStatusLoaded] = useState(false);
+  useEffect(() => {
+    companyApi.get().then((company) => {
+      const root = document.documentElement;
+      if (!company?.useBrandColours) {
+        root.style.setProperty('--brand-primary', '#0b9438');
+        root.style.setProperty('--brand-primary-dark', '#147536');
+        root.style.setProperty('--brand-secondary', '#f7b500');
+        root.style.setProperty('--brand-accent', '#d7263d');
+        return;
+      }
+      root.style.setProperty('--brand-primary', company?.brandColor || '#0b9438');
+      root.style.setProperty('--brand-primary-dark', company?.brandColor || '#147536');
+      root.style.setProperty('--brand-secondary', company?.secondaryColor || '#f7b500');
+      root.style.setProperty('--brand-accent', company?.accentColor || '#d7263d');
+    }).catch(() => undefined);
+  }, []);
   useEffect(() => {
     const sync = () => {
       try {
@@ -181,9 +208,25 @@ export function Dashboard() {
       }
     };
     sync();
+    const ownerSync = () => {
+      try {
+        const token = sessionStorage.getItem('yenkasa-owner-session');
+        setOwnerSession(token ? JSON.parse(sessionStorage.getItem('yenkasa-owner-session-data') ?? 'null') : null);
+      } catch {
+        setOwnerSession(null);
+      }
+    };
+    ownerSync();
+    fetch(`${window.desktopBridge?.apiBaseUrl ?? import.meta.env.VITE_LOCAL_API_URL ?? 'http://127.0.0.1:8765'}/api/owner/status`)
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('Unable to read owner setup status')))
+      .then((status: { passwordSet: boolean }) => setOwnerSetupComplete(status.passwordSet))
+      .catch(() => setOwnerSetupComplete(false))
+      .finally(() => setOwnerStatusLoaded(true));
     window.addEventListener('yenkasa-session-changed', sync);
+    window.addEventListener('yenkasa-owner-session-changed', ownerSync);
     return () => {
       window.removeEventListener('yenkasa-session-changed', sync);
+      window.removeEventListener('yenkasa-owner-session-changed', ownerSync);
     };
   }, []);
   const hasBranchAccess = (label: string) => {
@@ -202,7 +245,8 @@ export function Dashboard() {
   const visibleNav = branchSession
     ? navItems.filter(([, label]) => hasBranchAccess(label))
     : [];
-  const visibleSetup = branchSession ? [] : setupItems;
+  const setupUnlocked = !ownerSetupComplete || !!ownerSession;
+  const visibleSetup = !branchSession && setupUnlocked ? setupItems : [];
   const branchSetup =
     branchSession?.role === 'BRANCH_MANAGER'
       ? [[Users, 'Staff Accounts'] as [LucideIcon, string]]
@@ -214,7 +258,10 @@ export function Dashboard() {
   const logout = () => {
     const userId = branchSession?.userId;
     sessionStorage.removeItem('yenkasa-session');
+    sessionStorage.removeItem('yenkasa-owner-session');
+    sessionStorage.removeItem('yenkasa-owner-session-data');
     setBranchSession(null);
+    setOwnerSession(null);
     setActive('Branch Login');
     if (userId)
       fetch(
@@ -226,10 +273,32 @@ export function Dashboard() {
         },
       ).catch(() => undefined);
   };
+  const ownerLogout = () => {
+    void fetch(`${window.desktopBridge?.apiBaseUrl ?? import.meta.env.VITE_LOCAL_API_URL ?? 'http://127.0.0.1:8765'}/api/owner/logout`, {
+      method: 'POST',
+      headers: { 'X-Owner-Session': sessionStorage.getItem('yenkasa-owner-session') ?? '' },
+    }).catch(() => undefined);
+    sessionStorage.removeItem('yenkasa-owner-session');
+    sessionStorage.removeItem('yenkasa-owner-session-data');
+    setOwnerSession(null);
+    setActive('Branch Login');
+  };
   const navigate = (page: string) => {
+    if (!ownerStatusLoaded) return;
+    if (page === 'Owner Login' && branchSession) {
+      sessionStorage.removeItem('yenkasa-session');
+      setBranchSession(null);
+    }
+    if (setupItems.some(([, label]) => label === page) && (!setupUnlocked || !!branchSession)) {
+      setActive('Owner Login');
+      return;
+    }
     setActive(page);
     setSidebarOpen(false);
   };
+  const canRenderSetup =
+    (!branchSession && setupUnlocked && setupItems.some(([, label]) => label === active)) ||
+    (branchSession && active === 'Staff Accounts' && branchSession.role === 'BRANCH_MANAGER');
   return (
     <div
       className={`dashboard-shell ${active === 'Branch Login' && !branchSession ? 'branch-login-shell' : ''}`}
@@ -313,6 +382,19 @@ export function Dashboard() {
                 </button>
               </div>
             </>
+          ) : !setupUnlocked ? (
+            <>
+              <div className="nav-section-label">OWNER ACCOUNT</div>
+              <div className="setup-subnav">
+                <button
+                  className={active === 'Owner Login' ? 'selected' : ''}
+                  onClick={() => navigate('Owner Login')}
+                >
+                  <Crown size={16} />
+                  <span>Owner Login</span>
+                </button>
+              </div>
+            </>
           ) : (
             <>
               <button
@@ -350,10 +432,10 @@ export function Dashboard() {
             <small>Last synced just now</small>
           </div>
         </div>
-        <button
+          <button
           className="user-card"
           type="button"
-          onClick={branchSession ? logout : undefined}
+          onClick={branchSession ? logout : ownerSession ? ownerLogout : undefined}
         >
           <div className="avatar">
             {branchSession
@@ -363,14 +445,16 @@ export function Dashboard() {
                   .join('')
                   .slice(0, 2)
                   .toUpperCase()
-              : 'KO'}
+              : ownerSession
+                ? ownerSession.fullName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
+                : 'KO'}
           </div>
           <div>
-            <strong>{branchSession?.fullName ?? 'Kofi Osei'}</strong>
+            <strong>{branchSession?.fullName ?? ownerSession?.fullName ?? 'Kofi Osei'}</strong>
             <small>
               {branchSession
                 ? branchSession.role.replaceAll('_', ' ')
-                : 'Owner / Administrator'}
+                : ownerSession ? 'OWNER · Sign out' : 'Setup locked'}
             </small>
           </div>
           <ChevronDown size={16} />
@@ -403,8 +487,21 @@ export function Dashboard() {
         {active === 'Branch Login' && !branchSession ? (
           <BranchLoginPage
             onAuthenticated={(session) => {
+              sessionStorage.removeItem('yenkasa-owner-session');
+              sessionStorage.removeItem('yenkasa-owner-session-data');
+              setOwnerSession(null);
               setBranchSession(session);
               setActive('Dashboard');
+            }}
+          />
+        ) : active === 'Owner Login' && !branchSession ? (
+          <OwnerLoginPage
+            onAuthenticated={(session) => {
+              sessionStorage.setItem('yenkasa-owner-session-data', JSON.stringify(session));
+              sessionStorage.removeItem('yenkasa-session');
+              setBranchSession(null);
+              setOwnerSession(session);
+              setActive('Owner Account');
             }}
           />
         ) : active === 'Dashboard' ? (
@@ -451,9 +548,15 @@ export function Dashboard() {
           </section>
         ) : active === 'Cloud Database' ? (
           <CloudDatabaseSetupPage />
-        ) : setupItems.some(([, label]) => label === active) ||
-          active === 'Staff Accounts' ? (
+        ) : canRenderSetup ? (
           <SetupPage page={active} onNavigate={setActive} />
+        ) : setupItems.some(([, label]) => label === active) && (branchSession || !setupUnlocked) ? (
+          <section className="placeholder-page" role="alert">
+            <div className="placeholder-icon"><LockKeyhole /></div>
+            <h2>Owner login required</h2>
+            <p>Company Setup is locked after owner credentials are created. Sign in as the owner to continue.</p>
+            <button className="primary-button" type="button" onClick={() => navigate('Owner Login')}>Open Owner Login</button>
+          </section>
         ) : (
           <section className="placeholder-page">
             <div className="placeholder-icon">

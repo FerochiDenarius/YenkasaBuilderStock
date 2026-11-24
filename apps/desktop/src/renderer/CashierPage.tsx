@@ -275,11 +275,14 @@ export function CashierPage({ session }: { session: AuthSession }) {
     setError('');
     if (window.desktopBridge?.print) {
       setStatus('Opening the system print dialog…');
-      const printed = await window.desktopBridge.print();
+      const printed = await window.desktopBridge.print().catch(() => false);
+      if (!printed) {
+        window.print();
+        setStatus('System print dialog opened.');
+        return;
+      }
       setStatus(
-        printed
-          ? 'Receipt sent to the system print dialog.'
-          : 'Print dialog closed without sending the receipt.',
+        'Receipt sent to the system print dialog.',
       );
       return;
     }
