@@ -1,13 +1,88 @@
-import { ipcMain, BrowserWindow, dialog, app } from "electron";
+import { ipcMain, safeStorage, app, BrowserWindow, dialog } from "electron";
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-import { writeFile } from "node:fs/promises";
+import { existsSync, readFileSync } from "node:fs";
+import { mkdir, writeFile, chmod, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import __cjs_mod__ from "node:module";
 const __filename = import.meta.filename;
 const __dirname = import.meta.dirname;
 const require2 = __cjs_mod__.createRequire(import.meta.url);
 let localApi;
+function cloudConfigPath() {
+  return join(app.getPath("userData"), "cloud-database-config.json");
+}
+async function readStoredCloudConfig() {
+  try {
+    return JSON.parse(await readFile(cloudConfigPath(), "utf8"));
+  } catch {
+    return null;
+  }
+}
+async function decryptCloudPassword(config) {
+  if (!config?.encryptedPassword || !safeStorage.isEncryptionAvailable()) return "";
+  try {
+    return safeStorage.decryptString(Buffer.from(config.encryptedPassword, "base64"));
+  } catch {
+    return "";
+  }
+}
+function sanitizedDatabaseUrl(value) {
+  try {
+    const parsed = new URL(value.replace("postgresql+psycopg://", "postgresql://"));
+    parsed.password = "";
+    return parsed.toString().replace("postgresql://", "postgresql+psycopg://");
+  } catch {
+    return value.replace(/:\/\/([^:]+):[^@]+@/, "://$1@");
+  }
+}
+async function cloudApiRequest(path, payload) {
+  const response = await fetch(`http://127.0.0.1:${process.env.LOCAL_API_PORT ?? "8765"}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Role": "HQ_ADMIN" },
+    body: JSON.stringify(payload)
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.detail ?? body.message ?? "Supabase connection failed.");
+  return body;
+}
+async function testCloudConfig(input) {
+  const current = await readStoredCloudConfig();
+  const password = input.databasePassword?.trim() || await decryptCloudPassword(current);
+  return cloudApiRequest("/api/cloud/test", { ...input, databasePassword: password });
+}
+ipcMain.handle("cloud:get-config", async () => {
+  const config = await readStoredCloudConfig();
+  return {
+    projectUrl: config?.projectUrl ?? "",
+    projectRef: config?.projectRef ?? "",
+    databaseUrl: config?.databaseUrl ?? "",
+    passwordConfigured: Boolean(config?.encryptedPassword)
+  };
+});
+ipcMain.handle("cloud:test-config", async (_event, input) => {
+  await testCloudConfig(input);
+  return { ok: true };
+});
+ipcMain.handle("cloud:save-config", async (_event, input) => {
+  await testCloudConfig(input);
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error("The operating-system credential store is unavailable on this device.");
+  }
+  const current = await readStoredCloudConfig();
+  const password = input.databasePassword?.trim() || await decryptCloudPassword(current);
+  if (!password) throw new Error("Database password is required.");
+  const stored = {
+    projectUrl: input.projectUrl.trim(),
+    projectRef: input.projectRef.trim(),
+    databaseUrl: sanitizedDatabaseUrl(input.databaseUrl.trim()),
+    encryptedPassword: safeStorage.encryptString(password).toString("base64")
+  };
+  await mkdir(app.getPath("userData"), { recursive: true });
+  await writeFile(cloudConfigPath(), JSON.stringify(stored, null, 2), { encoding: "utf8", mode: 384 });
+  await chmod(cloudConfigPath(), 384);
+  restartLocalApi();
+  return { ok: true, passwordConfigured: true };
+});
 ipcMain.handle("desktop:print", async (event) => {
   const window = BrowserWindow.fromWebContents(event.sender);
   if (!window) return false;
@@ -63,6 +138,7 @@ function startLocalApi() {
       ...process.env,
       LOCAL_API_HOST: "127.0.0.1",
       LOCAL_API_PORT: "8765",
+      ...cloudEnvironment(),
       ...isPackaged ? { YENKASA_DATA_DIR: join(app.getPath("userData"), "data") } : {}
     },
     stdio: ["ignore", "pipe", "pipe"]
@@ -79,6 +155,35 @@ function startLocalApi() {
     "data",
     (chunk) => console.error(`[local-api] ${String(chunk).trim()}`)
   );
+}
+function cloudEnvironment() {
+  try {
+    const raw = readFileSync(cloudConfigPath(), "utf8");
+    const config = JSON.parse(raw);
+    const password = decryptCloudPasswordSync(config);
+    if (!password) return {};
+    const parsed = new URL(config.databaseUrl.replace("postgresql+psycopg://", "postgresql://"));
+    parsed.password = password;
+    return {
+      SUPABASE_URL: config.projectUrl,
+      SUPABASE_PROJECT_REF: config.projectRef,
+      CLOUD_DATABASE_URL: parsed.toString().replace("postgresql://", "postgresql+psycopg://")
+    };
+  } catch {
+    return {};
+  }
+}
+function decryptCloudPasswordSync(config) {
+  if (!config?.encryptedPassword || !safeStorage.isEncryptionAvailable()) return "";
+  try {
+    return safeStorage.decryptString(Buffer.from(config.encryptedPassword, "base64"));
+  } catch {
+    return "";
+  }
+}
+function restartLocalApi() {
+  stopLocalApi();
+  startLocalApi();
 }
 function stopLocalApi() {
   if (localApi && !localApi.killed) localApi.kill();

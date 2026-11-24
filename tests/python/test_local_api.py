@@ -80,6 +80,17 @@ def test_owner_security_persists_without_plaintext_password_and_activity_is_avai
     assert activity.status_code == 200
     assert any(row['activityType'] == 'Security' and row['action'] == 'owner_security_updated' for row in activity.json())
 
+def test_cloud_configuration_is_hq_only_and_rejects_invalid_connection_without_secret_leak():
+    client = TestClient(app)
+    assert client.get('/api/cloud/configuration').status_code == 403
+    response = client.post('/api/cloud/test', headers={'X-Role': 'HQ_ADMIN'}, json={
+        'projectUrl': 'not-a-url', 'projectRef': 'dev-project',
+        'databaseUrl': 'postgresql://postgres@example.com:5432/postgres',
+        'databasePassword': 'DoNotLeakThisPassword',
+    })
+    assert response.status_code == 422
+    assert 'DoNotLeakThisPassword' not in response.text
+
 def test_branches_require_headquarters_role_and_persist():
     client = TestClient(app)
     payload = {'name': 'Validation Branch', 'code': 'VB', 'location': 'Accra', 'phone': '+233 20 000 0000', 'manager': 'Validation Manager'}

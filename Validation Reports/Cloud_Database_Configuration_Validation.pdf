@@ -1,0 +1,330 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Length 2364 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 15 Tf
+36 806 Td
+(Cloud Database Configuration Validation) Tj
+0 -11 Td
+/F1 8 Tf
+0 -18 Td
+(YenkasaBuildersStock | Validation date: 24 November 2026) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(A. Page information) Tj
+0 -11 Td
+/F1 8 Tf
+(--------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(Scope: Company Setup -> Cloud Database \(Supabase\), based on the supplied installation-screen) Tj
+0 -11 Td
+/F1 8 Tf
+(design.) Tj
+0 -11 Td
+/F1 8 Tf
+(Implementation: project URL, project reference, Session Pooler URI and masked password fields;) Tj
+0 -11 Td
+/F1 8 Tf
+(secure Test Connection and Save and Continue actions; installation instructions and deployment) Tj
+0 -11 Td
+/F1 8 Tf
+(security guidance.) Tj
+0 -11 Td
+/F1 8 Tf
+(Relevant source files: apps/desktop/src/renderer/CloudDatabaseSetupPage.tsx;) Tj
+0 -11 Td
+/F1 8 Tf
+(apps/desktop/src/renderer/Dashboard.tsx; apps/desktop/src/main/index.ts;) Tj
+0 -11 Td
+/F1 8 Tf
+(apps/desktop/src/preload/index.ts; apps/desktop/src/renderer/desktop.d.ts;) Tj
+0 -11 Td
+/F1 8 Tf
+(services/local-api/app/main.py; services/local-api/requirements.txt; docs/distribution.md.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(B. Security checklist) Tj
+0 -11 Td
+/F1 8 Tf
+(---------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(Password is never returned by the renderer-facing configuration response | PASS by IPC return) Tj
+0 -11 Td
+/F1 8 Tf
+(type and backend response shape.) Tj
+0 -11 Td
+/F1 8 Tf
+(Password is encrypted with Electron safeStorage and written under the protected app user-data) Tj
+0 -11 Td
+/F1 8 Tf
+(directory | IMPLEMENTED; OS credential-store behavior requires packaged macOS/Windows) Tj
+0 -11 Td
+/F1 8 Tf
+(interactive validation.) Tj
+0 -11 Td
+/F1 8 Tf
+(Previous configuration is not overwritten before a new connection test succeeds | PASS by save) Tj
+0 -11 Td
+/F1 8 Tf
+(handler ordering.) Tj
+0 -11 Td
+/F1 8 Tf
+(Saved password is cleared from the form after save | PASS in renderer state.) Tj
+0 -11 Td
+/F1 8 Tf
+(Local API test errors use a generic message and do not include the connection string or) Tj
+0 -11 Td
+/F1 8 Tf
+(password | PASS by implementation and unit test.) Tj
+0 -11 Td
+/F1 8 Tf
+(Customer installations should use the hosted backend rather than receive central PostgreSQL) Tj
+0 -11 Td
+/F1 8 Tf
+(administrator credentials | documented; deployment policy required.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+ET
+endstream
+endobj
+3 0 obj
+<< /Length 2782 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 15 Tf
+36 806 Td
+(Cloud Database Configuration Validation) Tj
+0 -11 Td
+/F1 8 Tf
+0 -18 Td
+(YenkasaBuildersStock | Validation date: 24 November 2026) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(C. Backend integration) Tj
+0 -11 Td
+/F1 8 Tf
+(----------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(The renderer calls a narrow Electron preload bridge. The trusted Electron main process calls) Tj
+0 -11 Td
+/F1 8 Tf
+(the loopback FastAPI /api/cloud/test endpoint with the submitted secret and returns only) Tj
+0 -11 Td
+/F1 8 Tf
+(success or a generic failure.) Tj
+0 -11 Td
+/F1 8 Tf
+(On successful Save and Continue, Electron encrypts the password with safeStorage, stores) Tj
+0 -11 Td
+/F1 8 Tf
+(sanitized nonsecret metadata and restarts the local backend with the decrypted value in its) Tj
+0 -11 Td
+/F1 8 Tf
+(trusted process environment. React never receives the password back.) Tj
+0 -11 Td
+/F1 8 Tf
+(The FastAPI endpoint validates HTTPS project URL, project reference and PostgreSQL URI,) Tj
+0 -11 Td
+/F1 8 Tf
+(requires SSL mode, connects with psycopg and executes SELECT 1. It returns no driver exception) Tj
+0 -11 Td
+/F1 8 Tf
+(details.) Tj
+0 -11 Td
+/F1 8 Tf
+(The local API requirements now include psycopg[binary]==3.2.3 so the connection-test driver is) Tj
+0 -11 Td
+/F1 8 Tf
+(included in future PyInstaller backend builds.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(D. Test results) Tj
+0 -11 Td
+/F1 8 Tf
+(--------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-01 | Invalid project URL | POST cloud test with malformed URL and secret | HTTP 422) Tj
+0 -11 Td
+/F1 8 Tf
+(useful validation error, no secret in response | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-02 | Authorization | Request cloud configuration without HQ role | HTTP 403 | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-03 | Secret disclosure | Inspect invalid cloud-test response | Submitted password absent) Tj
+0 -11 Td
+/F1 8 Tf
+(from response body | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-04 | Backend regression | Run services/local-api pytest | 15 passed | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-05 | Renderer lint | Run npm run lint | Clean | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-06 | Desktop build | Run npm run build:desktop | Electron Vite production build) Tj
+0 -11 Td
+/F1 8 Tf
+(completed | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-07 | Valid Supabase connection | Enter real project credentials and click Test) Tj
+0 -11 Td
+/F1 8 Tf
+(Connection in packaged app | SELECT 1 succeeds | NOT TESTED; no authenticated connection) Tj
+0 -11 Td
+/F1 8 Tf
+(succeeded in this environment.) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-08 | Secure persistence restart | Save valid configuration, restart packaged app, reopen) Tj
+0 -11 Td
+/F1 8 Tf
+(page | Metadata restored and password remains masked | NOT TESTED interactively.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+ET
+endstream
+endobj
+4 0 obj
+<< /Length 1836 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 15 Tf
+36 806 Td
+(Cloud Database Configuration Validation) Tj
+0 -11 Td
+/F1 8 Tf
+0 -18 Td
+(YenkasaBuildersStock | Validation date: 24 November 2026) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(E. Proof of validation) Tj
+0 -11 Td
+/F1 8 Tf
+(----------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(The actual backend test suite executed 15 passing tests, including headquarters authorization) Tj
+0 -11 Td
+/F1 8 Tf
+(and password non-disclosure checks for the cloud configuration endpoint.) Tj
+0 -11 Td
+/F1 8 Tf
+(The actual desktop lint and production build completed after adding the Supabase configuration) Tj
+0 -11 Td
+/F1 8 Tf
+(UI, preload bridge and main-process secure storage path.) Tj
+0 -11 Td
+/F1 8 Tf
+(No fabricated Supabase success is reported. The valid-credential connection test remains) Tj
+0 -11 Td
+/F1 8 Tf
+(pending until the exact working Supabase Session Pooler URI and password are entered in the) Tj
+0 -11 Td
+/F1 8 Tf
+(installed application.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(F. Outstanding issues) Tj
+0 -11 Td
+/F1 8 Tf
+(---------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(This repository does not yet contain the separate multi-step installer shell shown in the) Tj
+0 -11 Td
+/F1 8 Tf
+(reference image; the feature is available in the existing Company Setup shell as Cloud) Tj
+0 -11 Td
+/F1 8 Tf
+(Database \(Supabase\).) Tj
+0 -11 Td
+/F1 8 Tf
+(Actual cloud migration and SQLite-to-Supabase synchronization remain separate deployment) Tj
+0 -11 Td
+/F1 8 Tf
+(phases. A customer build must not ship central PostgreSQL administrator credentials.) Tj
+0 -11 Td
+/F1 8 Tf
+(Before production release, run a packaged macOS and Windows interactive test of safeStorage,) Tj
+0 -11 Td
+/F1 8 Tf
+(then run the actual Supabase migration using the tested backend-only configuration.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Pages /Kids [6 0 R 7 0 R 8 0 R] /Count 3 >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595 842] /Contents 2 0 R >>
+endobj
+7 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595 842] /Contents 3 0 R >>
+endobj
+8 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595 842] /Contents 4 0 R >>
+endobj
+9 0 obj
+<< /Type /Catalog /Pages 5 0 R >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000002534 00000 n 
+0000005407 00000 n 
+0000007334 00000 n 
+0000007403 00000 n 
+0000007490 00000 n 
+0000007577 00000 n 
+0000007664 00000 n 
+trailer
+<< /Size 10 /Root 9 0 R >>
+startxref
+7713
+%%EOF

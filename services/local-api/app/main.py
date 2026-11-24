@@ -5,6 +5,7 @@ import hmac
 import json
 import os
 import shutil
+from urllib.parse import quote, unquote, urlsplit, urlunsplit
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from uuid import uuid4
@@ -451,6 +452,12 @@ class PurchasePayload(BaseModel):
     notes: str = ''
     items: list[PurchaseItemPayload]
 
+class CloudConnectionPayload(BaseModel):
+    projectUrl: str
+    projectRef: str
+    databaseUrl: str
+    databasePassword: str = ''
+
 class SyncSettingsPayload(BaseModel):
     branchId: str
     onlineEnabled: bool = True
@@ -689,6 +696,56 @@ def owner_activity(request: Request) -> list[dict]:
                 'device': f'{branch.name} · {status.device_id if status else "local device"}',
             })
         return sorted(activities, key=lambda item: item['createdAt'] or '', reverse=True)
+
+@app.get('/api/cloud/configuration')
+def local_cloud_configuration(request: Request) -> dict:
+    require_hq(request)
+    configured = bool(os.getenv('CLOUD_DATABASE_URL', '').strip())
+    return {
+        'projectUrl': os.getenv('SUPABASE_URL', '').strip(),
+        'projectRef': os.getenv('SUPABASE_PROJECT_REF', '').strip(),
+        'databaseConfigured': configured,
+        'passwordConfigured': configured,
+        'rendererDatabaseAccess': False,
+    }
+
+@app.post('/api/cloud/test')
+def test_cloud_connection(payload: CloudConnectionPayload, request: Request) -> dict:
+    require_hq(request)
+    project_url = payload.projectUrl.strip()
+    project_ref = payload.projectRef.strip()
+    raw_url = payload.databaseUrl.strip()
+    if not project_url.startswith('https://') or not project_ref:
+        raise HTTPException(422, 'Enter a valid Supabase project URL and project reference.')
+    if not raw_url.startswith(('postgresql://', 'postgres://', 'postgresql+psycopg://')):
+        raise HTTPException(422, 'Enter the PostgreSQL Session Pooler connection string from Supabase.')
+    parsed = urlsplit(raw_url.replace('postgresql+psycopg://', 'postgresql://', 1))
+    username = unquote(parsed.username or '')
+    hostname = parsed.hostname or ''
+    database = parsed.path or '/postgres'
+    if not username or not hostname:
+        raise HTTPException(422, 'The PostgreSQL connection string is incomplete.')
+    password = payload.databasePassword.strip()
+    if not password:
+        password = parsed.password or ''
+    if not password:
+        raise HTTPException(422, 'Database password is required for the connection test.')
+    port = f':{parsed.port}' if parsed.port else ''
+    query = parsed.query
+    if 'sslmode=' not in query:
+        query = f'{query}&sslmode=require' if query else 'sslmode=require'
+    dsn = urlunsplit(('postgresql', f'{quote(username, safe="")}:{quote(password, safe="")}@{hostname}{port}', database, query, ''))
+    try:
+        import psycopg
+        with psycopg.connect(dsn, connect_timeout=10) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute('SELECT 1')
+                cursor.fetchone()
+        return {'ok': True, 'projectRef': project_ref, 'database': 'postgresql'}
+    except Exception as exc:
+        # Do not return the driver error because it can contain connection details.
+        print(f'[cloud-test] Supabase connection failed: {type(exc).__name__}')
+        raise HTTPException(503, 'Supabase connection failed. Check the project URI, password, network and SSL settings.') from None
 
 @app.get('/api/sync/status')
 def get_sync_status(request: Request, branchId: str = '') -> dict:

@@ -7113,6 +7113,22 @@ const Bell = createLucideIcon("Bell", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
+const BookOpen = createLucideIcon("BookOpen", [
+  ["path", { d: "M12 7v14", key: "1akyts" }],
+  [
+    "path",
+    {
+      d: "M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z",
+      key: "ruj8y"
+    }
+  ]
+]);
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
 const Boxes = createLucideIcon("Boxes", [
   [
     "path",
@@ -7792,6 +7808,20 @@ const Store = createLucideIcon("Store", [
       key: "6c3vgh"
     }
   ]
+]);
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const TestTubeDiagonal = createLucideIcon("TestTubeDiagonal", [
+  [
+    "path",
+    { d: "M21 7 6.82 21.18a2.83 2.83 0 0 1-3.99-.01a2.83 2.83 0 0 1 0-4L17 3", key: "1ub6xw" }
+  ],
+  ["path", { d: "m16 2 6 6", key: "1gw87d" }],
+  ["path", { d: "M12 16H4", key: "1cjfip" }]
 ]);
 /**
  * @license lucide-react v0.468.0 - ISC
@@ -15045,6 +15075,188 @@ function formatSyncDate(value) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 }
+const initialForm = {
+  projectUrl: "",
+  projectRef: "",
+  databaseUrl: "",
+  databasePassword: ""
+};
+function CloudDatabaseSetupPage() {
+  const [form, setForm] = reactExports.useState(initialForm);
+  const [passwordConfigured, setPasswordConfigured] = reactExports.useState(false);
+  const [showPassword, setShowPassword] = reactExports.useState(false);
+  const [tested, setTested] = reactExports.useState(false);
+  const [testing, setTesting] = reactExports.useState(false);
+  const [saving, setSaving] = reactExports.useState(false);
+  const [status, setStatus] = reactExports.useState("Not tested yet");
+  const [message, setMessage] = reactExports.useState("");
+  const [error, setError] = reactExports.useState("");
+  reactExports.useEffect(() => {
+    const cloud = window.desktopBridge?.cloud;
+    if (!cloud) {
+      setError("Secure cloud configuration is available only inside the installed desktop application.");
+      return;
+    }
+    cloud.getConfig().then((config) => {
+      setForm({
+        projectUrl: config.projectUrl,
+        projectRef: config.projectRef,
+        databaseUrl: config.databaseUrl,
+        databasePassword: ""
+      });
+      setPasswordConfigured(config.passwordConfigured);
+    }).catch(() => setError("Unable to load the saved cloud configuration."));
+  }, []);
+  const update = (key, value) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    setTested(false);
+    setStatus("Not tested yet");
+    setMessage("");
+    setError("");
+  };
+  const validate = () => {
+    if (!form.projectUrl.startsWith("https://")) return "Enter the Supabase project URL beginning with https://.";
+    if (!form.projectRef.trim()) return "Enter the Supabase project reference.";
+    if (!form.databaseUrl.startsWith("postgresql://") && !form.databaseUrl.startsWith("postgresql+psycopg://") && !form.databaseUrl.startsWith("postgres://")) {
+      return "Paste the PostgreSQL Session Pooler connection string from Supabase.";
+    }
+    if (!form.databasePassword.trim() && !passwordConfigured) return "Enter the database password.";
+    return "";
+  };
+  const testConnection = async () => {
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    if (!window.desktopBridge?.cloud) {
+      setError("Secure cloud configuration is available only inside the installed desktop application.");
+      return;
+    }
+    setTesting(true);
+    setError("");
+    setMessage("Testing the Supabase connection securely…");
+    try {
+      await window.desktopBridge.cloud.testConfig(form);
+      setTested(true);
+      setStatus("Connection verified");
+      setMessage("Supabase is reachable. You can now save this configuration.");
+    } catch (reason) {
+      setTested(false);
+      setStatus("Connection failed");
+      setError(reason instanceof Error ? reason.message : "Supabase connection failed.");
+    } finally {
+      setTesting(false);
+    }
+  };
+  const save = async () => {
+    if (!tested) {
+      setError("Test the Supabase connection successfully before saving.");
+      return;
+    }
+    if (!window.desktopBridge?.cloud) {
+      setError("Secure cloud configuration is available only inside the installed desktop application.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await window.desktopBridge.cloud.saveConfig(form);
+      setPasswordConfigured(true);
+      setForm((current) => ({ ...current, databasePassword: "" }));
+      setMessage("Cloud configuration saved securely on this computer.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to save cloud configuration.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cloud-setup-page", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "setup-breadcrumb", children: [
+      "⌂  ›  Installation  ›  ",
+      /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Cloud Database (Supabase)" })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "setup-title", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "setup-title-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { size: 31 }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Connect to Supabase" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Configure the central PostgreSQL database used for branch synchronization, backups and headquarters reporting." })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cloud-setup-grid", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "reference-card cloud-instructions", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(BookOpen, { size: 21 }),
+          " Setup Instructions"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("ol", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Create a Supabase account" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Go to supabase.com and create or sign in to the authorized deployment account." })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Create a project" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Create the central project for YenkasaBuildersStock and choose the required region." })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Copy connection details" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Open Supabase → Connect → Database → Connection string. Choose the Session Pooler URI." })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Test before continuing" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Paste the project URL, project reference, pooler URI and database password, then test the connection." })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cloud-info-callout", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, { size: 21 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Credentials are kept in the trusted desktop process. Passwords are encrypted with the operating-system credential store and are never returned to the renderer." })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "reference-card cloud-connection-card", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(KeyRound, { size: 21 }),
+          " Supabase Connection Details"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+          "Supabase Project URL",
+          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "data-testid": "cloud-project-url", value: form.projectUrl, onChange: (event) => update("projectUrl", event.target.value), placeholder: "https://xxxxxxxx.supabase.co" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+          "Project Reference (Project ID)",
+          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "data-testid": "cloud-project-ref", value: form.projectRef, onChange: (event) => update("projectRef", event.target.value), placeholder: "abcdefghijklmnop" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+          "Database Password",
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cloud-password-field", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "data-testid": "cloud-password", type: showPassword ? "text" : "password", value: form.databasePassword, onChange: (event) => update("databasePassword", event.target.value), placeholder: passwordConfigured ? "Saved securely — enter only to replace" : "Enter database password" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", "aria-label": showPassword ? "Hide database password" : "Show database password", onClick: () => setShowPassword((current) => !current), children: showPassword ? /* @__PURE__ */ jsxRuntimeExports.jsx(EyeOff, { size: 17 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 17 }) })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+          "Database Connection String (Session Pooler)",
+          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "data-testid": "cloud-database-url", value: form.databaseUrl, onChange: (event) => update("databaseUrl", event.target.value), placeholder: "postgresql://postgres.project:password@aws-0-region.pooler.supabase.com:6543/postgres" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "cloud-connection-note", children: "Use the Session Pooler connection string from Supabase → Settings → Database → Connection string. The password is stored separately and masked." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cloud-test-row", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "outline", type: "button", "data-testid": "cloud-test", disabled: testing, onClick: testConnection, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(TestTubeDiagonal, { size: 16 }),
+            testing ? "Testing…" : "Test Connection"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: tested ? "cloud-test-status success" : status === "Connection failed" ? "cloud-test-status failed" : "cloud-test-status", children: [
+            tested ? /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { size: 16 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { size: 16 }),
+            status
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cloud-setup-actions", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "primary-button", type: "button", "data-testid": "cloud-save", disabled: !tested || saving, onClick: save, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Save, { size: 16 }),
+          saving ? "Saving…" : "Save and Continue"
+        ] }) }),
+        message && /* @__PURE__ */ jsxRuntimeExports.jsx("small", { className: "save-status", role: "status", children: message }),
+        error && /* @__PURE__ */ jsxRuntimeExports.jsx("small", { className: "save-error", role: "alert", children: error })
+      ] })
+    ] })
+  ] });
+}
 const inventory = [
   {
     sku: "BLK-001",
@@ -15104,6 +15316,7 @@ const navItems = [
   [Boxes, "Reports"]
 ];
 const setupItems = [
+  [Cloud, "Cloud Database"],
   [Building2, "Business Information"],
   [Palette, "Business Branding"],
   [Building2, "Branches"],
@@ -15411,7 +15624,7 @@ function Dashboard() {
                 children: "Open Branch Login"
               }
             )
-          ] }) : setupItems.some(([, label]) => label === active) || active === "Staff Accounts" ? /* @__PURE__ */ jsxRuntimeExports.jsx(SetupPage, { page: active, onNavigate: setActive }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "placeholder-page", children: [
+          ] }) : active === "Cloud Database" ? /* @__PURE__ */ jsxRuntimeExports.jsx(CloudDatabaseSetupPage, {}) : setupItems.some(([, label]) => label === active) || active === "Staff Accounts" ? /* @__PURE__ */ jsxRuntimeExports.jsx(SetupPage, { page: active, onNavigate: setActive }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "placeholder-page", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "placeholder-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Settings, {}) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: active }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "This module is reserved for the next approved development milestone." }),

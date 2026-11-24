@@ -1,10 +1,108 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, safeStorage } from 'electron';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
+import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 let localApi: ChildProcess | undefined;
+
+type CloudConfigInput = {
+  projectUrl: string;
+  projectRef: string;
+  databaseUrl: string;
+  databasePassword?: string;
+};
+
+type StoredCloudConfig = {
+  projectUrl: string;
+  projectRef: string;
+  databaseUrl: string;
+  encryptedPassword: string;
+};
+
+function cloudConfigPath(): string {
+  return join(app.getPath('userData'), 'cloud-database-config.json');
+}
+
+async function readStoredCloudConfig(): Promise<StoredCloudConfig | null> {
+  try {
+    return JSON.parse(await readFile(cloudConfigPath(), 'utf8')) as StoredCloudConfig;
+  } catch {
+    return null;
+  }
+}
+
+async function decryptCloudPassword(config: StoredCloudConfig | null): Promise<string> {
+  if (!config?.encryptedPassword || !safeStorage.isEncryptionAvailable()) return '';
+  try {
+    return safeStorage.decryptString(Buffer.from(config.encryptedPassword, 'base64'));
+  } catch {
+    return '';
+  }
+}
+
+function sanitizedDatabaseUrl(value: string): string {
+  try {
+    const parsed = new URL(value.replace('postgresql+psycopg://', 'postgresql://'));
+    parsed.password = '';
+    return parsed.toString().replace('postgresql://', 'postgresql+psycopg://');
+  } catch {
+    return value.replace(/:\/\/([^:]+):[^@]+@/, '://$1@');
+  }
+}
+
+async function cloudApiRequest(path: string, payload: CloudConfigInput) {
+  const response = await fetch(`http://127.0.0.1:${process.env.LOCAL_API_PORT ?? '8765'}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Role': 'HQ_ADMIN' },
+    body: JSON.stringify(payload),
+  });
+  const body = (await response.json().catch(() => ({}))) as { detail?: string; message?: string };
+  if (!response.ok) throw new Error(body.detail ?? body.message ?? 'Supabase connection failed.');
+  return body;
+}
+
+async function testCloudConfig(input: CloudConfigInput) {
+  const current = await readStoredCloudConfig();
+  const password = input.databasePassword?.trim() || await decryptCloudPassword(current);
+  return cloudApiRequest('/api/cloud/test', { ...input, databasePassword: password });
+}
+
+ipcMain.handle('cloud:get-config', async () => {
+  const config = await readStoredCloudConfig();
+  return {
+    projectUrl: config?.projectUrl ?? '',
+    projectRef: config?.projectRef ?? '',
+    databaseUrl: config?.databaseUrl ?? '',
+    passwordConfigured: Boolean(config?.encryptedPassword),
+  };
+});
+
+ipcMain.handle('cloud:test-config', async (_event, input: CloudConfigInput) => {
+  await testCloudConfig(input);
+  return { ok: true };
+});
+
+ipcMain.handle('cloud:save-config', async (_event, input: CloudConfigInput) => {
+  await testCloudConfig(input);
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('The operating-system credential store is unavailable on this device.');
+  }
+  const current = await readStoredCloudConfig();
+  const password = input.databasePassword?.trim() || await decryptCloudPassword(current);
+  if (!password) throw new Error('Database password is required.');
+  const stored: StoredCloudConfig = {
+    projectUrl: input.projectUrl.trim(),
+    projectRef: input.projectRef.trim(),
+    databaseUrl: sanitizedDatabaseUrl(input.databaseUrl.trim()),
+    encryptedPassword: safeStorage.encryptString(password).toString('base64'),
+  };
+  await mkdir(app.getPath('userData'), { recursive: true });
+  await writeFile(cloudConfigPath(), JSON.stringify(stored, null, 2), { encoding: 'utf8', mode: 0o600 });
+  await chmod(cloudConfigPath(), 0o600);
+  restartLocalApi();
+  return { ok: true, passwordConfigured: true };
+});
 
 ipcMain.handle('desktop:print', async (event) => {
   const window = BrowserWindow.fromWebContents(event.sender);
@@ -77,6 +175,7 @@ function startLocalApi(): void {
       ...process.env,
       LOCAL_API_HOST: '127.0.0.1',
       LOCAL_API_PORT: '8765',
+      ...cloudEnvironment(),
       ...(isPackaged
         ? { YENKASA_DATA_DIR: join(app.getPath('userData'), 'data') }
         : {}),
@@ -92,6 +191,41 @@ function startLocalApi(): void {
   localApi.stderr?.on('data', (chunk) =>
     console.error(`[local-api] ${String(chunk).trim()}`),
   );
+}
+
+function cloudEnvironment(): Record<string, string> {
+  // The encrypted file is decrypted only in Electron's trusted main process.
+  // The resulting value is passed to the loopback backend, never to React.
+  // Startup is synchronous here so the child receives the value before spawn.
+  try {
+    const raw = readFileSync(cloudConfigPath(), 'utf8');
+    const config = JSON.parse(raw) as StoredCloudConfig;
+    const password = decryptCloudPasswordSync(config);
+    if (!password) return {};
+    const parsed = new URL(config.databaseUrl.replace('postgresql+psycopg://', 'postgresql://'));
+    parsed.password = password;
+    return {
+      SUPABASE_URL: config.projectUrl,
+      SUPABASE_PROJECT_REF: config.projectRef,
+      CLOUD_DATABASE_URL: parsed.toString().replace('postgresql://', 'postgresql+psycopg://'),
+    };
+  } catch {
+    return {};
+  }
+}
+
+function decryptCloudPasswordSync(config: StoredCloudConfig | null): string {
+  if (!config?.encryptedPassword || !safeStorage.isEncryptionAvailable()) return '';
+  try {
+    return safeStorage.decryptString(Buffer.from(config.encryptedPassword, 'base64'));
+  } catch {
+    return '';
+  }
+}
+
+function restartLocalApi(): void {
+  stopLocalApi();
+  startLocalApi();
 }
 
 function stopLocalApi(): void {

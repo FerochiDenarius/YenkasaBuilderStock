@@ -39,6 +39,10 @@ The same Windows build is defined in `.github/workflows/release.yml`. Signing ce
 
 Supabase/PostgreSQL is a backend/cloud service dependency, not a customer-installed server. `DATABASE_URL` and any service credentials must be configured only for the cloud backend or deployment environment. Never put them in the Electron renderer or installer.
 
+The desktop Company Setup area now includes **Cloud Database (Supabase)** for an authorized deployment administrator. The form tests the Session Pooler connection through the loopback FastAPI service. Electron stores the nonsecret project metadata beside the app's protected user data and encrypts the database password with Electron `safeStorage` (macOS Keychain or Windows DPAPI). The password is cleared from the form after saving and is never returned by the local API.
+
+For customer deployments that use the hosted central backend, do not give customers the central PostgreSQL administrator credentials. The hosted backend should own `DATABASE_URL`; the customer desktop should use its provisioned activation and backend sync identity instead.
+
 ## Release status
 
 The macOS installer path and native Windows CI path are implemented. Automatic signed application updates, notarization/signing credentials, clean-machine installation testing, and actual Supabase migration validation remain release gates and are tracked in `Validation Reports/Installer_Dependency_and_Packaging_Validation.pdf`.

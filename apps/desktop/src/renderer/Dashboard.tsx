@@ -40,6 +40,7 @@ import { MaterialReleasePage } from './MaterialReleasePage';
 import { InventoryPage } from './InventoryPage';
 import { PurchasingPage } from './PurchasingPage';
 import { SyncSettingsPage } from './SyncSettingsPage';
+import { CloudDatabaseSetupPage } from './CloudDatabaseSetupPage';
 import { salesApi } from './api';
 import type { AuthSession, SaleRecord, SalesProduct } from '@yenkasa/contracts';
 
@@ -102,6 +103,7 @@ const navItems: Array<[LucideIcon, string]> = [
   [Boxes, 'Reports'],
 ];
 const setupItems: Array<[LucideIcon, string]> = [
+  [Cloud, 'Cloud Database'],
   [Building2, 'Business Information'],
   [Palette, 'Business Branding'],
   [Building2, 'Branches'],
@@ -447,6 +449,8 @@ export function Dashboard() {
               Open Branch Login
             </button>
           </section>
+        ) : active === 'Cloud Database' ? (
+          <CloudDatabaseSetupPage />
         ) : setupItems.some(([, label]) => label === active) ||
           active === 'Staff Accounts' ? (
           <SetupPage page={active} onNavigate={setActive} />
