@@ -15078,7 +15078,10 @@ function formatSyncDate(value) {
 const initialForm = {
   projectUrl: "",
   projectRef: "",
-  databaseUrl: "",
+  databaseHost: "",
+  databasePort: "6543",
+  databaseName: "postgres",
+  databaseUser: "postgres",
   databasePassword: ""
 };
 function CloudDatabaseSetupPage() {
@@ -15101,7 +15104,10 @@ function CloudDatabaseSetupPage() {
       setForm({
         projectUrl: config.projectUrl,
         projectRef: config.projectRef,
-        databaseUrl: config.databaseUrl,
+        databaseHost: config.databaseHost,
+        databasePort: String(config.databasePort),
+        databaseName: config.databaseName,
+        databaseUser: config.databaseUser,
         databasePassword: ""
       });
       setPasswordConfigured(config.passwordConfigured);
@@ -15117,9 +15123,11 @@ function CloudDatabaseSetupPage() {
   const validate = () => {
     if (!form.projectUrl.startsWith("https://")) return "Enter the Supabase project URL beginning with https://.";
     if (!form.projectRef.trim()) return "Enter the Supabase project reference.";
-    if (!form.databaseUrl.startsWith("postgresql://") && !form.databaseUrl.startsWith("postgresql+psycopg://") && !form.databaseUrl.startsWith("postgres://")) {
-      return "Paste the PostgreSQL Session Pooler connection string from Supabase.";
-    }
+    if (!form.databaseHost.trim()) return "Enter the PostgreSQL host from Supabase Connect.";
+    const port = Number(form.databasePort);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) return "Enter a valid database port between 1 and 65535.";
+    if (!form.databaseName.trim()) return "Enter the database name.";
+    if (!form.databaseUser.trim()) return "Enter the database username.";
     if (!form.databasePassword.trim() && !passwordConfigured) return "Enter the database password.";
     return "";
   };
@@ -15137,7 +15145,7 @@ function CloudDatabaseSetupPage() {
     setError("");
     setMessage("Testing the Supabase connection securely…");
     try {
-      await window.desktopBridge.cloud.testConfig(form);
+      await window.desktopBridge.cloud.testConfig({ ...form, databasePort: Number(form.databasePort) });
       setTested(true);
       setStatus("Connection verified");
       setMessage("Supabase is reachable. You can now save this configuration.");
@@ -15161,7 +15169,7 @@ function CloudDatabaseSetupPage() {
     setSaving(true);
     setError("");
     try {
-      await window.desktopBridge.cloud.saveConfig(form);
+      await window.desktopBridge.cloud.saveConfig({ ...form, databasePort: Number(form.databasePort) });
       setPasswordConfigured(true);
       setForm((current) => ({ ...current, databasePassword: "" }));
       setMessage("Cloud configuration saved securely on this computer.");
@@ -15200,11 +15208,11 @@ function CloudDatabaseSetupPage() {
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Copy connection details" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Open Supabase → Connect → Database → Connection string. Choose the Session Pooler URI." })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Open Supabase → Connect → Database. Enter the Session Pooler host, port, database name and user shown there." })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Test before continuing" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Paste the project URL, project reference, pooler URI and database password, then test the connection." })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Enter the project URL, project reference, host, port, database, user and password, then test the connection." })
           ] })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cloud-info-callout", children: [
@@ -15225,6 +15233,24 @@ function CloudDatabaseSetupPage() {
           "Project Reference (Project ID)",
           /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "data-testid": "cloud-project-ref", value: form.projectRef, onChange: (event) => update("projectRef", event.target.value), placeholder: "abcdefghijklmnop" })
         ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cloud-field-grid", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+            "Database Host",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "data-testid": "cloud-database-host", value: form.databaseHost, onChange: (event) => update("databaseHost", event.target.value), placeholder: "aws-0-region.pooler.supabase.com" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+            "Port",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "data-testid": "cloud-database-port", type: "number", min: 1, max: 65535, value: form.databasePort, onChange: (event) => update("databasePort", event.target.value), placeholder: "6543" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+            "Database Name",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "data-testid": "cloud-database-name", value: form.databaseName, onChange: (event) => update("databaseName", event.target.value), placeholder: "postgres" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+            "Database User",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "data-testid": "cloud-database-user", value: form.databaseUser, onChange: (event) => update("databaseUser", event.target.value), placeholder: "postgres.project-reference" })
+          ] })
+        ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
           "Database Password",
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cloud-password-field", children: [
@@ -15232,11 +15258,7 @@ function CloudDatabaseSetupPage() {
             /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", "aria-label": showPassword ? "Hide database password" : "Show database password", onClick: () => setShowPassword((current) => !current), children: showPassword ? /* @__PURE__ */ jsxRuntimeExports.jsx(EyeOff, { size: 17 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 17 }) })
           ] })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
-          "Database Connection String (Session Pooler)",
-          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "data-testid": "cloud-database-url", value: form.databaseUrl, onChange: (event) => update("databaseUrl", event.target.value), placeholder: "postgresql://postgres.project:password@aws-0-region.pooler.supabase.com:6543/postgres" })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "cloud-connection-note", children: "Use the Session Pooler connection string from Supabase → Settings → Database → Connection string. The password is stored separately and masked." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "cloud-connection-note", children: "For Supabase Session Pooler, the default port is 6543. Copy the host, database, user and port from Supabase → Connect; the application constructs the secure connection internally." }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cloud-test-row", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "outline", type: "button", "data-testid": "cloud-test", disabled: testing, onClick: testConnection, children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(TestTubeDiagonal, { size: 16 }),

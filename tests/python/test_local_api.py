@@ -85,7 +85,8 @@ def test_cloud_configuration_is_hq_only_and_rejects_invalid_connection_without_s
     assert client.get('/api/cloud/configuration').status_code == 403
     response = client.post('/api/cloud/test', headers={'X-Role': 'HQ_ADMIN'}, json={
         'projectUrl': 'not-a-url', 'projectRef': 'dev-project',
-        'databaseUrl': 'postgresql://postgres@example.com:5432/postgres',
+        'databaseHost': 'db.example.com', 'databasePort': 5432,
+        'databaseName': 'postgres', 'databaseUser': 'postgres',
         'databasePassword': 'DoNotLeakThisPassword',
     })
     assert response.status_code == 422

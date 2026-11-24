@@ -14,19 +14,28 @@ declare global {
         getConfig: () => Promise<{
           projectUrl: string;
           projectRef: string;
-          databaseUrl: string;
+          databaseHost: string;
+          databasePort: number;
+          databaseName: string;
+          databaseUser: string;
           passwordConfigured: boolean;
         }>;
         testConfig: (payload: {
           projectUrl: string;
           projectRef: string;
-          databaseUrl: string;
+          databaseHost: string;
+          databasePort: number;
+          databaseName: string;
+          databaseUser: string;
           databasePassword?: string;
         }) => Promise<{ ok: boolean }>;
         saveConfig: (payload: {
           projectUrl: string;
           projectRef: string;
-          databaseUrl: string;
+          databaseHost: string;
+          databasePort: number;
+          databaseName: string;
+          databaseUser: string;
           databasePassword?: string;
         }) => Promise<{ ok: boolean; passwordConfigured: boolean }>;
       };

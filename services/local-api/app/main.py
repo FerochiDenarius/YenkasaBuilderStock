@@ -5,7 +5,7 @@ import hmac
 import json
 import os
 import shutil
-from urllib.parse import quote, unquote, urlsplit, urlunsplit
+from urllib.parse import quote, urlunsplit
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from uuid import uuid4
@@ -455,7 +455,10 @@ class PurchasePayload(BaseModel):
 class CloudConnectionPayload(BaseModel):
     projectUrl: str
     projectRef: str
-    databaseUrl: str
+    databaseHost: str
+    databasePort: int = 6543
+    databaseName: str = 'postgres'
+    databaseUser: str = 'postgres'
     databasePassword: str = ''
 
 class SyncSettingsPayload(BaseModel):
@@ -714,27 +717,19 @@ def test_cloud_connection(payload: CloudConnectionPayload, request: Request) -> 
     require_hq(request)
     project_url = payload.projectUrl.strip()
     project_ref = payload.projectRef.strip()
-    raw_url = payload.databaseUrl.strip()
     if not project_url.startswith('https://') or not project_ref:
         raise HTTPException(422, 'Enter a valid Supabase project URL and project reference.')
-    if not raw_url.startswith(('postgresql://', 'postgres://', 'postgresql+psycopg://')):
-        raise HTTPException(422, 'Enter the PostgreSQL Session Pooler connection string from Supabase.')
-    parsed = urlsplit(raw_url.replace('postgresql+psycopg://', 'postgresql://', 1))
-    username = unquote(parsed.username or '')
-    hostname = parsed.hostname or ''
-    database = parsed.path or '/postgres'
-    if not username or not hostname:
-        raise HTTPException(422, 'The PostgreSQL connection string is incomplete.')
+    hostname = payload.databaseHost.strip()
+    username = payload.databaseUser.strip()
+    database = payload.databaseName.strip() or 'postgres'
+    if not hostname or not username or not database:
+        raise HTTPException(422, 'Database host, database name and database user are required.')
+    if payload.databasePort < 1 or payload.databasePort > 65535:
+        raise HTTPException(422, 'Database port must be between 1 and 65535.')
     password = payload.databasePassword.strip()
     if not password:
-        password = parsed.password or ''
-    if not password:
         raise HTTPException(422, 'Database password is required for the connection test.')
-    port = f':{parsed.port}' if parsed.port else ''
-    query = parsed.query
-    if 'sslmode=' not in query:
-        query = f'{query}&sslmode=require' if query else 'sslmode=require'
-    dsn = urlunsplit(('postgresql', f'{quote(username, safe="")}:{quote(password, safe="")}@{hostname}{port}', database, query, ''))
+    dsn = urlunsplit(('postgresql', f'{quote(username, safe="")}:{quote(password, safe="")}@{hostname}:{payload.databasePort}', f'/{quote(database, safe="")}', 'sslmode=require', ''))
     try:
         import psycopg
         with psycopg.connect(dsn, connect_timeout=10) as connection:

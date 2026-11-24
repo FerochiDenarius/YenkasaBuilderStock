@@ -1705,6 +1705,15 @@ footer {
   display: grid;
   gap: 12px;
 }
+.cloud-field-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px;
+  gap: 12px;
+}
+.cloud-field-grid label:nth-child(3),
+.cloud-field-grid label:nth-child(4) {
+  grid-column: span 1;
+}
 .cloud-connection-card label {
   display: grid;
   gap: 6px;
@@ -1779,6 +1788,9 @@ footer {
 }
 @media (max-width: 900px) {
   .cloud-setup-grid {
+    grid-template-columns: 1fr;
+  }
+  .cloud-field-grid {
     grid-template-columns: 1fr;
   }
 }

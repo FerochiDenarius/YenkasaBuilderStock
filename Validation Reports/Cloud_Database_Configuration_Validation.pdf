@@ -3,7 +3,7 @@
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 2 0 obj
-<< /Length 2364 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 2395 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -31,13 +31,13 @@ BT
 (design.) Tj
 0 -11 Td
 /F1 8 Tf
-(Implementation: project URL, project reference, Session Pooler URI and masked password fields;) Tj
+(Implementation: project URL, project reference, database host, port, database name, database) Tj
 0 -11 Td
 /F1 8 Tf
-(secure Test Connection and Save and Continue actions; installation instructions and deployment) Tj
+(user and masked password fields; secure Test Connection and Save and Continue actions;) Tj
 0 -11 Td
 /F1 8 Tf
-(security guidance.) Tj
+(installation instructions and deployment security guidance.) Tj
 0 -11 Td
 /F1 8 Tf
 (Relevant source files: apps/desktop/src/renderer/CloudDatabaseSetupPage.tsx;) Tj
@@ -104,7 +104,7 @@ ET
 endstream
 endobj
 3 0 obj
-<< /Length 2794 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 2817 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -144,13 +144,13 @@ BT
 (trusted process environment. React never receives the password back.) Tj
 0 -11 Td
 /F1 8 Tf
-(The FastAPI endpoint validates HTTPS project URL, project reference and PostgreSQL URI,) Tj
+(The FastAPI endpoint validates HTTPS project URL, project reference and individual PostgreSQL) Tj
 0 -11 Td
 /F1 8 Tf
-(requires SSL mode, connects with psycopg and executes SELECT 1. It returns no driver exception) Tj
+(connection fields, forces SSL mode, connects with psycopg and executes SELECT 1. It returns no) Tj
 0 -11 Td
 /F1 8 Tf
-(details.) Tj
+(driver exception details.) Tj
 0 -11 Td
 /F1 8 Tf
 (The local API requirements now include psycopg[binary]==3.2.3 so the connection-test driver is) Tj
@@ -319,15 +319,15 @@ xref
 0000000000 65535 f 
 0000000009 00000 n 
 0000000079 00000 n 
-0000002534 00000 n 
-0000005419 00000 n 
-0000007399 00000 n 
-0000007468 00000 n 
-0000007555 00000 n 
-0000007642 00000 n 
-0000007729 00000 n 
+0000002565 00000 n 
+0000005473 00000 n 
+0000007453 00000 n 
+0000007522 00000 n 
+0000007609 00000 n 
+0000007696 00000 n 
+0000007783 00000 n 
 trailer
 << /Size 10 /Root 9 0 R >>
 startxref
-7778
+7832
 %%EOF

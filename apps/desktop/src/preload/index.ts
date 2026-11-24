@@ -11,13 +11,19 @@ contextBridge.exposeInMainWorld('desktopBridge', {
     testConfig: (payload: {
       projectUrl: string;
       projectRef: string;
-      databaseUrl: string;
+      databaseHost: string;
+      databasePort: number;
+      databaseName: string;
+      databaseUser: string;
       databasePassword?: string;
     }) => ipcRenderer.invoke('cloud:test-config', payload),
     saveConfig: (payload: {
       projectUrl: string;
       projectRef: string;
-      databaseUrl: string;
+      databaseHost: string;
+      databasePort: number;
+      databaseName: string;
+      databaseUser: string;
       databasePassword?: string;
     }) => ipcRenderer.invoke('cloud:save-config', payload),
   },

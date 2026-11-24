@@ -13,7 +13,29 @@ function cloudConfigPath() {
 }
 async function readStoredCloudConfig() {
   try {
-    return JSON.parse(await readFile(cloudConfigPath(), "utf8"));
+    const raw = JSON.parse(await readFile(cloudConfigPath(), "utf8"));
+    if (raw.databaseHost && raw.databaseUser && raw.databaseName && raw.encryptedPassword) {
+      return {
+        projectUrl: raw.projectUrl ?? "",
+        projectRef: raw.projectRef ?? "",
+        databaseHost: raw.databaseHost,
+        databasePort: Number(raw.databasePort ?? 6543),
+        databaseName: raw.databaseName,
+        databaseUser: raw.databaseUser,
+        encryptedPassword: raw.encryptedPassword
+      };
+    }
+    if (!raw.databaseUrl || !raw.encryptedPassword) return null;
+    const parsed = new URL(raw.databaseUrl.replace("postgresql+psycopg://", "postgresql://"));
+    return {
+      projectUrl: raw.projectUrl ?? "",
+      projectRef: raw.projectRef ?? "",
+      databaseHost: parsed.hostname,
+      databasePort: Number(parsed.port || 6543),
+      databaseName: decodeURIComponent(parsed.pathname.replace(/^\//, "")) || "postgres",
+      databaseUser: decodeURIComponent(parsed.username),
+      encryptedPassword: raw.encryptedPassword
+    };
   } catch {
     return null;
   }
@@ -24,15 +46,6 @@ async function decryptCloudPassword(config) {
     return safeStorage.decryptString(Buffer.from(config.encryptedPassword, "base64"));
   } catch {
     return "";
-  }
-}
-function sanitizedDatabaseUrl(value) {
-  try {
-    const parsed = new URL(value.replace("postgresql+psycopg://", "postgresql://"));
-    parsed.password = "";
-    return parsed.toString().replace("postgresql://", "postgresql+psycopg://");
-  } catch {
-    return value.replace(/:\/\/([^:]+):[^@]+@/, "://$1@");
   }
 }
 async function cloudApiRequest(path, payload) {
@@ -55,7 +68,10 @@ ipcMain.handle("cloud:get-config", async () => {
   return {
     projectUrl: config?.projectUrl ?? "",
     projectRef: config?.projectRef ?? "",
-    databaseUrl: config?.databaseUrl ?? "",
+    databaseHost: config?.databaseHost ?? "",
+    databasePort: config?.databasePort ?? 6543,
+    databaseName: config?.databaseName ?? "postgres",
+    databaseUser: config?.databaseUser ?? "postgres",
     passwordConfigured: Boolean(config?.encryptedPassword)
   };
 });
@@ -74,7 +90,10 @@ ipcMain.handle("cloud:save-config", async (_event, input) => {
   const stored = {
     projectUrl: input.projectUrl.trim(),
     projectRef: input.projectRef.trim(),
-    databaseUrl: sanitizedDatabaseUrl(input.databaseUrl.trim()),
+    databaseHost: input.databaseHost.trim(),
+    databasePort: Number(input.databasePort),
+    databaseName: input.databaseName.trim(),
+    databaseUser: input.databaseUser.trim(),
     encryptedPassword: safeStorage.encryptString(password).toString("base64")
   };
   await mkdir(app.getPath("userData"), { recursive: true });
@@ -162,8 +181,13 @@ function cloudEnvironment() {
     const config = JSON.parse(raw);
     const password = decryptCloudPasswordSync(config);
     if (!password) return {};
-    const parsed = new URL(config.databaseUrl.replace("postgresql+psycopg://", "postgresql://"));
+    const parsed = new URL("postgresql://localhost");
+    parsed.username = config.databaseUser;
     parsed.password = password;
+    parsed.hostname = config.databaseHost;
+    parsed.port = String(config.databasePort);
+    parsed.pathname = `/${config.databaseName}`;
+    parsed.searchParams.set("sslmode", "require");
     return {
       SUPABASE_URL: config.projectUrl,
       SUPABASE_PROJECT_REF: config.projectRef,

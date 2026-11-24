@@ -59,7 +59,7 @@ content = [
     page('Cloud Database Configuration Validation', [
         ('A. Page information', [
             'Scope: Company Setup -> Cloud Database (Supabase), based on the supplied installation-screen design.',
-            'Implementation: project URL, project reference, Session Pooler URI and masked password fields; secure Test Connection and Save and Continue actions; installation instructions and deployment security guidance.',
+            'Implementation: project URL, project reference, database host, port, database name, database user and masked password fields; secure Test Connection and Save and Continue actions; installation instructions and deployment security guidance.',
             'Relevant source files: apps/desktop/src/renderer/CloudDatabaseSetupPage.tsx; apps/desktop/src/renderer/Dashboard.tsx; apps/desktop/src/main/index.ts; apps/desktop/src/preload/index.ts; apps/desktop/src/renderer/desktop.d.ts; services/local-api/app/main.py; services/local-api/requirements.txt; docs/distribution.md.',
         ]),
         ('B. Security checklist', [
@@ -75,7 +75,7 @@ content = [
         ('C. Backend integration', [
             'The renderer calls a narrow Electron preload bridge. The trusted Electron main process calls the loopback FastAPI /api/cloud/test endpoint with the submitted secret and returns only success or a generic failure.',
             'On successful Save and Continue, Electron encrypts the password with safeStorage, stores sanitized nonsecret metadata and restarts the local backend with the decrypted value in its trusted process environment. React never receives the password back.',
-            'The FastAPI endpoint validates HTTPS project URL, project reference and PostgreSQL URI, requires SSL mode, connects with psycopg and executes SELECT 1. It returns no driver exception details.',
+            'The FastAPI endpoint validates HTTPS project URL, project reference and individual PostgreSQL connection fields, forces SSL mode, connects with psycopg and executes SELECT 1. It returns no driver exception details.',
             'The local API requirements now include psycopg[binary]==3.2.3 so the connection-test driver is included in future PyInstaller backend builds.',
         ]),
         ('D. Test results', [
