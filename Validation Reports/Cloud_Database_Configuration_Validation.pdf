@@ -104,7 +104,7 @@ ET
 endstream
 endobj
 3 0 obj
-<< /Length 3641 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 4246 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -135,13 +135,22 @@ BT
 (success or a generic failure.) Tj
 0 -11 Td
 /F1 8 Tf
-(On successful Save and Continue, Electron encrypts the password with safeStorage, stores) Tj
+(Test Connection is a read-only installation operation and is explicitly separated from saving) Tj
 0 -11 Td
 /F1 8 Tf
-(sanitized nonsecret metadata and restarts the local backend with the decrypted value in its) Tj
+(configuration. On successful Save and Continue, Electron encrypts the password with) Tj
 0 -11 Td
 /F1 8 Tf
-(trusted process environment. React never receives the password back.) Tj
+(safeStorage, stores sanitized nonsecret metadata and passes the decrypted value only to the) Tj
+0 -11 Td
+/F1 8 Tf
+(trusted local backend process. React never receives the password back.) Tj
+0 -11 Td
+/F1 8 Tf
+(Replacing an already-saved cloud configuration requires an owner session in the Electron main) Tj
+0 -11 Td
+/F1 8 Tf
+(process; a first save on a clean installation does not require owner credentials.) Tj
 0 -11 Td
 /F1 8 Tf
 (The FastAPI endpoint validates HTTPS project URL, project reference and individual PostgreSQL) Tj
@@ -193,25 +202,34 @@ BT
 (configuration without an owner session | HTTP 403 owner authentication required | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-05 | Secret disclosure | Inspect invalid cloud-test response | Submitted password absent) Tj
+(CLOUD-05 | Test-only authorization | Call /api/cloud/test with the installation test header) Tj
+0 -11 Td
+/F1 8 Tf
+(after company setup | Connection fields are validated without the owner-lock error; no data is) Tj
+0 -11 Td
+/F1 8 Tf
+(saved | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-06 | Secret disclosure | Inspect invalid cloud-test response | Submitted password absent) Tj
 0 -11 Td
 /F1 8 Tf
 (from response body | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-06 | Backend regression | Run services/local-api pytest | 18 passed | PASS) Tj
+(CLOUD-07 | Backend regression | Run services/local-api pytest | 18 passed | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-07 | Renderer lint | Run npm run lint | Clean | PASS) Tj
+(CLOUD-08 | Renderer lint | Run npm run lint | Clean | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-08 | Desktop build | Run npm run build:desktop | Electron Vite production build) Tj
+(CLOUD-09 | Desktop build | Run npm run build:desktop | Electron Vite production build) Tj
 0 -11 Td
 /F1 8 Tf
 (completed | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-09 | Packaged API smoke test | Run the bundled local-api with an empty temporary data) Tj
+(CLOUD-10 | Packaged API smoke test | Run the bundled local-api with an empty temporary data) Tj
 0 -11 Td
 /F1 8 Tf
 (directory | Cloud configuration returned 200 before company setup; returned 403 after first) Tj
@@ -220,7 +238,7 @@ BT
 (company record | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-10 | Existing env connection | Test the configured backend DATABASE_URL without printing) Tj
+(CLOUD-11 | Existing env connection | Test the configured backend DATABASE_URL without printing) Tj
 0 -11 Td
 /F1 8 Tf
 (the secret | Direct db host could not be resolved before authentication | FAIL; use the exact) Tj
@@ -229,7 +247,7 @@ BT
 (Session Pooler host, username and port 5432 from Supabase Connect.) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-11 | Secure persistence restart | Save valid configuration, restart packaged app, reopen) Tj
+(CLOUD-12 | Secure persistence restart | Save valid configuration, restart packaged app, reopen) Tj
 0 -11 Td
 /F1 8 Tf
 (page | Metadata restored and password remains masked | NOT TESTED interactively.) Tj
@@ -356,14 +374,14 @@ xref
 0000000009 00000 n 
 0000000079 00000 n 
 0000002565 00000 n 
-0000006297 00000 n 
-0000008652 00000 n 
-0000008721 00000 n 
-0000008808 00000 n 
-0000008895 00000 n 
-0000008982 00000 n 
+0000006902 00000 n 
+0000009257 00000 n 
+0000009326 00000 n 
+0000009413 00000 n 
+0000009500 00000 n 
+0000009587 00000 n 
 trailer
 << /Size 10 /Root 9 0 R >>
 startxref
-9031
+9636
 %%EOF

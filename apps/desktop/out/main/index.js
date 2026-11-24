@@ -50,12 +50,13 @@ async function decryptCloudPassword(config) {
     return "";
   }
 }
-async function cloudApiRequest(path, payload) {
+async function cloudApiRequest(path, payload, testOnly = false) {
   const { ownerSession, ...connectionPayload } = payload;
   const response = await fetch(`http://127.0.0.1:${localApiPort}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...testOnly ? { "X-Cloud-Test": "true" } : {},
       ...ownerSession ? { "X-Owner-Session": ownerSession } : { "X-Role": "HQ_ADMIN" }
     },
     body: JSON.stringify(connectionPayload)
@@ -67,7 +68,7 @@ async function cloudApiRequest(path, payload) {
 async function testCloudConfig(input) {
   const current = await readStoredCloudConfig();
   const password = input.databasePassword?.trim() || await decryptCloudPassword(current);
-  return cloudApiRequest("/api/cloud/test", { ...input, databasePassword: password });
+  return cloudApiRequest("/api/cloud/test", { ...input, databasePassword: password }, true);
 }
 ipcMain.handle("cloud:get-config", async () => {
   const config = await readStoredCloudConfig();
@@ -86,11 +87,14 @@ ipcMain.handle("cloud:test-config", async (_event, input) => {
   return { ok: true };
 });
 ipcMain.handle("cloud:save-config", async (_event, input) => {
+  const current = await readStoredCloudConfig();
+  if (current && !input.ownerSession) {
+    throw new Error("Owner authentication is required to replace the saved cloud configuration.");
+  }
   await testCloudConfig(input);
   if (!safeStorage.isEncryptionAvailable()) {
     throw new Error("The operating-system credential store is unavailable on this device.");
   }
-  const current = await readStoredCloudConfig();
   const password = input.databasePassword?.trim() || await decryptCloudPassword(current);
   if (!password) throw new Error("Database password is required.");
   const stored = {

@@ -488,7 +488,7 @@ class SyncRunPayload(BaseModel):
     branchId: str
 
 app = FastAPI(title='YenkasaBuildersStock Local API')
-app.add_middleware(CORSMiddleware, allow_origins=['null', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174', 'file://'], allow_methods=['GET', 'PUT', 'POST', 'PATCH', 'OPTIONS'], allow_headers=['Content-Type', 'X-Role', 'X-Owner-Session', 'X-User-Id', 'X-Branch-Id', 'X-Device-Id'])
+app.add_middleware(CORSMiddleware, allow_origins=['null', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174', 'file://'], allow_methods=['GET', 'PUT', 'POST', 'PATCH', 'OPTIONS'], allow_headers=['Content-Type', 'X-Role', 'X-Owner-Session', 'X-Cloud-Test', 'X-User-Id', 'X-Branch-Id', 'X-Device-Id'])
 
 def backup_sqlite_before_startup_changes() -> None:
     if not settings.local_database_url.startswith('sqlite:///'):
@@ -770,7 +770,11 @@ def local_cloud_configuration(request: Request) -> dict:
 
 @app.post('/api/cloud/test')
 def test_cloud_connection(payload: CloudConnectionPayload, request: Request) -> dict:
-    require_cloud_setup_access(request)
+    # Testing connectivity is read-only. During installation it must be
+    # possible before company registration or owner credentials exist. Saving
+    # or replacing the stored configuration remains protected in Electron IPC.
+    if request.headers.get('x-cloud-test', '').lower() != 'true':
+        require_cloud_setup_access(request)
     project_url = payload.projectUrl.strip()
     project_ref = payload.projectRef.strip()
     parsed_project_url = urlsplit(project_url)

@@ -131,7 +131,7 @@ def test_owner_setup_is_locked_after_credentials_exist_and_owner_logout_relocks_
 def test_cloud_configuration_is_hq_only_and_rejects_invalid_connection_without_secret_leak():
     client = TestClient(app)
     assert client.get('/api/cloud/configuration').status_code == 403
-    response = client.post('/api/cloud/test', headers=owner_headers(client), json={
+    response = client.post('/api/cloud/test', headers={'X-Cloud-Test': 'true'}, json={
         'projectUrl': 'not-a-url', 'projectRef': 'dev-project',
         'databaseHost': 'db.example.com', 'databasePort': 5432,
         'databaseName': 'postgres', 'databaseUser': 'postgres',
@@ -139,6 +139,14 @@ def test_cloud_configuration_is_hq_only_and_rejects_invalid_connection_without_s
     })
     assert response.status_code == 422
     assert 'DoNotLeakThisPassword' not in response.text
+
+    protected = client.post('/api/cloud/test', json={
+        'projectUrl': 'not-a-url', 'projectRef': 'dev-project',
+        'databaseHost': 'db.example.com', 'databasePort': 5432,
+        'databaseName': 'postgres', 'databaseUser': 'postgres',
+        'databasePassword': 'DoNotLeakThisPassword',
+    })
+    assert protected.status_code == 403
 
 def test_branches_require_headquarters_role_and_persist():
     client = TestClient(app)
