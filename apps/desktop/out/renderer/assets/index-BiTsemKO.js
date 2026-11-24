@@ -15079,11 +15079,16 @@ const initialForm = {
   projectUrl: "",
   projectRef: "",
   databaseHost: "",
-  databasePort: "6543",
+  databasePort: "5432",
   databaseName: "postgres",
   databaseUser: "postgres",
   databasePassword: ""
 };
+function normalizeProjectUrl(value) {
+  const parsed = new URL(value.trim());
+  if (parsed.protocol !== "https:") throw new Error("Project URL must begin with https://. Do not paste a PostgreSQL connection string here.");
+  return parsed.origin;
+}
 function CloudDatabaseSetupPage() {
   const [form, setForm] = reactExports.useState(initialForm);
   const [passwordConfigured, setPasswordConfigured] = reactExports.useState(false);
@@ -15121,8 +15126,12 @@ function CloudDatabaseSetupPage() {
     setError("");
   };
   const validate = () => {
-    if (!form.projectUrl.startsWith("https://")) return "Enter the Supabase project URL beginning with https://.";
-    if (!form.projectRef.trim()) return "Enter the Supabase project reference.";
+    try {
+      normalizeProjectUrl(form.projectUrl);
+    } catch (error2) {
+      return error2 instanceof Error ? error2.message : "Enter the Supabase project URL, for example https://your-project.supabase.co.";
+    }
+    if (!form.projectRef.trim()) return "Enter the Supabase project reference, for example xwyblizsmfeulyykufwg.";
     if (!form.databaseHost.trim()) return "Enter the PostgreSQL host from Supabase Connect.";
     const port = Number(form.databasePort);
     if (!Number.isInteger(port) || port < 1 || port > 65535) return "Enter a valid database port between 1 and 65535.";
@@ -15145,7 +15154,7 @@ function CloudDatabaseSetupPage() {
     setError("");
     setMessage("Testing the Supabase connection securely…");
     try {
-      await window.desktopBridge.cloud.testConfig({ ...form, databasePort: Number(form.databasePort) });
+      await window.desktopBridge.cloud.testConfig({ ...form, projectUrl: normalizeProjectUrl(form.projectUrl), databasePort: Number(form.databasePort) });
       setTested(true);
       setStatus("Connection verified");
       setMessage("Supabase is reachable. You can now save this configuration.");
@@ -15169,7 +15178,7 @@ function CloudDatabaseSetupPage() {
     setSaving(true);
     setError("");
     try {
-      await window.desktopBridge.cloud.saveConfig({ ...form, databasePort: Number(form.databasePort) });
+      await window.desktopBridge.cloud.saveConfig({ ...form, projectUrl: normalizeProjectUrl(form.projectUrl), databasePort: Number(form.databasePort) });
       setPasswordConfigured(true);
       setForm((current) => ({ ...current, databasePassword: "" }));
       setMessage("Cloud configuration saved securely on this computer.");
@@ -15208,7 +15217,7 @@ function CloudDatabaseSetupPage() {
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Copy connection details" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Open Supabase → Connect → Database. Enter the Session Pooler host, port, database name and user shown there." })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Open Supabase → Connect → Database and select Session pooler. Copy its exact host, port, database name and user." })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Test before continuing" }),
@@ -15240,7 +15249,7 @@ function CloudDatabaseSetupPage() {
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
             "Port",
-            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "data-testid": "cloud-database-port", type: "number", min: 1, max: 65535, value: form.databasePort, onChange: (event) => update("databasePort", event.target.value), placeholder: "6543" })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "data-testid": "cloud-database-port", type: "number", min: 1, max: 65535, value: form.databasePort, onChange: (event) => update("databasePort", event.target.value), placeholder: "5432" })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
             "Database Name",
@@ -15258,7 +15267,7 @@ function CloudDatabaseSetupPage() {
             /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", "aria-label": showPassword ? "Hide database password" : "Show database password", onClick: () => setShowPassword((current) => !current), children: showPassword ? /* @__PURE__ */ jsxRuntimeExports.jsx(EyeOff, { size: 17 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 17 }) })
           ] })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "cloud-connection-note", children: "For Supabase Session Pooler, the default port is 6543. Copy the host, database, user and port from Supabase → Connect; the application constructs the secure connection internally." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "cloud-connection-note", children: "For Supabase Session Pooler, use the exact host and username shown in Supabase Connect, normally port 5432 and a username like postgres.project-reference. The application constructs the secure SSL connection internally." }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cloud-test-row", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "outline", type: "button", "data-testid": "cloud-test", disabled: testing, onClick: testConnection, children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(TestTubeDiagonal, { size: 16 }),

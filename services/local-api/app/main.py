@@ -5,7 +5,7 @@ import hmac
 import json
 import os
 import shutil
-from urllib.parse import quote, urlunsplit
+from urllib.parse import quote, urlsplit, urlunsplit
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from uuid import uuid4
@@ -456,7 +456,7 @@ class CloudConnectionPayload(BaseModel):
     projectUrl: str
     projectRef: str
     databaseHost: str
-    databasePort: int = 6543
+    databasePort: int = 5432
     databaseName: str = 'postgres'
     databaseUser: str = 'postgres'
     databasePassword: str = ''
@@ -717,8 +717,11 @@ def test_cloud_connection(payload: CloudConnectionPayload, request: Request) -> 
     require_hq(request)
     project_url = payload.projectUrl.strip()
     project_ref = payload.projectRef.strip()
-    if not project_url.startswith('https://') or not project_ref:
-        raise HTTPException(422, 'Enter a valid Supabase project URL and project reference.')
+    parsed_project_url = urlsplit(project_url)
+    if parsed_project_url.scheme != 'https' or not parsed_project_url.netloc:
+        raise HTTPException(422, 'Project URL must be the HTTPS project URL, for example https://your-project.supabase.co. Do not paste the /rest/v1 URL or a PostgreSQL connection string.')
+    if not project_ref:
+        raise HTTPException(422, 'Enter the Supabase project reference, for example xwyblizsmfeulyykufwg.')
     hostname = payload.databaseHost.strip()
     username = payload.databaseUser.strip()
     database = payload.databaseName.strip() or 'postgres'
@@ -744,7 +747,7 @@ def test_cloud_connection(payload: CloudConnectionPayload, request: Request) -> 
         if any(term in error_text for term in ('could not translate host name', 'nodename nor servname', 'name or service not known')):
             safe_message = 'Supabase host could not be resolved. Use the exact Session Pooler URI from Supabase Connect.'
         elif any(term in error_text for term in ('timeout', 'timed out')):
-            safe_message = 'Supabase connection timed out. Check the pooler host, port 6543 and network access.'
+            safe_message = 'Supabase connection timed out. Check the exact pooler host, port 5432 for Session Pooler, and network access.'
         elif any(term in error_text for term in ('password authentication failed', 'authentication failed')):
             safe_message = 'Supabase rejected the database credentials. Reset or re-enter the database password.'
         else:

@@ -19,7 +19,7 @@ async function readStoredCloudConfig() {
         projectUrl: raw.projectUrl ?? "",
         projectRef: raw.projectRef ?? "",
         databaseHost: raw.databaseHost,
-        databasePort: Number(raw.databasePort ?? 6543),
+        databasePort: Number(raw.databasePort ?? 5432),
         databaseName: raw.databaseName,
         databaseUser: raw.databaseUser,
         encryptedPassword: raw.encryptedPassword
@@ -69,7 +69,7 @@ ipcMain.handle("cloud:get-config", async () => {
     projectUrl: config?.projectUrl ?? "",
     projectRef: config?.projectRef ?? "",
     databaseHost: config?.databaseHost ?? "",
-    databasePort: config?.databasePort ?? 6543,
+    databasePort: config?.databasePort ?? 5432,
     databaseName: config?.databaseName ?? "postgres",
     databaseUser: config?.databaseUser ?? "postgres",
     passwordConfigured: Boolean(config?.encryptedPassword)

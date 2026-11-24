@@ -104,7 +104,7 @@ ET
 endstream
 endobj
 3 0 obj
-<< /Length 2817 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 2856 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -199,10 +199,10 @@ BT
 (CLOUD-07 | Existing env connection | Test the configured backend DATABASE_URL without printing) Tj
 0 -11 Td
 /F1 8 Tf
-(the secret | DNS resolution failed for the direct db host before authentication | FAIL; use) Tj
+(the secret | Direct db host could not be resolved before authentication | FAIL; use the exact) Tj
 0 -11 Td
 /F1 8 Tf
-(the exact Session Pooler URI.) Tj
+(Session Pooler host, username and port 5432 from Supabase Connect.) Tj
 0 -11 Td
 /F1 8 Tf
 (CLOUD-08 | Secure persistence restart | Save valid configuration, restart packaged app, reopen) Tj
@@ -217,7 +217,7 @@ ET
 endstream
 endobj
 4 0 obj
-<< /Length 1889 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 1938 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -288,10 +288,10 @@ BT
 (Before production release, replace the direct db host with the exact Supabase Session Pooler) Tj
 0 -11 Td
 /F1 8 Tf
-(URI, then run a packaged macOS and Windows interactive safeStorage test and the actual) Tj
+(details from Supabase Connect \(normally port 5432\), then run a packaged macOS and Windows) Tj
 0 -11 Td
 /F1 8 Tf
-(Supabase migration.) Tj
+(interactive safeStorage test and the actual Supabase migration.) Tj
 0 -11 Td
 /F1 8 Tf
 () Tj
@@ -320,14 +320,14 @@ xref
 0000000009 00000 n 
 0000000079 00000 n 
 0000002565 00000 n 
-0000005473 00000 n 
-0000007453 00000 n 
-0000007522 00000 n 
-0000007609 00000 n 
-0000007696 00000 n 
-0000007783 00000 n 
+0000005512 00000 n 
+0000007541 00000 n 
+0000007610 00000 n 
+0000007697 00000 n 
+0000007784 00000 n 
+0000007871 00000 n 
 trailer
 << /Size 10 /Root 9 0 R >>
 startxref
-7832
+7920
 %%EOF
