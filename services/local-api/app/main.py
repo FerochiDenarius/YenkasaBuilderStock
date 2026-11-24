@@ -758,7 +758,7 @@ def owner_activity(request: Request) -> list[dict]:
 
 @app.get('/api/cloud/configuration')
 def local_cloud_configuration(request: Request) -> dict:
-    require_hq(request, allow_initial_setup=True)
+    require_cloud_setup_access(request)
     configured = bool(os.getenv('CLOUD_DATABASE_URL', '').strip())
     return {
         'projectUrl': os.getenv('SUPABASE_URL', '').strip(),
@@ -770,7 +770,7 @@ def local_cloud_configuration(request: Request) -> dict:
 
 @app.post('/api/cloud/test')
 def test_cloud_connection(payload: CloudConnectionPayload, request: Request) -> dict:
-    require_hq(request, allow_initial_setup=True)
+    require_cloud_setup_access(request)
     project_url = payload.projectUrl.strip()
     project_ref = payload.projectRef.strip()
     parsed_project_url = urlsplit(project_url)
@@ -1617,3 +1617,27 @@ def require_hq(request: Request, allow_initial_setup: bool = False) -> None:
             if owner is None or not owner.password_hash:
                 return
     raise HTTPException(403, 'Owner authentication is required to access Company Setup')
+
+
+def require_cloud_setup_access(request: Request) -> None:
+    """Authorize the installation-time cloud configuration flow.
+
+    Cloud configuration is performed before company registration and before an
+    owner account exists. It therefore cannot require owner credentials on a
+    fresh installation. Once a company record has been created, the same
+    operation becomes owner-only, just like the rest of Company Setup.
+    """
+    token = request.headers.get('x-owner-session', '')
+    owner_id = owner_sessions.get(token)
+    if owner_id is not None:
+        with Session(engine) as session:
+            owner = session.scalar(select(Owner).where(Owner.id == owner_id, Owner.company_id == 1))
+            if owner is not None and owner.password_hash:
+                return
+        owner_sessions.pop(token, None)
+
+    with Session(engine) as session:
+        company_exists = session.scalar(select(Company.id).limit(1)) is not None
+    if not company_exists:
+        return
+    raise HTTPException(403, 'Owner authentication is required to configure the cloud database after company setup begins')

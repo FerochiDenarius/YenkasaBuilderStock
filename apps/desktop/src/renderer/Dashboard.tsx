@@ -181,8 +181,10 @@ export function Dashboard() {
   });
   const [ownerSetupComplete, setOwnerSetupComplete] = useState(false);
   const [ownerStatusLoaded, setOwnerStatusLoaded] = useState(false);
+  const [initialInstallation, setInitialInstallation] = useState(false);
   useEffect(() => {
     companyApi.get().then((company) => {
+      setInitialInstallation(!company);
       const root = document.documentElement;
       if (!company?.useBrandColours) {
         root.style.setProperty('--brand-primary', '#0b9438');
@@ -245,7 +247,10 @@ export function Dashboard() {
   const visibleNav = branchSession
     ? navItems.filter(([, label]) => hasBranchAccess(label))
     : [];
-  const setupUnlocked = !ownerSetupComplete || !!ownerSession;
+  // Cloud configuration is an installation step and must remain available
+  // before the first company record is created. After that, Company Setup is
+  // owner-authenticated once owner credentials have been configured.
+  const setupUnlocked = initialInstallation || !ownerSetupComplete || !!ownerSession;
   const visibleSetup = !branchSession && setupUnlocked ? setupItems : [];
   const branchSetup =
     branchSession?.role === 'BRANCH_MANAGER'

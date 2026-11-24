@@ -104,7 +104,7 @@ ET
 endstream
 endobj
 3 0 obj
-<< /Length 2856 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 3641 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -175,28 +175,52 @@ BT
 (useful validation error, no secret in response | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-02 | Authorization | Request cloud configuration without HQ role | HTTP 403 | PASS) Tj
+(CLOUD-02 | Fresh installation access | Request cloud configuration before a company record) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-03 | Secret disclosure | Inspect invalid cloud-test response | Submitted password absent) Tj
+(exists | HTTP 200 without owner credentials | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-03 | Fresh installation validation | Submit malformed cloud-test payload before company) Tj
+0 -11 Td
+/F1 8 Tf
+(registration | HTTP 422 useful validation error, not owner-auth failure | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-04 | Post-setup authorization | Create a company record, then request cloud) Tj
+0 -11 Td
+/F1 8 Tf
+(configuration without an owner session | HTTP 403 owner authentication required | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-05 | Secret disclosure | Inspect invalid cloud-test response | Submitted password absent) Tj
 0 -11 Td
 /F1 8 Tf
 (from response body | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-04 | Backend regression | Run services/local-api pytest | 15 passed | PASS) Tj
+(CLOUD-06 | Backend regression | Run services/local-api pytest | 18 passed | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-05 | Renderer lint | Run npm run lint | Clean | PASS) Tj
+(CLOUD-07 | Renderer lint | Run npm run lint | Clean | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-06 | Desktop build | Run npm run build:desktop | Electron Vite production build) Tj
+(CLOUD-08 | Desktop build | Run npm run build:desktop | Electron Vite production build) Tj
 0 -11 Td
 /F1 8 Tf
 (completed | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-07 | Existing env connection | Test the configured backend DATABASE_URL without printing) Tj
+(CLOUD-09 | Packaged API smoke test | Run the bundled local-api with an empty temporary data) Tj
+0 -11 Td
+/F1 8 Tf
+(directory | Cloud configuration returned 200 before company setup; returned 403 after first) Tj
+0 -11 Td
+/F1 8 Tf
+(company record | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-10 | Existing env connection | Test the configured backend DATABASE_URL without printing) Tj
 0 -11 Td
 /F1 8 Tf
 (the secret | Direct db host could not be resolved before authentication | FAIL; use the exact) Tj
@@ -205,7 +229,7 @@ BT
 (Session Pooler host, username and port 5432 from Supabase Connect.) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-08 | Secure persistence restart | Save valid configuration, restart packaged app, reopen) Tj
+(CLOUD-11 | Secure persistence restart | Save valid configuration, restart packaged app, reopen) Tj
 0 -11 Td
 /F1 8 Tf
 (page | Metadata restored and password remains masked | NOT TESTED interactively.) Tj
@@ -217,7 +241,7 @@ ET
 endstream
 endobj
 4 0 obj
-<< /Length 1938 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 2264 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -239,10 +263,22 @@ BT
 (----------------------) Tj
 0 -11 Td
 /F1 8 Tf
-(The actual backend test suite executed 15 passing tests, including headquarters authorization) Tj
+(The actual backend test suite executed 18 passing tests, including fresh-install cloud access,) Tj
 0 -11 Td
 /F1 8 Tf
-(and password non-disclosure checks for the cloud configuration endpoint.) Tj
+(post-company owner authorization and password non-disclosure checks for the cloud) Tj
+0 -11 Td
+/F1 8 Tf
+(configuration endpoint.) Tj
+0 -11 Td
+/F1 8 Tf
+(The actual bundled local API was launched against a new temporary SQLite data directory. The) Tj
+0 -11 Td
+/F1 8 Tf
+(real HTTP smoke test returned 200 before company setup and 403 after the first company record) Tj
+0 -11 Td
+/F1 8 Tf
+(was created.) Tj
 0 -11 Td
 /F1 8 Tf
 (The actual desktop lint and production build completed after adding the Supabase configuration) Tj
@@ -320,14 +356,14 @@ xref
 0000000009 00000 n 
 0000000079 00000 n 
 0000002565 00000 n 
-0000005512 00000 n 
-0000007541 00000 n 
-0000007610 00000 n 
-0000007697 00000 n 
-0000007784 00000 n 
-0000007871 00000 n 
+0000006297 00000 n 
+0000008652 00000 n 
+0000008721 00000 n 
+0000008808 00000 n 
+0000008895 00000 n 
+0000008982 00000 n 
 trailer
 << /Size 10 /Root 9 0 R >>
 startxref
-7920
+9031
 %%EOF

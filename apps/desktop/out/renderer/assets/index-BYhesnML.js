@@ -15542,8 +15542,10 @@ function Dashboard() {
   });
   const [ownerSetupComplete, setOwnerSetupComplete] = reactExports.useState(false);
   const [ownerStatusLoaded, setOwnerStatusLoaded] = reactExports.useState(false);
+  const [initialInstallation, setInitialInstallation] = reactExports.useState(false);
   reactExports.useEffect(() => {
     companyApi.get().then((company) => {
+      setInitialInstallation(!company);
       const root = document.documentElement;
       if (!company?.useBrandColours) {
         root.style.setProperty("--brand-primary", "#0b9438");
@@ -15600,7 +15602,7 @@ function Dashboard() {
     return roleNavigation[branchSession.role]?.includes(label) ?? false;
   };
   const visibleNav = branchSession ? navItems.filter(([, label]) => hasBranchAccess(label)) : [];
-  const setupUnlocked = !ownerSetupComplete || !!ownerSession;
+  const setupUnlocked = initialInstallation || !ownerSetupComplete || !!ownerSession;
   const visibleSetup = !branchSession && setupUnlocked ? setupItems : [];
   const branchSetup = branchSession?.role === "BRANCH_MANAGER" ? [[Users, "Staff Accounts"]] : [];
   const branchSettings = branchSession?.role === "BRANCH_MANAGER" ? ["Dashboard Preferences", "Sync Settings"] : ["Dashboard Preferences"];

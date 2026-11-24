@@ -26,6 +26,20 @@ def test_health():
     assert response.status_code == 200
     assert response.json()['status'] == 'ok'
 
+def test_initial_cloud_setup_is_available_before_company_registration():
+    client = TestClient(app)
+    configuration = client.get('/api/cloud/configuration')
+    assert configuration.status_code == 200
+    response = client.post('/api/cloud/test', json={
+        'projectUrl': 'not-a-url', 'projectRef': 'dev-project',
+        'databaseHost': 'db.example.com', 'databasePort': 5432,
+        'databaseName': 'postgres', 'databaseUser': 'postgres',
+        'databasePassword': 'DoNotLeakThisPassword',
+    })
+    assert response.status_code == 422
+    assert 'Owner authentication is required' not in response.text
+    assert 'DoNotLeakThisPassword' not in response.text
+
 def test_company_and_branding_persist_in_sqlite():
     payload = {
         'registeredName': 'Test Builders Ltd', 'tradingName': 'Test Builders', 'category': 'Building Materials',
