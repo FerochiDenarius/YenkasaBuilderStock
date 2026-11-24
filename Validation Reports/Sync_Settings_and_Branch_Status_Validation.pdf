@@ -1,0 +1,336 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Length 2388 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 15 Tf
+36 806 Td
+(Branch Synchronization Controls Validation) Tj
+0 -11 Td
+/F1 8 Tf
+0 -18 Td
+(YenkasaBuildersStock | Validation date: 24 November 2026) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(A. Page and implementation information) Tj
+0 -11 Td
+/F1 8 Tf
+(--------------------------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(Scope: Branch Operations -> Branch Settings -> Database Synchronization and Owner Account ->) Tj
+0 -11 Td
+/F1 8 Tf
+(Activity Log branch status visibility.) Tj
+0 -11 Td
+/F1 8 Tf
+(Implementation: persisted sync_status local SQLite model, branch-manager-only settings and run) Tj
+0 -11 Td
+/F1 8 Tf
+(endpoints, truthful OFFLINE/CLOUD_NOT_CONFIGURED states, and owner activity rows for every) Tj
+0 -11 Td
+/F1 8 Tf
+(company branch.) Tj
+0 -11 Td
+/F1 8 Tf
+(Relevant source files: services/local-api/app/main.py;) Tj
+0 -11 Td
+/F1 8 Tf
+(services/cloud-api/alembic/versions/0002_sync_status.py;) Tj
+0 -11 Td
+/F1 8 Tf
+(apps/desktop/src/renderer/SyncSettingsPage.tsx; apps/desktop/src/renderer/Dashboard.tsx;) Tj
+0 -11 Td
+/F1 8 Tf
+(apps/desktop/src/renderer/OwnerAccountPage.tsx; apps/desktop/src/renderer/api.ts;) Tj
+0 -11 Td
+/F1 8 Tf
+(packages/contracts/src/index.ts; styles.css.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(B. Functionality checklist) Tj
+0 -11 Td
+/F1 8 Tf
+(--------------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(Branch Settings exposes Database Synchronization only to a Branch Manager | PASS by navigation) Tj
+0 -11 Td
+/F1 8 Tf
+(condition and backend role check.) Tj
+0 -11 Td
+/F1 8 Tf
+(Online synchronization switch persists per company and branch device | PASS through PUT) Tj
+0 -11 Td
+/F1 8 Tf
+(/api/sync/settings and sync_status table.) Tj
+0 -11 Td
+/F1 8 Tf
+(Automatic sync preference and interval persist with validation from 5 to 1440 minutes | PASS.) Tj
+0 -11 Td
+/F1 8 Tf
+(Sync Now records an attempt and reports the actual state without claiming a cloud sync that) Tj
+0 -11 Td
+/F1 8 Tf
+(did not occur | PASS.) Tj
+0 -11 Td
+/F1 8 Tf
+(Owner Activity Log includes one Branch Sync row per company branch, including never-synced and) Tj
+0 -11 Td
+/F1 8 Tf
+(pending counts | PASS.) Tj
+0 -11 Td
+/F1 8 Tf
+(Central PostgreSQL migration includes sync_status with company/branch foreign keys and unique) Tj
+0 -11 Td
+/F1 8 Tf
+(isolation constraint | IMPLEMENTED; actual Supabase migration remains pending.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+ET
+endstream
+endobj
+3 0 obj
+<< /Length 2661 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 15 Tf
+36 806 Td
+(Branch Synchronization Controls Validation) Tj
+0 -11 Td
+/F1 8 Tf
+0 -18 Td
+(YenkasaBuildersStock | Validation date: 24 November 2026) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(C. Backend integration and authorization) Tj
+0 -11 Td
+/F1 8 Tf
+(----------------------------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(GET /api/sync/status requires an active BRANCH_MANAGER account scoped to the requested branch.) Tj
+0 -11 Td
+/F1 8 Tf
+(PUT /api/sync/settings persists online_enabled, auto_sync_enabled, interval_minutes and an) Tj
+0 -11 Td
+/F1 8 Tf
+(audit event in local SQLite.) Tj
+0 -11 Td
+/F1 8 Tf
+(POST /api/sync/run records last_attempt_at and returns OFFLINE when disabled,) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD_NOT_CONFIGURED when no central service is configured, or PENDING_CLOUD when a service is) Tj
+0 -11 Td
+/F1 8 Tf
+(configured but the worker is not enabled.) Tj
+0 -11 Td
+/F1 8 Tf
+(Owner GET /api/owner/activity remains headquarters-only and adds branch sync status rows from) Tj
+0 -11 Td
+/F1 8 Tf
+(the company-scoped branches and sync_outbox tables.) Tj
+0 -11 Td
+/F1 8 Tf
+(Cloud migration 0002_sync_status adds company_id and branch_id foreign keys, device identity,) Tj
+0 -11 Td
+/F1 8 Tf
+(policy, state, timestamps and error details.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(D. Test results) Tj
+0 -11 Td
+/F1 8 Tf
+(--------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(SYNC-01 | Initial status | Branch Manager requests status | NEVER_SYNCED returned | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SYNC-02 | Disable online mode | Save onlineEnabled=false and autoSyncEnabled=false | Settings) Tj
+0 -11 Td
+/F1 8 Tf
+(persist | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SYNC-03 | Offline Sync Now | Run sync while disabled | OFFLINE and synced=false; no false) Tj
+0 -11 Td
+/F1 8 Tf
+(success | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SYNC-04 | Re-enable | Save onlineEnabled=true and interval=15 | Settings persist | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SYNC-05 | Missing central service | Run sync without DATABASE_URL/SYNC_BACKEND_URL |) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD_NOT_CONFIGURED and synced=false | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SYNC-06 | Role protection | Sales Officer requests sync status | HTTP 403 | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SYNC-07 | Owner visibility | HQ requests activity log | Branch Sync row shows branch state and) Tj
+0 -11 Td
+/F1 8 Tf
+(pending count | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SYNC-08 | Regression | Run local API pytest | 14 passed | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SYNC-09 | Renderer | Run npm run lint | Clean | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SYNC-10 | Desktop build | Run npm run build:desktop | Production build completed | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+ET
+endstream
+endobj
+4 0 obj
+<< /Length 2011 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 15 Tf
+36 806 Td
+(Branch Synchronization Controls Validation) Tj
+0 -11 Td
+/F1 8 Tf
+0 -18 Td
+(YenkasaBuildersStock | Validation date: 24 November 2026) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(E. Proof of validation) Tj
+0 -11 Td
+/F1 8 Tf
+(----------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(The backend test test_branch_manager_controls_sync_settings_and_owner_sees_branch_status) Tj
+0 -11 Td
+/F1 8 Tf
+(creates a real branch manager, changes persisted settings, exercises offline and) Tj
+0 -11 Td
+/F1 8 Tf
+(cloud-not-configured Sync Now states, rejects a sales officer, and reads the owner activity) Tj
+0 -11 Td
+/F1 8 Tf
+(result.) Tj
+0 -11 Td
+/F1 8 Tf
+(The local API test suite completed with 14 passed. The desktop lint and Electron Vite) Tj
+0 -11 Td
+/F1 8 Tf
+(production build completed after the sync UI was added.) Tj
+0 -11 Td
+/F1 8 Tf
+(No fabricated cloud success is reported. The current release intentionally leaves actual) Tj
+0 -11 Td
+/F1 8 Tf
+(SQLite-to-Supabase outbox delivery pending until the cloud endpoint and credentials are) Tj
+0 -11 Td
+/F1 8 Tf
+(validated.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(F. Outstanding issues) Tj
+0 -11 Td
+/F1 8 Tf
+(---------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(The Sync Now action currently prepares and records the request but does not send outbox) Tj
+0 -11 Td
+/F1 8 Tf
+(records to Supabase. Phase 2 must implement an authenticated sync worker, retries, idempotency) Tj
+0 -11 Td
+/F1 8 Tf
+(and conflict handling.) Tj
+0 -11 Td
+/F1 8 Tf
+(The supplied Supabase project has not yet passed an authenticated connection/migration test in) Tj
+0 -11 Td
+/F1 8 Tf
+(this environment. Configure the exact Supabase Connect PostgreSQL URI in the cloud backend) Tj
+0 -11 Td
+/F1 8 Tf
+(before enabling cloud delivery.) Tj
+0 -11 Td
+/F1 8 Tf
+(A live Electron screenshot test for the new sync page and a clean restart persistence test) Tj
+0 -11 Td
+/F1 8 Tf
+(should be added to the next branch-operations validation run.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Pages /Kids [6 0 R 7 0 R 8 0 R] /Count 3 >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595 842] /Contents 2 0 R >>
+endobj
+7 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595 842] /Contents 3 0 R >>
+endobj
+8 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595 842] /Contents 4 0 R >>
+endobj
+9 0 obj
+<< /Type /Catalog /Pages 5 0 R >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000002558 00000 n 
+0000005310 00000 n 
+0000007412 00000 n 
+0000007481 00000 n 
+0000007568 00000 n 
+0000007655 00000 n 
+0000007742 00000 n 
+trailer
+<< /Size 10 /Root 9 0 R >>
+startxref
+7791
+%%EOF

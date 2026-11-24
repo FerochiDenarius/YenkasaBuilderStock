@@ -197,6 +197,60 @@ def test_separate_branch_roles_receive_only_authorized_permissions():
     assert client.post('/api/branch-actions/material_release', headers={'X-User-Id': created['STOCK_MANAGER']['userId'], 'X-Branch-Id': branch_id}).status_code == 200
     assert client.post('/api/branch-actions/payments', headers={'X-User-Id': created['STOCK_MANAGER']['userId'], 'X-Branch-Id': branch_id}).status_code == 403
 
+def test_branch_manager_controls_sync_settings_and_owner_sees_branch_status(monkeypatch):
+    monkeypatch.delenv('DATABASE_URL', raising=False)
+    monkeypatch.delenv('SYNC_BACKEND_URL', raising=False)
+    client = TestClient(app)
+    branch = client.post('/api/branches', json={
+        'name': 'Sync Validation Branch', 'code': 'SYNCV', 'location': 'Accra',
+        'manager': 'Sync Manager', 'managerUsername': 'sync.manager',
+        'managerPassword': 'SyncManagerPass123',
+    }, headers={'X-Role': 'HQ_ADMIN'}).json()
+    branch_id = branch['id']
+    manager = client.post('/api/auth/login', json={
+        'branchId': branch_id, 'username': 'sync.manager',
+        'password': 'SyncManagerPass123', 'loginRole': 'BRANCH_MANAGER',
+    }).json()
+    headers = {'X-User-Id': manager['userId'], 'X-Branch-Id': branch_id}
+
+    initial = client.get(f'/api/sync/status?branchId={branch_id}', headers=headers)
+    assert initial.status_code == 200
+    assert initial.json()['syncState'] == 'NEVER_SYNCED'
+    disabled = client.put('/api/sync/settings', headers=headers, json={
+        'branchId': branch_id, 'onlineEnabled': False,
+        'autoSyncEnabled': False, 'intervalMinutes': 30,
+    })
+    assert disabled.status_code == 200
+    assert disabled.json()['onlineEnabled'] is False
+    offline_run = client.post('/api/sync/run', headers=headers, json={'branchId': branch_id})
+    assert offline_run.status_code == 200
+    assert offline_run.json()['syncState'] == 'OFFLINE'
+    assert offline_run.json()['synced'] is False
+
+    enabled = client.put('/api/sync/settings', headers=headers, json={
+        'branchId': branch_id, 'onlineEnabled': True,
+        'autoSyncEnabled': True, 'intervalMinutes': 15,
+    })
+    assert enabled.status_code == 200
+    cloud_run = client.post('/api/sync/run', headers=headers, json={'branchId': branch_id})
+    assert cloud_run.status_code == 200
+    assert cloud_run.json()['syncState'] == 'CLOUD_NOT_CONFIGURED'
+
+    sales_staff = client.post('/api/staff', headers=headers, json={
+        'branchId': branch_id, 'username': 'sync.sales', 'fullName': 'Sync Sales',
+        'role': 'SALES_OFFICER', 'password': 'SyncSalesPass123',
+    }).json()
+    denied = client.get(f'/api/sync/status?branchId={branch_id}', headers={
+        'X-User-Id': sales_staff['id'], 'X-Branch-Id': branch_id,
+    })
+    assert denied.status_code == 403
+
+    activity = client.get('/api/owner/activity', headers={'X-Role': 'HQ_ADMIN'})
+    assert activity.status_code == 200
+    sync_rows = [row for row in activity.json() if row['activityType'] == 'Branch Sync' and branch['name'] in row['details']]
+    assert sync_rows
+    assert 'Cloud Not Configured' in sync_rows[0]['details']
+
 def test_cashier_payment_workflow_is_branch_scoped_and_idempotent():
     client = TestClient(app)
     branch = client.post('/api/branches', json={

@@ -104,6 +104,19 @@ export interface OwnerActivity {
   createdAt: string;
   device: string;
 }
+export interface SyncStatus {
+  branchId: string;
+  deviceId: string;
+  onlineEnabled: boolean;
+  autoSyncEnabled: boolean;
+  intervalMinutes: number;
+  syncState: string;
+  lastSyncAt: string;
+  lastAttemptAt: string;
+  lastError: string;
+  pendingCount: number;
+  updatedAt: string;
+}
 export interface Branch {
   id: string;
   name: string;

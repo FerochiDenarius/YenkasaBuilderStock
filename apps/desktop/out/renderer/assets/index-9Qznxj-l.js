@@ -7256,6 +7256,20 @@ const Clipboard = createLucideIcon("Clipboard", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
+const CloudOff = createLucideIcon("CloudOff", [
+  ["path", { d: "m2 2 20 20", key: "1ooewy" }],
+  ["path", { d: "M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193", key: "yfwify" }],
+  [
+    "path",
+    { d: "M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07", key: "jlfiyv" }
+  ]
+]);
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
 const Cloud = createLucideIcon("Cloud", [
   ["path", { d: "M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z", key: "p7xjir" }]
 ]);
@@ -7945,6 +7959,25 @@ const authApi = {
     method: "POST",
     body: JSON.stringify({ userId })
   })
+};
+const syncApi = {
+  status: (branchId, userId) => request(
+    `/api/sync/status?branchId=${encodeURIComponent(branchId)}`,
+    { headers: { "X-User-Id": userId, "X-Branch-Id": branchId } }
+  ),
+  saveSettings: (branchId, userId, payload) => request("/api/sync/settings", {
+    method: "PUT",
+    headers: { "X-User-Id": userId, "X-Branch-Id": branchId },
+    body: JSON.stringify({ branchId, ...payload })
+  }),
+  run: (branchId, userId) => request(
+    "/api/sync/run",
+    {
+      method: "POST",
+      headers: { "X-User-Id": userId, "X-Branch-Id": branchId },
+      body: JSON.stringify({ branchId })
+    }
+  )
 };
 const staffApi = {
   companyUsers: () => request("/api/company-users", {
@@ -10750,6 +10783,7 @@ function OwnerActivitySection() {
                 /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Branch" }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "User Management" }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "System Settings" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Branch Sync" }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Logout" })
               ]
             }
@@ -14844,6 +14878,173 @@ function PurchasingPage({ session }) {
     ] })
   ] });
 }
+const emptyStatus = {
+  branchId: "",
+  deviceId: "local-device",
+  onlineEnabled: true,
+  autoSyncEnabled: true,
+  intervalMinutes: 15,
+  syncState: "NEVER_SYNCED",
+  lastSyncAt: "",
+  lastAttemptAt: "",
+  lastError: "",
+  pendingCount: 0,
+  updatedAt: ""
+};
+function SyncSettingsPage({ session }) {
+  const [value, setValue] = reactExports.useState(emptyStatus);
+  const [saving, setSaving] = reactExports.useState(false);
+  const [syncing, setSyncing] = reactExports.useState(false);
+  const [message, setMessage] = reactExports.useState("");
+  const [error, setError] = reactExports.useState("");
+  const load = () => {
+    setError("");
+    syncApi.status(session.branchId, session.userId).then(setValue).catch(
+      (reason) => setError(
+        reason instanceof Error ? reason.message : "Unable to load synchronization settings."
+      )
+    );
+  };
+  reactExports.useEffect(load, [session.branchId, session.userId]);
+  const save = async () => {
+    setSaving(true);
+    setMessage("");
+    setError("");
+    try {
+      setValue(
+        await syncApi.saveSettings(session.branchId, session.userId, {
+          onlineEnabled: value.onlineEnabled,
+          autoSyncEnabled: value.autoSyncEnabled,
+          intervalMinutes: value.intervalMinutes
+        })
+      );
+      setMessage("Synchronization settings saved locally.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to save settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  const run = async () => {
+    setSyncing(true);
+    setMessage("");
+    setError("");
+    try {
+      const result = await syncApi.run(session.branchId, session.userId);
+      setValue(result);
+      setMessage(result.message);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to start synchronization.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sync-settings-page", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "reference-card sync-settings-heading", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "owner-section-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { size: 28 }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Database Synchronization" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Control this branch device's online synchronization policy. Local SQLite operations remain available when offline." })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "reference-card sync-status-card", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sync-status-topline", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "sync-label", children: "Current status" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { "data-testid": "sync-state", children: value.syncState.replaceAll("_", " ") })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: `sync-state-pill sync-${value.syncState.toLowerCase()}`, children: [
+          value.onlineEnabled ? /* @__PURE__ */ jsxRuntimeExports.jsx(Wifi, { size: 14 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(CloudOff, { size: 14 }),
+          value.onlineEnabled ? "Online mode enabled" : "Offline mode enforced"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sync-stat-grid", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: "Pending local records" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: value.pendingCount })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: "Last successful sync" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: formatSyncDate(value.lastSyncAt) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: "Last attempt" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: formatSyncDate(value.lastAttemptAt) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: "Device" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: value.deviceId })
+        ] })
+      ] }),
+      value.lastError && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "sync-warning", role: "status", children: value.lastError })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "reference-card sync-settings-card", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Branch Manager Controls" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "sync-toggle-row", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Allow online synchronization" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: "Turn this off to keep the device in controlled offline mode." })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            "data-testid": "sync-online-toggle",
+            type: "checkbox",
+            checked: value.onlineEnabled,
+            onChange: (event) => setValue((current) => ({ ...current, onlineEnabled: event.target.checked }))
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "sync-toggle-row", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Automatic sync when available" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: "Manual Sync Now remains available to the Branch Manager." })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            "data-testid": "sync-auto-toggle",
+            type: "checkbox",
+            checked: value.autoSyncEnabled,
+            onChange: (event) => setValue((current) => ({ ...current, autoSyncEnabled: event.target.checked }))
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "sync-interval-field", children: [
+        "Sync interval (minutes)",
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            "data-testid": "sync-interval",
+            type: "number",
+            min: 5,
+            max: 1440,
+            step: 5,
+            value: value.intervalMinutes,
+            onChange: (event) => setValue((current) => ({ ...current, intervalMinutes: Number(event.target.value) }))
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sync-actions", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "outline", type: "button", "data-testid": "sync-now", disabled: syncing, onClick: run, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCw, { size: 15 }),
+          syncing ? "Checking…" : "Sync Now"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "primary-button", type: "button", "data-testid": "sync-save", disabled: saving, onClick: save, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Save, { size: 15 }),
+          saving ? "Saving…" : "Save Settings"
+        ] })
+      ] }),
+      message && /* @__PURE__ */ jsxRuntimeExports.jsx("small", { className: "save-status", role: "status", children: message }),
+      error && /* @__PURE__ */ jsxRuntimeExports.jsx("small", { className: "save-error", role: "alert", children: error })
+    ] })
+  ] });
+}
+function formatSyncDate(value) {
+  if (!value) return "Never";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+}
 const inventory = [
   {
     sku: "BLK-001",
@@ -14945,7 +15146,8 @@ const protectedOperationalLabels = /* @__PURE__ */ new Set([
   ...navItems.map(([, label]) => label),
   "Staff Accounts",
   "Dashboard Preferences",
-  "Owner Login"
+  "Owner Login",
+  "Sync Settings"
 ]);
 const navigationPermission = {
   "Sales & Invoices": "sales",
@@ -14989,6 +15191,8 @@ function Dashboard() {
     if (label === "Reports") {
       return branchSession.permissions.some((permission) => permission.endsWith("_reports") || permission === "financial_reports");
     }
+    if (label === "Sync Settings") return branchSession.role === "BRANCH_MANAGER";
+    if (label === "Dashboard Preferences") return true;
     if (label === "Staff Accounts") return branchSession.role === "BRANCH_MANAGER";
     const required = navigationPermission[label];
     if (required) return branchSession.permissions.includes(required);
@@ -14997,6 +15201,7 @@ function Dashboard() {
   const visibleNav = branchSession ? navItems.filter(([, label]) => hasBranchAccess(label)) : [];
   const visibleSetup = branchSession ? [] : setupItems;
   const branchSetup = branchSession?.role === "BRANCH_MANAGER" ? [[Users, "Staff Accounts"]] : [];
+  const branchSettings = branchSession?.role === "BRANCH_MANAGER" ? ["Dashboard Preferences", "Sync Settings"] : ["Dashboard Preferences"];
   const logout = () => {
     const userId = branchSession?.userId;
     sessionStorage.removeItem("yenkasa-session");
@@ -15074,17 +15279,18 @@ function Dashboard() {
                 label
               )) }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "nav-section-label", children: "BRANCH SETTINGS" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "setup-subnav", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "setup-subnav", children: branchSettings.map((label) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
                 "button",
                 {
-                  className: active === "Dashboard Preferences" ? "selected" : "",
-                  onClick: () => navigate("Dashboard Preferences"),
+                  className: active === label ? "selected" : "",
+                  onClick: () => navigate(label),
                   children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(Settings, { size: 16 }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Dashboard Preferences" })
+                    label === "Sync Settings" ? /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { size: 16 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Settings, { size: 16 }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: label })
                   ]
-                }
-              ) }),
+                },
+                label
+              )) }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "nav-section-label", children: "OWNER ACCOUNT" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "setup-subnav", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
                 "button",
@@ -15192,7 +15398,7 @@ function Dashboard() {
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "placeholder-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LockKeyhole, {}) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Access restricted" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Your Branch Manager has not assigned this module to your account." })
-          ] }) : active === "Sales & Invoices" && branchSession && hasBranchAccess("Sales & Invoices") ? /* @__PURE__ */ jsxRuntimeExports.jsx(SalesPage, { session: branchSession }) : active === "Cashier & Payments" && branchSession && hasBranchAccess("Cashier & Payments") ? /* @__PURE__ */ jsxRuntimeExports.jsx(CashierPage, { session: branchSession }) : active === "Inventory" && branchSession && hasBranchAccess("Inventory") ? /* @__PURE__ */ jsxRuntimeExports.jsx(InventoryPage, { session: branchSession }) : active === "Purchasing" && branchSession && hasBranchAccess("Purchasing") ? /* @__PURE__ */ jsxRuntimeExports.jsx(PurchasingPage, { session: branchSession }) : active === "Material Release" && branchSession && hasBranchAccess("Material Release") ? /* @__PURE__ */ jsxRuntimeExports.jsx(MaterialReleasePage, { session: branchSession }) : protectedOperationalLabels.has(active) && !branchSession ? /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "placeholder-page", role: "alert", children: [
+          ] }) : active === "Sales & Invoices" && branchSession && hasBranchAccess("Sales & Invoices") ? /* @__PURE__ */ jsxRuntimeExports.jsx(SalesPage, { session: branchSession }) : active === "Cashier & Payments" && branchSession && hasBranchAccess("Cashier & Payments") ? /* @__PURE__ */ jsxRuntimeExports.jsx(CashierPage, { session: branchSession }) : active === "Inventory" && branchSession && hasBranchAccess("Inventory") ? /* @__PURE__ */ jsxRuntimeExports.jsx(InventoryPage, { session: branchSession }) : active === "Purchasing" && branchSession && hasBranchAccess("Purchasing") ? /* @__PURE__ */ jsxRuntimeExports.jsx(PurchasingPage, { session: branchSession }) : active === "Material Release" && branchSession && hasBranchAccess("Material Release") ? /* @__PURE__ */ jsxRuntimeExports.jsx(MaterialReleasePage, { session: branchSession }) : active === "Sync Settings" && branchSession && branchSession.role === "BRANCH_MANAGER" ? /* @__PURE__ */ jsxRuntimeExports.jsx(SyncSettingsPage, { session: branchSession }) : protectedOperationalLabels.has(active) && !branchSession ? /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "placeholder-page", role: "alert", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "placeholder-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LockKeyhole, {}) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Branch login required" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Sign in to an authorized branch account before opening branch operations." }),

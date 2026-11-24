@@ -39,6 +39,7 @@ import { CashierPage } from './CashierPage';
 import { MaterialReleasePage } from './MaterialReleasePage';
 import { InventoryPage } from './InventoryPage';
 import { PurchasingPage } from './PurchasingPage';
+import { SyncSettingsPage } from './SyncSettingsPage';
 import { salesApi } from './api';
 import type { AuthSession, SaleRecord, SalesProduct } from '@yenkasa/contracts';
 
@@ -144,6 +145,7 @@ const protectedOperationalLabels = new Set([
   'Staff Accounts',
   'Dashboard Preferences',
   'Owner Login',
+  'Sync Settings',
 ]);
 const navigationPermission: Record<string, string | undefined> = {
   'Sales & Invoices': 'sales',
@@ -188,6 +190,8 @@ export function Dashboard() {
     if (label === 'Reports') {
       return branchSession.permissions.some((permission) => permission.endsWith('_reports') || permission === 'financial_reports');
     }
+    if (label === 'Sync Settings') return branchSession.role === 'BRANCH_MANAGER';
+    if (label === 'Dashboard Preferences') return true;
     if (label === 'Staff Accounts') return branchSession.role === 'BRANCH_MANAGER';
     const required = navigationPermission[label];
     if (required) return branchSession.permissions.includes(required);
@@ -201,6 +205,10 @@ export function Dashboard() {
     branchSession?.role === 'BRANCH_MANAGER'
       ? [[Users, 'Staff Accounts'] as [LucideIcon, string]]
       : [];
+  const branchSettings =
+    branchSession?.role === 'BRANCH_MANAGER'
+      ? ['Dashboard Preferences', 'Sync Settings']
+      : ['Dashboard Preferences'];
   const logout = () => {
     const userId = branchSession?.userId;
     sessionStorage.removeItem('yenkasa-session');
@@ -281,15 +289,16 @@ export function Dashboard() {
               </div>
               <div className="nav-section-label">BRANCH SETTINGS</div>
               <div className="setup-subnav">
-                <button
-                  className={
-                    active === 'Dashboard Preferences' ? 'selected' : ''
-                  }
-                  onClick={() => navigate('Dashboard Preferences')}
-                >
-                  <Settings size={16} />
-                  <span>Dashboard Preferences</span>
-                </button>
+                {branchSettings.map((label) => (
+                  <button
+                    className={active === label ? 'selected' : ''}
+                    key={label}
+                    onClick={() => navigate(label)}
+                  >
+                    {label === 'Sync Settings' ? <Cloud size={16} /> : <Settings size={16} />}
+                    <span>{label}</span>
+                  </button>
+                ))}
               </div>
               <div className="nav-section-label">OWNER ACCOUNT</div>
               <div className="setup-subnav">
@@ -418,6 +427,8 @@ export function Dashboard() {
           <PurchasingPage session={branchSession} />
         ) : active === 'Material Release' && branchSession && hasBranchAccess('Material Release') ? (
           <MaterialReleasePage session={branchSession} />
+        ) : active === 'Sync Settings' && branchSession && branchSession.role === 'BRANCH_MANAGER' ? (
+          <SyncSettingsPage session={branchSession} />
         ) : protectedOperationalLabels.has(active) && !branchSession ? (
           <section className="placeholder-page" role="alert">
             <div className="placeholder-icon">

@@ -153,6 +153,26 @@ class SyncOutboxModel(Base):
     created_at: Mapped[str] = mapped_column(String(40), default='')
     processed_at: Mapped[str] = mapped_column(String(40), default='')
 
+class SyncStatusModel(Base):
+    """Per-branch sync policy and last-attempt status.
+
+    This records truthful local state. A branch is never marked synced unless a
+    configured central sync service confirms the operation.
+    """
+    __tablename__ = 'sync_status'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    company_id: Mapped[int] = mapped_column(default=1, index=True)
+    branch_id: Mapped[str] = mapped_column(String(36), index=True, unique=True)
+    device_id: Mapped[str] = mapped_column(String(100), default='local-device')
+    online_enabled: Mapped[bool] = mapped_column(default=True)
+    auto_sync_enabled: Mapped[bool] = mapped_column(default=True)
+    interval_minutes: Mapped[int] = mapped_column(default=15)
+    sync_state: Mapped[str] = mapped_column(String(40), default='NEVER_SYNCED')
+    last_sync_at: Mapped[str] = mapped_column(String(40), default='')
+    last_attempt_at: Mapped[str] = mapped_column(String(40), default='')
+    last_error: Mapped[str] = mapped_column(Text, default='')
+    updated_at: Mapped[str] = mapped_column(String(40), default='')
+
 class DeviceActivation(Base):
     __tablename__ = 'device_activations'
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -431,6 +451,15 @@ class PurchasePayload(BaseModel):
     notes: str = ''
     items: list[PurchaseItemPayload]
 
+class SyncSettingsPayload(BaseModel):
+    branchId: str
+    onlineEnabled: bool = True
+    autoSyncEnabled: bool = True
+    intervalMinutes: int = 15
+
+class SyncRunPayload(BaseModel):
+    branchId: str
+
 app = FastAPI(title='YenkasaBuildersStock Local API')
 app.add_middleware(CORSMiddleware, allow_origins=['null', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174', 'file://'], allow_methods=['GET', 'PUT', 'POST', 'PATCH', 'OPTIONS'], allow_headers=['Content-Type', 'X-Role', 'X-User-Id', 'X-Branch-Id', 'X-Device-Id'])
 
@@ -645,7 +674,75 @@ def owner_activity(request: Request) -> list[dict]:
     }
     with Session(engine) as session:
         rows = session.scalars(select(AuditLog).where(AuditLog.company_id == 1).order_by(AuditLog.created_at.desc())).all()
-        return [{'id': row.id, 'activityType': labels.get(row.action, 'System Settings'), 'action': row.action, 'details': row.action.replace('_', ' ').capitalize(), 'createdAt': row.created_at, 'device': 'Local SQLite · Electron'} for row in rows]
+        activities = [{'id': row.id, 'activityType': labels.get(row.action, 'System Settings'), 'action': row.action, 'details': row.action.replace('_', ' ').capitalize(), 'createdAt': row.created_at, 'device': 'Local SQLite · Electron'} for row in rows]
+        branches = session.scalars(select(Branch).where(Branch.company_id == 1).order_by(Branch.name)).all()
+        for branch in branches:
+            status = session.scalar(select(SyncStatusModel).where(SyncStatusModel.company_id == 1, SyncStatusModel.branch_id == branch.id))
+            pending = len(session.scalars(select(SyncOutboxModel).where(SyncOutboxModel.company_id == 1, SyncOutboxModel.branch_id == branch.id, SyncOutboxModel.status == 'PENDING')).all())
+            state = status.sync_state if status else 'NEVER_SYNCED'
+            activities.append({
+                'id': f'sync-status-{branch.id}',
+                'activityType': 'Branch Sync',
+                'action': 'branch_sync_status',
+                'details': f'{branch.name}: {state.replace("_", " ").title()} · {pending} pending record(s)',
+                'createdAt': (status.last_sync_at or status.last_attempt_at or status.updated_at) if status else '',
+                'device': f'{branch.name} · {status.device_id if status else "local device"}',
+            })
+        return sorted(activities, key=lambda item: item['createdAt'] or '', reverse=True)
+
+@app.get('/api/sync/status')
+def get_sync_status(request: Request, branchId: str = '') -> dict:
+    branch_id = branchId or request.headers.get('x-branch-id', '')
+    actor = require_actor(request, {'BRANCH_MANAGER'}, branch_id)
+    with Session(engine) as session:
+        status = ensure_sync_status(session, actor.company_id, actor.branch_id, request.headers.get('x-device-id', '') or 'local-device')
+        session.commit()
+        return to_sync_status_payload(session, status)
+
+@app.put('/api/sync/settings')
+def save_sync_settings(payload: SyncSettingsPayload, request: Request) -> dict:
+    actor = require_actor(request, {'BRANCH_MANAGER'}, payload.branchId)
+    if payload.intervalMinutes < 5 or payload.intervalMinutes > 1440:
+        raise HTTPException(422, 'Sync interval must be between 5 and 1440 minutes')
+    with Session(engine) as session:
+        status = ensure_sync_status(session, actor.company_id, actor.branch_id, request.headers.get('x-device-id', '') or 'local-device')
+        status.online_enabled = payload.onlineEnabled
+        status.auto_sync_enabled = payload.autoSyncEnabled
+        status.interval_minutes = payload.intervalMinutes
+        status.sync_state = 'READY' if payload.onlineEnabled else 'OFFLINE'
+        status.last_error = ''
+        status.updated_at = now_iso()
+        session.add(AuditLog(id=str(uuid4()), company_id=actor.company_id, branch_id=actor.branch_id, actor_user_id=actor.id, action='sync_settings_updated', target_user_id='', created_at=now_iso()))
+        session.commit()
+        session.refresh(status)
+        return to_sync_status_payload(session, status)
+
+@app.post('/api/sync/run')
+def run_sync(payload: SyncRunPayload, request: Request) -> dict:
+    actor = require_actor(request, {'BRANCH_MANAGER'}, payload.branchId)
+    with Session(engine) as session:
+        status = ensure_sync_status(session, actor.company_id, actor.branch_id, request.headers.get('x-device-id', '') or 'local-device')
+        status.last_attempt_at = now_iso()
+        status.updated_at = status.last_attempt_at
+        pending = len(session.scalars(select(SyncOutboxModel).where(SyncOutboxModel.company_id == actor.company_id, SyncOutboxModel.branch_id == actor.branch_id, SyncOutboxModel.status == 'PENDING')).all())
+        if not status.online_enabled:
+            status.sync_state = 'OFFLINE'
+            status.last_error = 'Online synchronization is disabled for this branch device.'
+            message = 'Sync skipped because online synchronization is disabled.'
+        elif not (os.getenv('SYNC_BACKEND_URL', '').strip() or os.getenv('DATABASE_URL', '').strip()):
+            status.sync_state = 'CLOUD_NOT_CONFIGURED'
+            status.last_error = 'Central synchronization service is not configured on this installation.'
+            message = 'No central synchronization service is configured; local data remains safe in SQLite.'
+        else:
+            status.sync_state = 'PENDING_CLOUD'
+            status.last_error = 'Central sync worker is not enabled in this offline-first release.'
+            message = 'The sync request is queued for the central sync worker.'
+        session.add(AuditLog(id=str(uuid4()), company_id=actor.company_id, branch_id=actor.branch_id, actor_user_id=actor.id, action='sync_attempted', target_user_id='', created_at=now_iso()))
+        session.commit()
+        session.refresh(status)
+        result = to_sync_status_payload(session, status)
+        result.update({'message': message, 'pendingCount': pending, 'synced': False})
+        return result
 
 @app.get('/api/branches')
 def list_branches() -> list[dict]:
@@ -1255,6 +1352,33 @@ def to_sale_payload(record: SaleRecordModel) -> dict:
 
 def to_device_payload(device: DeviceActivation, branch_name: str) -> dict:
     return {'id': device.id, 'branchId': device.branch_id, 'branchName': branch_name, 'deviceName': device.device_name, 'activationCode': device.activation_code, 'deviceType': device.device_type, 'validity': device.validity, 'active': device.active, 'createdAt': device.created_at}
+
+def ensure_sync_status(session: Session, company_id: int, branch_id: str, device_id: str = 'local-device') -> SyncStatusModel:
+    status = session.scalar(select(SyncStatusModel).where(SyncStatusModel.company_id == company_id, SyncStatusModel.branch_id == branch_id))
+    if status is None:
+        status = SyncStatusModel(id=str(uuid4()), company_id=company_id, branch_id=branch_id, device_id=device_id, sync_state='NEVER_SYNCED', updated_at=now_iso())
+        session.add(status)
+        session.flush()
+    elif device_id and status.device_id != device_id:
+        status.device_id = device_id
+        status.updated_at = now_iso()
+    return status
+
+def to_sync_status_payload(session: Session, status: SyncStatusModel) -> dict:
+    pending = len(session.scalars(select(SyncOutboxModel).where(SyncOutboxModel.company_id == status.company_id, SyncOutboxModel.branch_id == status.branch_id, SyncOutboxModel.status == 'PENDING')).all())
+    return {
+        'branchId': status.branch_id,
+        'deviceId': status.device_id,
+        'onlineEnabled': status.online_enabled,
+        'autoSyncEnabled': status.auto_sync_enabled,
+        'intervalMinutes': status.interval_minutes,
+        'syncState': status.sync_state,
+        'lastSyncAt': status.last_sync_at,
+        'lastAttemptAt': status.last_attempt_at,
+        'lastError': status.last_error,
+        'pendingCount': pending,
+        'updatedAt': status.updated_at,
+    }
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()

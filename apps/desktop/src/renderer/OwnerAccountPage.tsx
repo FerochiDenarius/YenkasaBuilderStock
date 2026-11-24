@@ -975,6 +975,7 @@ function OwnerActivitySection() {
               <option>Branch</option>
               <option>User Management</option>
               <option>System Settings</option>
+              <option>Branch Sync</option>
               <option>Logout</option>
             </select>
           </label>

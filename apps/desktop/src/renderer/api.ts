@@ -12,6 +12,7 @@ import type {
   SaleRecord,
   SalesProduct,
   StaffAccount,
+  SyncStatus,
 } from '@yenkasa/contracts';
 export interface DeviceRecord {
   id: string;
@@ -135,6 +136,37 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ userId }),
     }),
+};
+
+export const syncApi = {
+  status: (branchId: string, userId: string) =>
+    request<SyncStatus>(
+      `/api/sync/status?branchId=${encodeURIComponent(branchId)}`,
+      { headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId } },
+    ),
+  saveSettings: (
+    branchId: string,
+    userId: string,
+    payload: {
+      onlineEnabled: boolean;
+      autoSyncEnabled: boolean;
+      intervalMinutes: number;
+    },
+  ) =>
+    request<SyncStatus>('/api/sync/settings', {
+      method: 'PUT',
+      headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
+      body: JSON.stringify({ branchId, ...payload }),
+    }),
+  run: (branchId: string, userId: string) =>
+    request<SyncStatus & { message: string; synced: boolean }>(
+      '/api/sync/run',
+      {
+        method: 'POST',
+        headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
+        body: JSON.stringify({ branchId }),
+      },
+    ),
 };
 
 export const staffApi = {
