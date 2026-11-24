@@ -27,7 +27,7 @@ export interface DeviceRecord {
 }
 
 export const LOCAL_API_URL =
-  import.meta.env.VITE_LOCAL_API_URL ?? 'http://127.0.0.1:8765';
+  window.desktopBridge?.apiBaseUrl ?? import.meta.env.VITE_LOCAL_API_URL ?? 'http://127.0.0.1:8765';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${LOCAL_API_URL}${path}`, {

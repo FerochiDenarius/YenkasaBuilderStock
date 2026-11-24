@@ -5,6 +5,7 @@ declare global {
     desktopBridge?: {
       platform: string;
       version: string;
+      apiBaseUrl: string;
       print: () => Promise<boolean>;
       exportPdf: (
         requestedPath?: string,

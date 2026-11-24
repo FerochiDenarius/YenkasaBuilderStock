@@ -2,9 +2,11 @@ import { app, BrowserWindow, dialog, ipcMain, safeStorage } from 'electron';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:net';
 import { join } from 'node:path';
 
 let localApi: ChildProcess | undefined;
+let localApiPort = 8765;
 
 type CloudConfigInput = {
   projectUrl: string;
@@ -72,7 +74,7 @@ async function decryptCloudPassword(config: StoredCloudConfig | null): Promise<s
 }
 
 async function cloudApiRequest(path: string, payload: CloudConfigInput) {
-  const response = await fetch(`http://127.0.0.1:${process.env.LOCAL_API_PORT ?? '8765'}${path}`, {
+  const response = await fetch(`http://127.0.0.1:${localApiPort}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Role': 'HQ_ADMIN' },
     body: JSON.stringify(payload),
@@ -126,7 +128,7 @@ ipcMain.handle('cloud:save-config', async (_event, input: CloudConfigInput) => {
   await mkdir(app.getPath('userData'), { recursive: true });
   await writeFile(cloudConfigPath(), JSON.stringify(stored, null, 2), { encoding: 'utf8', mode: 0o600 });
   await chmod(cloudConfigPath(), 0o600);
-  restartLocalApi();
+  await restartLocalApi();
   return { ok: true, passwordConfigured: true };
 });
 
@@ -172,7 +174,26 @@ ipcMain.handle(
   },
 );
 
-function startLocalApi(): void {
+async function findAvailableLocalApiPort(): Promise<number> {
+  const candidates = [...new Set([localApiPort, 8765, 18765, 0])];
+  for (const candidate of candidates) {
+    const availablePort = await new Promise<number | null>((resolve) => {
+      const probe = createServer();
+      probe.once('error', () => resolve(null));
+      probe.listen({ host: '127.0.0.1', port: candidate }, () => {
+        const address = probe.address();
+        const port = typeof address === 'object' && address ? address.port : null;
+        probe.close(() => resolve(port));
+      });
+    });
+    if (availablePort !== null) return availablePort;
+  }
+  throw new Error('No local port is available for the Yenkasa backend.');
+}
+
+async function startLocalApi(): Promise<void> {
+  localApiPort = await findAvailableLocalApiPort();
+  process.env.LOCAL_API_PORT = String(localApiPort);
   const isPackaged = app.isPackaged;
   const servicePath = isPackaged
     ? join(process.resourcesPath, 'local-api')
@@ -191,7 +212,7 @@ function startLocalApi(): void {
         '--host',
         '127.0.0.1',
         '--port',
-        '8765',
+        String(localApiPort),
       ];
 
   if (isPackaged && !existsSync(python)) return;
@@ -200,7 +221,7 @@ function startLocalApi(): void {
     env: {
       ...process.env,
       LOCAL_API_HOST: '127.0.0.1',
-      LOCAL_API_PORT: '8765',
+      LOCAL_API_PORT: String(localApiPort),
       ...cloudEnvironment(),
       ...(isPackaged
         ? { YENKASA_DATA_DIR: join(app.getPath('userData'), 'data') }
@@ -254,9 +275,9 @@ function decryptCloudPasswordSync(config: StoredCloudConfig | null): string {
   }
 }
 
-function restartLocalApi(): void {
+async function restartLocalApi(): Promise<void> {
   stopLocalApi();
-  startLocalApi();
+  await startLocalApi();
 }
 
 function stopLocalApi(): void {
@@ -290,7 +311,8 @@ async function createWindow(): Promise<void> {
 }
 
 app.whenReady().then(async () => {
-  startLocalApi();
+  await startLocalApi();
+  process.env.LOCAL_API_PORT = String(localApiPort);
   await createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) void createWindow();

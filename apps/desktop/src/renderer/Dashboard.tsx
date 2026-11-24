@@ -218,7 +218,7 @@ export function Dashboard() {
     setActive('Branch Login');
     if (userId)
       fetch(
-        `${import.meta.env.VITE_LOCAL_API_URL ?? 'http://127.0.0.1:8765'}/api/auth/logout`,
+        `${window.desktopBridge?.apiBaseUrl ?? import.meta.env.VITE_LOCAL_API_URL ?? 'http://127.0.0.1:8765'}/api/auth/logout`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Building2, CloudOff, LayoutDashboard, LockKeyhole, Palette, Save, Upload } from 'lucide-react';
 import type { CompanyRegistration } from '@yenkasa/contracts';
 
-const API = import.meta.env.VITE_LOCAL_API_URL ?? 'http://127.0.0.1:8765';
+const API = window.desktopBridge?.apiBaseUrl ?? import.meta.env.VITE_LOCAL_API_URL ?? 'http://127.0.0.1:8765';
 const emptyForm: CompanyRegistration = { registeredName: '', tradingName: '', category: '', email: '', phone: '', country: 'Ghana', address: '', currency: 'GHS', timezone: 'Africa/Accra', brandColor: '#123b70' };
 
 export function App() {

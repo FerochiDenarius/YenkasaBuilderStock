@@ -7917,7 +7917,7 @@ const X = createLucideIcon("X", [
   ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
   ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
 ]);
-const LOCAL_API_URL = "http://127.0.0.1:8765";
+const LOCAL_API_URL = window.desktopBridge?.apiBaseUrl ?? void 0 ?? "http://127.0.0.1:8765";
 async function request(path, init) {
   const response = await fetch(`${LOCAL_API_URL}${path}`, {
     ...init,
@@ -15453,7 +15453,7 @@ function Dashboard() {
     setActive("Branch Login");
     if (userId)
       fetch(
-        `${"http://127.0.0.1:8765"}/api/auth/logout`,
+        `${window.desktopBridge?.apiBaseUrl ?? void 0 ?? "http://127.0.0.1:8765"}/api/auth/logout`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
