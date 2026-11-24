@@ -745,7 +745,16 @@ def test_cloud_connection(payload: CloudConnectionPayload, request: Request) -> 
     except Exception as exc:
         # Do not return the driver error because it can contain connection details.
         print(f'[cloud-test] Supabase connection failed: {type(exc).__name__}')
-        raise HTTPException(503, 'Supabase connection failed. Check the project URI, password, network and SSL settings.') from None
+        error_text = str(exc).lower()
+        if any(term in error_text for term in ('could not translate host name', 'nodename nor servname', 'name or service not known')):
+            safe_message = 'Supabase host could not be resolved. Use the exact Session Pooler URI from Supabase Connect.'
+        elif any(term in error_text for term in ('timeout', 'timed out')):
+            safe_message = 'Supabase connection timed out. Check the pooler host, port 6543 and network access.'
+        elif any(term in error_text for term in ('password authentication failed', 'authentication failed')):
+            safe_message = 'Supabase rejected the database credentials. Reset or re-enter the database password.'
+        else:
+            safe_message = 'Supabase connection failed. Check the project URI, password, network and SSL settings.'
+        raise HTTPException(503, safe_message) from None
 
 @app.get('/api/sync/status')
 def get_sync_status(request: Request, branchId: str = '') -> dict:

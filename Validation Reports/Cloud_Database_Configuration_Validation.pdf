@@ -104,7 +104,7 @@ ET
 endstream
 endobj
 3 0 obj
-<< /Length 2782 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 2794 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -196,13 +196,13 @@ BT
 (completed | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-07 | Valid Supabase connection | Enter real project credentials and click Test) Tj
+(CLOUD-07 | Existing env connection | Test the configured backend DATABASE_URL without printing) Tj
 0 -11 Td
 /F1 8 Tf
-(Connection in packaged app | SELECT 1 succeeds | NOT TESTED; no authenticated connection) Tj
+(the secret | DNS resolution failed for the direct db host before authentication | FAIL; use) Tj
 0 -11 Td
 /F1 8 Tf
-(succeeded in this environment.) Tj
+(the exact Session Pooler URI.) Tj
 0 -11 Td
 /F1 8 Tf
 (CLOUD-08 | Secure persistence restart | Save valid configuration, restart packaged app, reopen) Tj
@@ -217,7 +217,7 @@ ET
 endstream
 endobj
 4 0 obj
-<< /Length 1836 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 1889 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -251,13 +251,13 @@ BT
 (UI, preload bridge and main-process secure storage path.) Tj
 0 -11 Td
 /F1 8 Tf
-(No fabricated Supabase success is reported. The valid-credential connection test remains) Tj
+(No fabricated Supabase success is reported. The configured env was tested with the password) Tj
 0 -11 Td
 /F1 8 Tf
-(pending until the exact working Supabase Session Pooler URI and password are entered in the) Tj
+(withheld; the direct db host failed DNS resolution before authentication. The Session Pooler) Tj
 0 -11 Td
 /F1 8 Tf
-(installed application.) Tj
+(URI remains to be tested.) Tj
 0 -11 Td
 /F1 8 Tf
 () Tj
@@ -285,10 +285,13 @@ BT
 (phases. A customer build must not ship central PostgreSQL administrator credentials.) Tj
 0 -11 Td
 /F1 8 Tf
-(Before production release, run a packaged macOS and Windows interactive test of safeStorage,) Tj
+(Before production release, replace the direct db host with the exact Supabase Session Pooler) Tj
 0 -11 Td
 /F1 8 Tf
-(then run the actual Supabase migration using the tested backend-only configuration.) Tj
+(URI, then run a packaged macOS and Windows interactive safeStorage test and the actual) Tj
+0 -11 Td
+/F1 8 Tf
+(Supabase migration.) Tj
 0 -11 Td
 /F1 8 Tf
 () Tj
@@ -317,14 +320,14 @@ xref
 0000000009 00000 n 
 0000000079 00000 n 
 0000002534 00000 n 
-0000005407 00000 n 
-0000007334 00000 n 
-0000007403 00000 n 
-0000007490 00000 n 
-0000007577 00000 n 
-0000007664 00000 n 
+0000005419 00000 n 
+0000007399 00000 n 
+0000007468 00000 n 
+0000007555 00000 n 
+0000007642 00000 n 
+0000007729 00000 n 
 trailer
 << /Size 10 /Root 9 0 R >>
 startxref
-7713
+7778
 %%EOF

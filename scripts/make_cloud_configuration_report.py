@@ -85,7 +85,7 @@ content = [
             'CLOUD-04 | Backend regression | Run services/local-api pytest | 15 passed | PASS',
             'CLOUD-05 | Renderer lint | Run npm run lint | Clean | PASS',
             'CLOUD-06 | Desktop build | Run npm run build:desktop | Electron Vite production build completed | PASS',
-            'CLOUD-07 | Valid Supabase connection | Enter real project credentials and click Test Connection in packaged app | SELECT 1 succeeds | NOT TESTED; no authenticated connection succeeded in this environment.',
+            'CLOUD-07 | Existing env connection | Test the configured backend DATABASE_URL without printing the secret | DNS resolution failed for the direct db host before authentication | FAIL; use the exact Session Pooler URI.',
             'CLOUD-08 | Secure persistence restart | Save valid configuration, restart packaged app, reopen page | Metadata restored and password remains masked | NOT TESTED interactively.',
         ]),
     ]),
@@ -93,12 +93,12 @@ content = [
         ('E. Proof of validation', [
             'The actual backend test suite executed 15 passing tests, including headquarters authorization and password non-disclosure checks for the cloud configuration endpoint.',
             'The actual desktop lint and production build completed after adding the Supabase configuration UI, preload bridge and main-process secure storage path.',
-            'No fabricated Supabase success is reported. The valid-credential connection test remains pending until the exact working Supabase Session Pooler URI and password are entered in the installed application.',
+            'No fabricated Supabase success is reported. The configured env was tested with the password withheld; the direct db host failed DNS resolution before authentication. The Session Pooler URI remains to be tested.',
         ]),
         ('F. Outstanding issues', [
             'This repository does not yet contain the separate multi-step installer shell shown in the reference image; the feature is available in the existing Company Setup shell as Cloud Database (Supabase).',
             'Actual cloud migration and SQLite-to-Supabase synchronization remain separate deployment phases. A customer build must not ship central PostgreSQL administrator credentials.',
-            'Before production release, run a packaged macOS and Windows interactive test of safeStorage, then run the actual Supabase migration using the tested backend-only configuration.',
+            'Before production release, replace the direct db host with the exact Supabase Session Pooler URI, then run a packaged macOS and Windows interactive safeStorage test and the actual Supabase migration.',
         ]),
     ]),
 ]
