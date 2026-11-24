@@ -42,7 +42,8 @@ import { InventoryPage } from './InventoryPage';
 import { PurchasingPage } from './PurchasingPage';
 import { SyncSettingsPage } from './SyncSettingsPage';
 import { CloudDatabaseSetupPage } from './CloudDatabaseSetupPage';
-import { companyApi, salesApi } from './api';
+import { companyApi, installationApi, salesApi, type InstallationStatus } from './api';
+import { InstallationWelcomePage } from './InstallationWelcomePage';
 import type { AuthSession, OwnerSession, SaleRecord, SalesProduct } from '@yenkasa/contracts';
 
 const inventory = [
@@ -179,12 +180,25 @@ export function Dashboard() {
       return null;
     }
   });
-  const [ownerSetupComplete, setOwnerSetupComplete] = useState(false);
   const [ownerStatusLoaded, setOwnerStatusLoaded] = useState(false);
-  const [initialInstallation, setInitialInstallation] = useState(false);
+  const [installationStatus, setInstallationStatus] = useState<InstallationStatus | null>(null);
+  const [initialSetupMode, setInitialSetupMode] = useState(false);
   useEffect(() => {
+    window.desktopBridge?.cloud.getConfig()
+      .then((config) => {
+        if (!config.passwordConfigured && !branchSession && !ownerSession) {
+          setActive('Cloud Database');
+          return;
+        }
+        return installationApi.status().then((status) => {
+          setInstallationStatus(status);
+          if (!branchSession && !ownerSession) {
+            setActive(status.state === 'CLOUD_UNAVAILABLE' ? 'Cloud Database' : 'Installation Welcome');
+          }
+        });
+      })
+      .catch(() => undefined);
     companyApi.get().then((company) => {
-      setInitialInstallation(!company);
       const root = document.documentElement;
       if (!company?.useBrandColours) {
         root.style.setProperty('--brand-primary', '#0b9438');
@@ -198,7 +212,7 @@ export function Dashboard() {
       root.style.setProperty('--brand-secondary', company?.secondaryColor || '#f7b500');
       root.style.setProperty('--brand-accent', company?.accentColor || '#d7263d');
     }).catch(() => undefined);
-  }, []);
+  }, [branchSession, ownerSession]);
   useEffect(() => {
     const sync = () => {
       try {
@@ -221,8 +235,8 @@ export function Dashboard() {
     ownerSync();
     fetch(`${window.desktopBridge?.apiBaseUrl ?? import.meta.env.VITE_LOCAL_API_URL ?? 'http://127.0.0.1:8765'}/api/owner/status`)
       .then((response) => response.ok ? response.json() : Promise.reject(new Error('Unable to read owner setup status')))
-      .then((status: { passwordSet: boolean }) => setOwnerSetupComplete(status.passwordSet))
-      .catch(() => setOwnerSetupComplete(false))
+      .then(() => undefined)
+      .catch(() => undefined)
       .finally(() => setOwnerStatusLoaded(true));
     window.addEventListener('yenkasa-session-changed', sync);
     window.addEventListener('yenkasa-owner-session-changed', ownerSync);
@@ -250,7 +264,7 @@ export function Dashboard() {
   // Cloud configuration is an installation step and must remain available
   // before the first company record is created. After that, Company Setup is
   // owner-authenticated once owner credentials have been configured.
-  const setupUnlocked = initialInstallation || !ownerSetupComplete || !!ownerSession;
+  const setupUnlocked = !!ownerSession || (initialSetupMode && installationStatus?.companyFound === false);
   const visibleSetup = !branchSession && setupUnlocked ? setupItems : [];
   const branchSetup =
     branchSession?.role === 'BRANCH_MANAGER'
@@ -290,12 +304,17 @@ export function Dashboard() {
   };
   const navigate = (page: string) => {
     if (!ownerStatusLoaded) return;
+    if (page === 'Installation Welcome') {
+      setActive(page);
+      setSidebarOpen(false);
+      return;
+    }
     if (page === 'Owner Login' && branchSession) {
       sessionStorage.removeItem('yenkasa-session');
       setBranchSession(null);
     }
     if (setupItems.some(([, label]) => label === page) && (!setupUnlocked || !!branchSession)) {
-      setActive('Owner Login');
+      setActive(installationStatus ? 'Installation Welcome' : 'Owner Login');
       return;
     }
     setActive(page);
@@ -489,7 +508,18 @@ export function Dashboard() {
             <div className="header-avatar">KO</div>
           </div>
         </header>
-        {active === 'Branch Login' && !branchSession ? (
+        {active === 'Installation Welcome' && !branchSession && !ownerSession && installationStatus ? (
+          <InstallationWelcomePage
+            status={installationStatus}
+            onOwnerLogin={() => navigate('Owner Login')}
+            onStaffLogin={() => navigate('Branch Login')}
+            onNewCompany={() => {
+              setInitialSetupMode(true);
+              setActive('Business Information');
+            }}
+            onDatabase={() => setActive('Cloud Database')}
+          />
+        ) : active === 'Branch Login' && !branchSession ? (
           <BranchLoginPage
             onAuthenticated={(session) => {
               sessionStorage.removeItem('yenkasa-owner-session');
@@ -552,7 +582,19 @@ export function Dashboard() {
             </button>
           </section>
         ) : active === 'Cloud Database' ? (
-          <CloudDatabaseSetupPage />
+          <CloudDatabaseSetupPage
+            onSaved={() => {
+              void installationApi.status().then((status) => {
+                setInstallationStatus(status);
+                if (!status.companyFound) {
+                  setInitialSetupMode(true);
+                  setActive('Business Information');
+                } else {
+                  setActive('Installation Welcome');
+                }
+              });
+            }}
+          />
         ) : canRenderSetup ? (
           <SetupPage page={active} onNavigate={setActive} />
         ) : setupItems.some(([, label]) => label === active) && (branchSession || !setupUnlocked) ? (

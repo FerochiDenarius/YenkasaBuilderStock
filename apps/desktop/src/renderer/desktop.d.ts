@@ -29,7 +29,6 @@ declare global {
           databaseName: string;
           databaseUser: string;
           databasePassword?: string;
-          ownerSession?: string;
         }) => Promise<{ ok: boolean }>;
         saveConfig: (payload: {
           projectUrl: string;
@@ -39,7 +38,6 @@ declare global {
           databaseName: string;
           databaseUser: string;
           databasePassword?: string;
-          ownerSession?: string;
         }) => Promise<{ ok: boolean; passwordConfigured: boolean }>;
       };
     };

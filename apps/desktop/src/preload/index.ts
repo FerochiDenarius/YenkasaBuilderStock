@@ -17,7 +17,6 @@ contextBridge.exposeInMainWorld('desktopBridge', {
       databaseName: string;
       databaseUser: string;
       databasePassword?: string;
-      ownerSession?: string;
     }) => ipcRenderer.invoke('cloud:test-config', payload),
     saveConfig: (payload: {
       projectUrl: string;
@@ -27,7 +26,6 @@ contextBridge.exposeInMainWorld('desktopBridge', {
       databaseName: string;
       databaseUser: string;
       databasePassword?: string;
-      ownerSession?: string;
     }) => ipcRenderer.invoke('cloud:save-config', payload),
   },
 });

@@ -59,6 +59,21 @@ export const companyApi = {
     }),
 };
 
+export type InstallationStatus = {
+  state: 'DATABASE_NOT_CONFIGURED' | 'CLOUD_CONNECTED_SCHEMA_PENDING' | 'COMPANY_NOT_REGISTERED' | 'COMPANY_REGISTERED' | 'CLOUD_UNAVAILABLE';
+  databaseConfigured: boolean;
+  cloudConnected: boolean;
+  companyFound: boolean;
+  schemaReady?: boolean;
+  companyId?: string;
+  registeredName?: string;
+  tradingName?: string;
+};
+
+export const installationApi = {
+  status: () => request<InstallationStatus>('/api/installation/status'),
+};
+
 export const ownerApi = {
   get: () => request<OwnerAccount | null>('/api/owner', { headers: ownerHeaders() }),
   save: (owner: OwnerAccount) =>

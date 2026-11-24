@@ -3,7 +3,7 @@
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 2 0 obj
-<< /Length 2395 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 2955 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -40,7 +40,22 @@ BT
 (installation instructions and deployment security guidance.) Tj
 0 -11 Td
 /F1 8 Tf
+(Lifecycle implementation: after a successful cloud configuration, /api/installation/status) Tj
+0 -11 Td
+/F1 8 Tf
+(determines whether the connected database is unregistered or already has a company.) Tj
+0 -11 Td
+/F1 8 Tf
+(InstallationWelcomePage presents Owner Login, Branch / Staff Login and Set Up New Company) Tj
+0 -11 Td
+/F1 8 Tf
+(without rendering protected setup navigation before authentication.) Tj
+0 -11 Td
+/F1 8 Tf
 (Relevant source files: apps/desktop/src/renderer/CloudDatabaseSetupPage.tsx;) Tj
+0 -11 Td
+/F1 8 Tf
+(apps/desktop/src/renderer/InstallationWelcomePage.tsx;) Tj
 0 -11 Td
 /F1 8 Tf
 (apps/desktop/src/renderer/Dashboard.tsx; apps/desktop/src/main/index.ts;) Tj
@@ -49,7 +64,10 @@ BT
 (apps/desktop/src/preload/index.ts; apps/desktop/src/renderer/desktop.d.ts;) Tj
 0 -11 Td
 /F1 8 Tf
-(services/local-api/app/main.py; services/local-api/requirements.txt; docs/distribution.md.) Tj
+(apps/desktop/src/renderer/api.ts; services/local-api/app/main.py;) Tj
+0 -11 Td
+/F1 8 Tf
+(services/local-api/requirements.txt; docs/distribution.md.) Tj
 0 -11 Td
 /F1 8 Tf
 () Tj
@@ -104,7 +122,7 @@ ET
 endstream
 endobj
 3 0 obj
-<< /Length 4246 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 5195 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -147,10 +165,13 @@ BT
 (trusted local backend process. React never receives the password back.) Tj
 0 -11 Td
 /F1 8 Tf
-(Replacing an already-saved cloud configuration requires an owner session in the Electron main) Tj
+(Saving or replacing a cloud configuration is independent of company owner authentication.) Tj
 0 -11 Td
 /F1 8 Tf
-(process; a first save on a clean installation does not require owner credentials.) Tj
+(Electron sends no owner session or HQ role header for these IPC calls; it validates the) Tj
+0 -11 Td
+/F1 8 Tf
+(connection first, then encrypts and stores the credentials with safeStorage.) Tj
 0 -11 Td
 /F1 8 Tf
 (The FastAPI endpoint validates HTTPS project URL, project reference and individual PostgreSQL) Tj
@@ -196,49 +217,73 @@ BT
 (registration | HTTP 422 useful validation error, not owner-auth failure | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-04 | Post-setup authorization | Create a company record, then request cloud) Tj
+(CLOUD-04 | Post-setup independence | Create a company record, then request cloud configuration) Tj
 0 -11 Td
 /F1 8 Tf
-(configuration without an owner session | HTTP 403 owner authentication required | PASS) Tj
+(without an owner session | HTTP 200; connectivity configuration remains independent of owner) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-05 | Test-only authorization | Call /api/cloud/test with the installation test header) Tj
+(authentication | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(after company setup | Connection fields are validated without the owner-lock error; no data is) Tj
+(CLOUD-05 | Authentication separation | Call /api/cloud/test and /api/cloud/configuration) Tj
 0 -11 Td
 /F1 8 Tf
-(saved | PASS) Tj
+(without an owner session | Read-only cloud operations are available without owner) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-06 | Secret disclosure | Inspect invalid cloud-test response | Submitted password absent) Tj
+(authentication | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-06 | Save/update authorization separation | Invoke Electron cloud:save-config with an) Tj
+0 -11 Td
+/F1 8 Tf
+(existing saved configuration and no owner session | Connection is revalidated and replacement) Tj
+0 -11 Td
+/F1 8 Tf
+(is encrypted and saved; no owner-auth error | PASS by source/build validation; interactive) Tj
+0 -11 Td
+/F1 8 Tf
+(safeStorage test pending) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-07 | Secret disclosure | Inspect invalid cloud-test response | Submitted password absent) Tj
 0 -11 Td
 /F1 8 Tf
 (from response body | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-07 | Backend regression | Run services/local-api pytest | 18 passed | PASS) Tj
+(CLOUD-08 | Backend regression | Run services/local-api pytest | 19 passed | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-08 | Renderer lint | Run npm run lint | Clean | PASS) Tj
+(CLOUD-09 | Renderer lint | Run npm run lint | Clean | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-09 | Desktop build | Run npm run build:desktop | Electron Vite production build) Tj
+(CLOUD-10 | Desktop build | Run npm run build:desktop | Electron Vite production build) Tj
 0 -11 Td
 /F1 8 Tf
 (completed | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-10 | Packaged API smoke test | Run the bundled local-api with an empty temporary data) Tj
+(CLOUD-11 | Packaged API build | Build the bundled local-api with the updated lifecycle) Tj
 0 -11 Td
 /F1 8 Tf
-(directory | Cloud configuration returned 200 before company setup; returned 403 after first) Tj
+(endpoint | PyInstaller build completed and produced the packaged local-api executable | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(company record | PASS) Tj
+(CLOUD-12 | Protected navigation gate | Start renderer with no owner or branch session after) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-11 | Existing env connection | Test the configured backend DATABASE_URL without printing) Tj
+(cloud status is available | Installation Welcome is shown; Company Setup pages are not) Tj
+0 -11 Td
+/F1 8 Tf
+(rendered or listed until initial setup is explicitly selected or owner login succeeds | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(by renderer build and source inspection; packaged interactive screenshot pending) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-13 | Existing env connection | Test the configured backend DATABASE_URL without printing) Tj
 0 -11 Td
 /F1 8 Tf
 (the secret | Direct db host could not be resolved before authentication | FAIL; use the exact) Tj
@@ -247,7 +292,7 @@ BT
 (Session Pooler host, username and port 5432 from Supabase Connect.) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-12 | Secure persistence restart | Save valid configuration, restart packaged app, reopen) Tj
+(CLOUD-14 | Secure persistence restart | Save valid configuration, restart packaged app, reopen) Tj
 0 -11 Td
 /F1 8 Tf
 (page | Metadata restored and password remains masked | NOT TESTED interactively.) Tj
@@ -259,7 +304,7 @@ ET
 endstream
 endobj
 4 0 obj
-<< /Length 2264 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 2386 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -281,28 +326,31 @@ BT
 (----------------------) Tj
 0 -11 Td
 /F1 8 Tf
-(The actual backend test suite executed 18 passing tests, including fresh-install cloud access,) Tj
+(The actual backend test suite executed 19 passing tests, including fresh-install cloud access,) Tj
 0 -11 Td
 /F1 8 Tf
-(post-company owner authorization and password non-disclosure checks for the cloud) Tj
+(post-company owner authorization, lifecycle status and password non-disclosure checks for the) Tj
 0 -11 Td
 /F1 8 Tf
-(configuration endpoint.) Tj
+(cloud configuration endpoint.) Tj
 0 -11 Td
 /F1 8 Tf
-(The actual bundled local API was launched against a new temporary SQLite data directory. The) Tj
+(The actual bundled local API build completed after adding the lifecycle status endpoint. The) Tj
 0 -11 Td
 /F1 8 Tf
-(real HTTP smoke test returned 200 before company setup and 403 after the first company record) Tj
+(renderer production build and lint completed after adding the access-selection view and) Tj
 0 -11 Td
 /F1 8 Tf
-(was created.) Tj
+(protected-navigation gate.) Tj
 0 -11 Td
 /F1 8 Tf
-(The actual desktop lint and production build completed after adding the Supabase configuration) Tj
+(The packaged macOS DMG was rebuilt at apps/desktop/release/YenkasaBuildersStock-0.1.0.dmg. It) Tj
 0 -11 Td
 /F1 8 Tf
-(UI, preload bridge and main-process secure storage path.) Tj
+(is unsigned in this development environment and requires interactive packaged) Tj
+0 -11 Td
+/F1 8 Tf
+(safeStorage/first-install testing before release.) Tj
 0 -11 Td
 /F1 8 Tf
 (No fabricated Supabase success is reported. The configured env was tested with the password) Tj
@@ -324,13 +372,13 @@ BT
 (---------------------) Tj
 0 -11 Td
 /F1 8 Tf
-(This repository does not yet contain the separate multi-step installer shell shown in the) Tj
+(The reference welcome/access selection is implemented inside the existing application shell;) Tj
 0 -11 Td
 /F1 8 Tf
-(reference image; the feature is available in the existing Company Setup shell as Cloud) Tj
+(the separate multi-step installer shell shown in the reference image is not yet a distinct) Tj
 0 -11 Td
 /F1 8 Tf
-(Database \(Supabase\).) Tj
+(installer product.) Tj
 0 -11 Td
 /F1 8 Tf
 (Actual cloud migration and SQLite-to-Supabase synchronization remain separate deployment) Tj
@@ -373,15 +421,15 @@ xref
 0000000000 65535 f 
 0000000009 00000 n 
 0000000079 00000 n 
-0000002565 00000 n 
-0000006902 00000 n 
-0000009257 00000 n 
-0000009326 00000 n 
-0000009413 00000 n 
-0000009500 00000 n 
-0000009587 00000 n 
+0000003125 00000 n 
+0000008411 00000 n 
+0000010888 00000 n 
+0000010957 00000 n 
+0000011044 00000 n 
+0000011131 00000 n 
+0000011218 00000 n 
 trailer
 << /Size 10 /Root 9 0 R >>
 startxref
-9636
+11267
 %%EOF

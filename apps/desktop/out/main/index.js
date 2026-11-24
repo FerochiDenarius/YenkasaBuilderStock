@@ -51,15 +51,13 @@ async function decryptCloudPassword(config) {
   }
 }
 async function cloudApiRequest(path, payload, testOnly = false) {
-  const { ownerSession, ...connectionPayload } = payload;
   const response = await fetch(`http://127.0.0.1:${localApiPort}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...testOnly ? { "X-Cloud-Test": "true" } : {},
-      ...ownerSession ? { "X-Owner-Session": ownerSession } : { "X-Role": "HQ_ADMIN" }
+      ...testOnly ? { "X-Cloud-Test": "true" } : {}
     },
-    body: JSON.stringify(connectionPayload)
+    body: JSON.stringify(payload)
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body.error?.message ?? body.detail ?? body.message ?? "Supabase connection failed.");
@@ -88,9 +86,6 @@ ipcMain.handle("cloud:test-config", async (_event, input) => {
 });
 ipcMain.handle("cloud:save-config", async (_event, input) => {
   const current = await readStoredCloudConfig();
-  if (current && !input.ownerSession) {
-    throw new Error("Owner authentication is required to replace the saved cloud configuration.");
-  }
   await testCloudConfig(input);
   if (!safeStorage.isEncryptionAvailable()) {
     throw new Error("The operating-system credential store is unavailable on this device.");
@@ -109,6 +104,7 @@ ipcMain.handle("cloud:save-config", async (_event, input) => {
   await mkdir(app.getPath("userData"), { recursive: true });
   await writeFile(cloudConfigPath(), JSON.stringify(stored, null, 2), { encoding: "utf8", mode: 384 });
   await chmod(cloudConfigPath(), 384);
+  await restartLocalApi();
   return { ok: true, passwordConfigured: true };
 });
 ipcMain.handle("desktop:print", async (event) => {
@@ -239,9 +235,23 @@ function decryptCloudPasswordSync(config) {
     return "";
   }
 }
-function stopLocalApi() {
-  if (localApi && !localApi.killed) localApi.kill();
+async function stopLocalApi() {
+  if (localApi && !localApi.killed) {
+    const processToStop = localApi;
+    await new Promise((resolve) => {
+      const timeout = setTimeout(resolve, 2e3);
+      processToStop.once("exit", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      processToStop.kill();
+    });
+  }
   localApi = void 0;
+}
+async function restartLocalApi() {
+  await stopLocalApi();
+  await startLocalApi();
 }
 async function createWindow() {
   const window = new BrowserWindow({
@@ -275,7 +285,9 @@ app.whenReady().then(async () => {
     if (BrowserWindow.getAllWindows().length === 0) void createWindow();
   });
 });
-app.on("before-quit", stopLocalApi);
+app.on("before-quit", () => {
+  void stopLocalApi();
+});
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });

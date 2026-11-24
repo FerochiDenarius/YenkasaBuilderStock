@@ -27,7 +27,7 @@ function normalizeProjectUrl(value: string): string {
   return parsed.origin;
 }
 
-export function CloudDatabaseSetupPage() {
+export function CloudDatabaseSetupPage({ onSaved }: { onSaved?: () => void }) {
   const [form, setForm] = useState<CloudForm>(initialForm);
   const [passwordConfigured, setPasswordConfigured] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -99,7 +99,7 @@ export function CloudDatabaseSetupPage() {
     setError('');
     setMessage('Testing the Supabase connection securely…');
     try {
-      await window.desktopBridge.cloud.testConfig({ ...form, projectUrl: normalizeProjectUrl(form.projectUrl), databasePort: Number(form.databasePort), ownerSession: sessionStorage.getItem('yenkasa-owner-session') ?? undefined });
+      await window.desktopBridge.cloud.testConfig({ ...form, projectUrl: normalizeProjectUrl(form.projectUrl), databasePort: Number(form.databasePort) });
       setTested(true);
       setStatus('Connection verified');
       setMessage('Supabase is reachable. You can now save this configuration.');
@@ -124,10 +124,11 @@ export function CloudDatabaseSetupPage() {
     setSaving(true);
     setError('');
     try {
-      await window.desktopBridge.cloud.saveConfig({ ...form, projectUrl: normalizeProjectUrl(form.projectUrl), databasePort: Number(form.databasePort), ownerSession: sessionStorage.getItem('yenkasa-owner-session') ?? undefined });
+      await window.desktopBridge.cloud.saveConfig({ ...form, projectUrl: normalizeProjectUrl(form.projectUrl), databasePort: Number(form.databasePort) });
       setPasswordConfigured(true);
       setForm((current) => ({ ...current, databasePassword: '' }));
       setMessage('Cloud configuration saved securely on this computer.');
+      onSaved?.();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to save cloud configuration.');
     } finally {

@@ -40,6 +40,13 @@ def test_initial_cloud_setup_is_available_before_company_registration():
     assert 'Owner authentication is required' not in response.text
     assert 'DoNotLeakThisPassword' not in response.text
 
+def test_installation_status_reports_database_configuration_without_owner_auth(monkeypatch):
+    monkeypatch.delenv('CLOUD_DATABASE_URL', raising=False)
+    response = TestClient(app).get('/api/installation/status')
+    assert response.status_code == 200
+    assert response.json()['state'] == 'DATABASE_NOT_CONFIGURED'
+    assert response.json()['companyFound'] is False
+
 def test_company_and_branding_persist_in_sqlite():
     payload = {
         'registeredName': 'Test Builders Ltd', 'tradingName': 'Test Builders', 'category': 'Building Materials',
@@ -128,10 +135,10 @@ def test_owner_setup_is_locked_after_credentials_exist_and_owner_logout_relocks_
     assert relogin.status_code == 200
     assert client.get('/api/owner/security', headers={'X-Owner-Session': relogin.json()['token']}).status_code == 200
 
-def test_cloud_configuration_is_hq_only_and_rejects_invalid_connection_without_secret_leak():
+def test_cloud_configuration_is_independent_and_rejects_invalid_connection_without_secret_leak():
     client = TestClient(app)
-    assert client.get('/api/cloud/configuration').status_code == 403
-    response = client.post('/api/cloud/test', headers={'X-Cloud-Test': 'true'}, json={
+    assert client.get('/api/cloud/configuration').status_code == 200
+    response = client.post('/api/cloud/test', json={
         'projectUrl': 'not-a-url', 'projectRef': 'dev-project',
         'databaseHost': 'db.example.com', 'databasePort': 5432,
         'databaseName': 'postgres', 'databaseUser': 'postgres',
@@ -140,13 +147,13 @@ def test_cloud_configuration_is_hq_only_and_rejects_invalid_connection_without_s
     assert response.status_code == 422
     assert 'DoNotLeakThisPassword' not in response.text
 
-    protected = client.post('/api/cloud/test', json={
+    unprotected_read_only_test = client.post('/api/cloud/test', json={
         'projectUrl': 'not-a-url', 'projectRef': 'dev-project',
         'databaseHost': 'db.example.com', 'databasePort': 5432,
         'databaseName': 'postgres', 'databaseUser': 'postgres',
         'databasePassword': 'DoNotLeakThisPassword',
     })
-    assert protected.status_code == 403
+    assert unprotected_read_only_test.status_code == 422
 
 def test_branches_require_headquarters_role_and_persist():
     client = TestClient(app)

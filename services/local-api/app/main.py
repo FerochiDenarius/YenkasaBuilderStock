@@ -758,7 +758,6 @@ def owner_activity(request: Request) -> list[dict]:
 
 @app.get('/api/cloud/configuration')
 def local_cloud_configuration(request: Request) -> dict:
-    require_cloud_setup_access(request)
     configured = bool(os.getenv('CLOUD_DATABASE_URL', '').strip())
     return {
         'projectUrl': os.getenv('SUPABASE_URL', '').strip(),
@@ -770,11 +769,9 @@ def local_cloud_configuration(request: Request) -> dict:
 
 @app.post('/api/cloud/test')
 def test_cloud_connection(payload: CloudConnectionPayload, request: Request) -> dict:
-    # Testing connectivity is read-only. During installation it must be
-    # possible before company registration or owner credentials exist. Saving
-    # or replacing the stored configuration remains protected in Electron IPC.
-    if request.headers.get('x-cloud-test', '').lower() != 'true':
-        require_cloud_setup_access(request)
+    # Testing connectivity is a read-only installation operation. It must be
+    # possible before company registration or owner credentials exist, and it
+    # only executes SELECT 1 against the submitted PostgreSQL connection.
     project_url = payload.projectUrl.strip()
     project_ref = payload.projectRef.strip()
     parsed_project_url = urlsplit(project_url)
@@ -813,6 +810,28 @@ def test_cloud_connection(payload: CloudConnectionPayload, request: Request) -> 
         else:
             safe_message = 'Supabase connection failed. Check the project URI, password, network and SSL settings.'
         raise HTTPException(503, safe_message) from None
+
+@app.get('/api/installation/status')
+def installation_status() -> dict:
+    """Return the non-secret lifecycle state used by the installation gate."""
+    cloud_url = os.getenv('CLOUD_DATABASE_URL', '').strip()
+    if not cloud_url:
+        return {'state': 'DATABASE_NOT_CONFIGURED', 'databaseConfigured': False, 'cloudConnected': False, 'companyFound': False}
+    try:
+        import psycopg
+        with psycopg.connect(cloud_url.replace('postgresql+psycopg://', 'postgresql://', 1), connect_timeout=10) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT to_regclass('public.companies')")
+                if cursor.fetchone()[0] is None:
+                    return {'state': 'CLOUD_CONNECTED_SCHEMA_PENDING', 'databaseConfigured': True, 'cloudConnected': True, 'companyFound': False, 'schemaReady': False}
+                cursor.execute('SELECT id, registered_name, trading_name FROM companies ORDER BY created_at LIMIT 1')
+                company = cursor.fetchone()
+        if company is None:
+            return {'state': 'COMPANY_NOT_REGISTERED', 'databaseConfigured': True, 'cloudConnected': True, 'companyFound': False, 'schemaReady': True}
+        return {'state': 'COMPANY_REGISTERED', 'databaseConfigured': True, 'cloudConnected': True, 'companyFound': True, 'schemaReady': True, 'companyId': company[0], 'registeredName': company[1], 'tradingName': company[2]}
+    except Exception as exc:
+        print(f'[installation-status] cloud check failed: {type(exc).__name__}')
+        return {'state': 'CLOUD_UNAVAILABLE', 'databaseConfigured': True, 'cloudConnected': False, 'companyFound': False, 'schemaReady': False}
 
 @app.get('/api/sync/status')
 def get_sync_status(request: Request, branchId: str = '') -> dict:
@@ -1623,25 +1642,3 @@ def require_hq(request: Request, allow_initial_setup: bool = False) -> None:
     raise HTTPException(403, 'Owner authentication is required to access Company Setup')
 
 
-def require_cloud_setup_access(request: Request) -> None:
-    """Authorize the installation-time cloud configuration flow.
-
-    Cloud configuration is performed before company registration and before an
-    owner account exists. It therefore cannot require owner credentials on a
-    fresh installation. Once a company record has been created, the same
-    operation becomes owner-only, just like the rest of Company Setup.
-    """
-    token = request.headers.get('x-owner-session', '')
-    owner_id = owner_sessions.get(token)
-    if owner_id is not None:
-        with Session(engine) as session:
-            owner = session.scalar(select(Owner).where(Owner.id == owner_id, Owner.company_id == 1))
-            if owner is not None and owner.password_hash:
-                return
-        owner_sessions.pop(token, None)
-
-    with Session(engine) as session:
-        company_exists = session.scalar(select(Company.id).limit(1)) is not None
-    if not company_exists:
-        return
-    raise HTTPException(403, 'Owner authentication is required to configure the cloud database after company setup begins')

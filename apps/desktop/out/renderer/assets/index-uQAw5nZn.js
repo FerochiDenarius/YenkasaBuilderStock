@@ -7208,6 +7208,17 @@ const CircleCheck = createLucideIcon("CircleCheck", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
+const CircleHelp = createLucideIcon("CircleHelp", [
+  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+  ["path", { d: "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3", key: "1u773s" }],
+  ["path", { d: "M12 17h.01", key: "p32p05" }]
+]);
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
 const CircleUser = createLucideIcon("CircleUser", [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["circle", { cx: "12", cy: "10", r: "3", key: "ilqhr7" }],
@@ -7321,6 +7332,17 @@ const Crown = createLucideIcon("Crown", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
+const Database = createLucideIcon("Database", [
+  ["ellipse", { cx: "12", cy: "5", rx: "9", ry: "3", key: "msslwz" }],
+  ["path", { d: "M3 5V19A9 3 0 0 0 21 19V5", key: "1wlel7" }],
+  ["path", { d: "M3 12A9 3 0 0 0 21 12", key: "mv7ke4" }]
+]);
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
 const Download = createLucideIcon("Download", [
   ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
   ["polyline", { points: "7 10 12 15 17 10", key: "2ggqvy" }],
@@ -7416,6 +7438,17 @@ const Image = createLucideIcon("Image", [
   ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", ry: "2", key: "1m3agn" }],
   ["circle", { cx: "9", cy: "9", r: "2", key: "af1f0g" }],
   ["path", { d: "m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21", key: "1xmnt7" }]
+]);
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const Info = createLucideIcon("Info", [
+  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+  ["path", { d: "M12 16v-4", key: "1dtifu" }],
+  ["path", { d: "M12 8h.01", key: "e9boi3" }]
 ]);
 /**
  * @license lucide-react v0.468.0 - ISC
@@ -7942,6 +7975,9 @@ const companyApi = {
     headers: ownerHeaders(),
     body: JSON.stringify(company)
   })
+};
+const installationApi = {
+  status: () => request("/api/installation/status")
 };
 const ownerApi = {
   get: () => request("/api/owner", { headers: ownerHeaders() }),
@@ -15208,7 +15244,7 @@ function normalizeProjectUrl(value) {
   if (parsed.protocol !== "https:") throw new Error("Project URL must begin with https://. Do not paste a PostgreSQL connection string here.");
   return parsed.origin;
 }
-function CloudDatabaseSetupPage() {
+function CloudDatabaseSetupPage({ onSaved }) {
   const [form, setForm] = reactExports.useState(initialForm);
   const [passwordConfigured, setPasswordConfigured] = reactExports.useState(false);
   const [showPassword, setShowPassword] = reactExports.useState(false);
@@ -15273,7 +15309,7 @@ function CloudDatabaseSetupPage() {
     setError("");
     setMessage("Testing the Supabase connection securely…");
     try {
-      await window.desktopBridge.cloud.testConfig({ ...form, projectUrl: normalizeProjectUrl(form.projectUrl), databasePort: Number(form.databasePort), ownerSession: sessionStorage.getItem("yenkasa-owner-session") ?? void 0 });
+      await window.desktopBridge.cloud.testConfig({ ...form, projectUrl: normalizeProjectUrl(form.projectUrl), databasePort: Number(form.databasePort) });
       setTested(true);
       setStatus("Connection verified");
       setMessage("Supabase is reachable. You can now save this configuration.");
@@ -15297,10 +15333,11 @@ function CloudDatabaseSetupPage() {
     setSaving(true);
     setError("");
     try {
-      await window.desktopBridge.cloud.saveConfig({ ...form, projectUrl: normalizeProjectUrl(form.projectUrl), databasePort: Number(form.databasePort), ownerSession: sessionStorage.getItem("yenkasa-owner-session") ?? void 0 });
+      await window.desktopBridge.cloud.saveConfig({ ...form, projectUrl: normalizeProjectUrl(form.projectUrl), databasePort: Number(form.databasePort) });
       setPasswordConfigured(true);
       setForm((current) => ({ ...current, databasePassword: "" }));
       setMessage("Cloud configuration saved securely on this computer.");
+      onSaved?.();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to save cloud configuration.");
     } finally {
@@ -15404,6 +15441,86 @@ function CloudDatabaseSetupPage() {
         message && /* @__PURE__ */ jsxRuntimeExports.jsx("small", { className: "save-status", role: "status", children: message }),
         error && /* @__PURE__ */ jsxRuntimeExports.jsx("small", { className: "save-error", role: "alert", children: error })
       ] })
+    ] })
+  ] });
+}
+function InstallationWelcomePage({
+  status,
+  onOwnerLogin,
+  onStaffLogin,
+  onNewCompany,
+  onDatabase
+}) {
+  const existingCompany = status.companyFound;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "installation-welcome", "aria-labelledby": "installation-welcome-title", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-welcome-header", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "installation-brand-mark", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Building2, { size: 32 }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "YenkasaBuildersStock" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Inventory & Business Management System" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "installation-version", children: "v1.0.0" })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-status-strip", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-status-item", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Database, { size: 28 }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Cloud PostgreSQL" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "installation-connected", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { size: 15 }),
+          " Connected"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "installation-status-divider" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-status-item installation-company-status", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Building2, { size: 28 }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: existingCompany ? "Existing Company Found" : "No Company Registered" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: existingCompany ? status.registeredName || "Company is already registered" : "This database is ready for initial setup" })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "installation-details", type: "button", onClick: onDatabase, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Info, { size: 17 }),
+        " Details"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-welcome-copy", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { id: "installation-welcome-title", children: "Welcome to YenkasaBuildersStock" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: existingCompany ? "Your database is connected and a company is already registered." : "Your database is connected. Choose how you would like to begin." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Select how you would like to continue." })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-access-grid", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(AccessCard, { icon: /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, {}), title: "Owner Login", description: "Access company setup, branding, branches, users and full system management.", action: "Login as Owner", onClick: onOwnerLogin, primary: false }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(AccessCard, { icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Users, {}), title: "Branch / Staff Login", description: "Login as a branch manager, cashier, sales staff or stock manager to perform daily operations.", action: "Login as Staff", onClick: onStaffLogin, primary: true }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(AccessCard, { icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Building2, {}), title: "Set Up New Company", description: existingCompany ? "A company already exists in this database. Connect to a different database to register another company." : "Register a new company, create an owner account and configure the first branch.", action: "Set Up New Company", onClick: onNewCompany, disabled: existingCompany })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-notice", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Info, { size: 22 }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: existingCompany ? "A company is already registered on this database. Use Owner Login or Branch / Staff Login to continue. To set up a different company, connect to a different database." : "Initial company setup becomes protected after the owner account is created." })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-footer-actions", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { type: "button", onClick: onDatabase, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Database, { size: 18 }),
+        " Database Configuration"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { type: "button", onClick: onDatabase, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { size: 18 }),
+        " Change Database"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { type: "button", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(CircleHelp, { size: 18 }),
+        " Help"
+      ] })
+    ] })
+  ] });
+}
+function AccessCard({ icon, title, description, action, onClick, primary = false, disabled = false }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("article", { className: `installation-access-card ${disabled ? "disabled" : ""}`, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "installation-access-icon", children: icon }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: title }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: description }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { type: "button", className: primary ? "installation-primary-action" : "installation-secondary-action", disabled, onClick, children: [
+      title === "Set Up New Company" ? /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 18 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(LogIn, { size: 18 }),
+      action
     ] })
   ] });
 }
@@ -15540,12 +15657,23 @@ function Dashboard() {
       return null;
     }
   });
-  const [ownerSetupComplete, setOwnerSetupComplete] = reactExports.useState(false);
   const [ownerStatusLoaded, setOwnerStatusLoaded] = reactExports.useState(false);
-  const [initialInstallation, setInitialInstallation] = reactExports.useState(false);
+  const [installationStatus, setInstallationStatus] = reactExports.useState(null);
+  const [initialSetupMode, setInitialSetupMode] = reactExports.useState(false);
   reactExports.useEffect(() => {
+    window.desktopBridge?.cloud.getConfig().then((config) => {
+      if (!config.passwordConfigured && !branchSession && !ownerSession) {
+        setActive("Cloud Database");
+        return;
+      }
+      return installationApi.status().then((status) => {
+        setInstallationStatus(status);
+        if (!branchSession && !ownerSession) {
+          setActive(status.state === "CLOUD_UNAVAILABLE" ? "Cloud Database" : "Installation Welcome");
+        }
+      });
+    }).catch(() => void 0);
     companyApi.get().then((company) => {
-      setInitialInstallation(!company);
       const root = document.documentElement;
       if (!company?.useBrandColours) {
         root.style.setProperty("--brand-primary", "#0b9438");
@@ -15559,7 +15687,7 @@ function Dashboard() {
       root.style.setProperty("--brand-secondary", company?.secondaryColor || "#f7b500");
       root.style.setProperty("--brand-accent", company?.accentColor || "#d7263d");
     }).catch(() => void 0);
-  }, []);
+  }, [branchSession, ownerSession]);
   reactExports.useEffect(() => {
     const sync = () => {
       try {
@@ -15580,7 +15708,7 @@ function Dashboard() {
       }
     };
     ownerSync();
-    fetch(`${window.desktopBridge?.apiBaseUrl ?? void 0 ?? "http://127.0.0.1:8765"}/api/owner/status`).then((response) => response.ok ? response.json() : Promise.reject(new Error("Unable to read owner setup status"))).then((status) => setOwnerSetupComplete(status.passwordSet)).catch(() => setOwnerSetupComplete(false)).finally(() => setOwnerStatusLoaded(true));
+    fetch(`${window.desktopBridge?.apiBaseUrl ?? void 0 ?? "http://127.0.0.1:8765"}/api/owner/status`).then((response) => response.ok ? response.json() : Promise.reject(new Error("Unable to read owner setup status"))).then(() => void 0).catch(() => void 0).finally(() => setOwnerStatusLoaded(true));
     window.addEventListener("yenkasa-session-changed", sync);
     window.addEventListener("yenkasa-owner-session-changed", ownerSync);
     return () => {
@@ -15602,7 +15730,7 @@ function Dashboard() {
     return roleNavigation[branchSession.role]?.includes(label) ?? false;
   };
   const visibleNav = branchSession ? navItems.filter(([, label]) => hasBranchAccess(label)) : [];
-  const setupUnlocked = initialInstallation || !ownerSetupComplete || !!ownerSession;
+  const setupUnlocked = !!ownerSession || initialSetupMode && installationStatus?.companyFound === false;
   const visibleSetup = !branchSession && setupUnlocked ? setupItems : [];
   const branchSetup = branchSession?.role === "BRANCH_MANAGER" ? [[Users, "Staff Accounts"]] : [];
   const branchSettings = branchSession?.role === "BRANCH_MANAGER" ? ["Dashboard Preferences", "Sync Settings"] : ["Dashboard Preferences"];
@@ -15636,12 +15764,17 @@ function Dashboard() {
   };
   const navigate = (page) => {
     if (!ownerStatusLoaded) return;
+    if (page === "Installation Welcome") {
+      setActive(page);
+      setSidebarOpen(false);
+      return;
+    }
     if (page === "Owner Login" && branchSession) {
       sessionStorage.removeItem("yenkasa-session");
       setBranchSession(null);
     }
     if (setupItems.some(([, label]) => label === page) && (!setupUnlocked || !!branchSession)) {
-      setActive("Owner Login");
+      setActive(installationStatus ? "Installation Welcome" : "Owner Login");
       return;
     }
     setActive(page);
@@ -15826,7 +15959,19 @@ function Dashboard() {
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "header-avatar", children: "KO" })
             ] })
           ] }),
-          active === "Branch Login" && !branchSession ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+          active === "Installation Welcome" && !branchSession && !ownerSession && installationStatus ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+            InstallationWelcomePage,
+            {
+              status: installationStatus,
+              onOwnerLogin: () => navigate("Owner Login"),
+              onStaffLogin: () => navigate("Branch Login"),
+              onNewCompany: () => {
+                setInitialSetupMode(true);
+                setActive("Business Information");
+              },
+              onDatabase: () => setActive("Cloud Database")
+            }
+          ) : active === "Branch Login" && !branchSession ? /* @__PURE__ */ jsxRuntimeExports.jsx(
             BranchLoginPage,
             {
               onAuthenticated: (session) => {
@@ -15865,7 +16010,22 @@ function Dashboard() {
                 children: "Open Branch Login"
               }
             )
-          ] }) : active === "Cloud Database" ? /* @__PURE__ */ jsxRuntimeExports.jsx(CloudDatabaseSetupPage, {}) : canRenderSetup ? /* @__PURE__ */ jsxRuntimeExports.jsx(SetupPage, { page: active, onNavigate: setActive }) : setupItems.some(([, label]) => label === active) && (branchSession || !setupUnlocked) ? /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "placeholder-page", role: "alert", children: [
+          ] }) : active === "Cloud Database" ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+            CloudDatabaseSetupPage,
+            {
+              onSaved: () => {
+                void installationApi.status().then((status) => {
+                  setInstallationStatus(status);
+                  if (!status.companyFound) {
+                    setInitialSetupMode(true);
+                    setActive("Business Information");
+                  } else {
+                    setActive("Installation Welcome");
+                  }
+                });
+              }
+            }
+          ) : canRenderSetup ? /* @__PURE__ */ jsxRuntimeExports.jsx(SetupPage, { page: active, onNavigate: setActive }) : setupItems.some(([, label]) => label === active) && (branchSession || !setupUnlocked) ? /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "placeholder-page", role: "alert", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "placeholder-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LockKeyhole, {}) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Owner login required" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Company Setup is locked after owner credentials are created. Sign in as the owner to continue." }),
