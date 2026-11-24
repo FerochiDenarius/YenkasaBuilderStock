@@ -349,6 +349,17 @@ class BranchPayload(BaseModel):
     activateDevice: bool = False
     permissions: dict = {}
 
+class BranchUpdatePayload(BaseModel):
+    name: str
+    code: str
+    location: str
+    phone: str = ''
+    manager: str
+    branchType: str = 'Sales & Warehouse'
+    email: str = ''
+    managerContact: str = ''
+    status: str = 'Active'
+
 class LoginPayload(BaseModel):
     branchId: str
     username: str
@@ -793,14 +804,14 @@ def run_sync(payload: SyncRunPayload, request: Request) -> dict:
             status.sync_state = 'OFFLINE'
             status.last_error = 'Online synchronization is disabled for this branch device.'
             message = 'Sync skipped because online synchronization is disabled.'
-        elif not (os.getenv('SYNC_BACKEND_URL', '').strip() or os.getenv('DATABASE_URL', '').strip()):
+        elif not (os.getenv('SYNC_BACKEND_URL', '').strip() or os.getenv('DATABASE_URL', '').strip() or os.getenv('CLOUD_DATABASE_URL', '').strip()):
             status.sync_state = 'CLOUD_NOT_CONFIGURED'
             status.last_error = 'Central synchronization service is not configured on this installation.'
             message = 'No central synchronization service is configured; local data remains safe in SQLite.'
         else:
-            status.sync_state = 'PENDING_CLOUD'
-            status.last_error = 'Central sync worker is not enabled in this offline-first release.'
-            message = 'The sync request is queued for the central sync worker.'
+            status.sync_state = 'CLOUD_READY'
+            status.last_error = 'Cloud connection is configured; pending outbox delivery is not enabled in this release.'
+            message = 'Cloud connection is configured. Local records remain safe; central outbox delivery is pending.'
         session.add(AuditLog(id=str(uuid4()), company_id=actor.company_id, branch_id=actor.branch_id, actor_user_id=actor.id, action='sync_attempted', target_user_id='', created_at=now_iso()))
         session.commit()
         session.refresh(status)
@@ -871,6 +882,25 @@ def create_branch(payload: BranchPayload, request: Request) -> dict:
             session.add(AuditLog(id=str(uuid4()), company_id=1, branch_id=branch_id, actor_user_id='HQ_OWNER', action='branch_manager_created', target_user_id=manager_user.id, created_at=now_iso()))
         if payload.activateDevice and payload.deviceName.strip():
             session.add(DeviceActivation(id=str(uuid4()), company_id=1, branch_id=branch_id, device_name=payload.deviceName.strip(), active=True, created_at=now_iso()))
+        session.commit(); session.refresh(branch); return to_branch_payload(branch)
+
+@app.patch('/api/branches/{branch_id}')
+def update_branch(branch_id: str, payload: BranchUpdatePayload, request: Request) -> dict:
+    if request.headers.get('x-role') != 'HQ_ADMIN': raise HTTPException(403, 'Headquarters administrator permission is required')
+    required_fields = {'name': payload.name, 'code': payload.code, 'location': payload.location, 'manager': payload.manager}
+    if any(not value.strip() for value in required_fields.values()): raise HTTPException(422, 'Branch name, code, location and manager are required')
+    if payload.status not in {'Active', 'Suspended'}: raise HTTPException(422, 'Branch status must be Active or Suspended')
+    with Session(engine) as session:
+        branch = session.scalar(select(Branch).where(Branch.id == branch_id, Branch.company_id == 1))
+        if branch is None: raise HTTPException(404, 'Branch not found')
+        code = payload.code.strip().upper()
+        duplicate = session.scalar(select(Branch).where(Branch.company_id == 1, Branch.code == code, Branch.id != branch_id))
+        if duplicate is not None: raise HTTPException(409, 'Branch code already exists')
+        branch.name = payload.name.strip(); branch.code = code; branch.location = payload.location.strip(); branch.phone = payload.phone.strip(); branch.manager = payload.manager.strip(); branch.branch_type = payload.branchType.strip(); branch.email = payload.email.strip(); branch.manager_contact = payload.managerContact.strip(); branch.status = payload.status
+        if branch.manager_user_id:
+            manager = session.scalar(select(UserAccount).where(UserAccount.id == branch.manager_user_id, UserAccount.company_id == 1))
+            if manager is not None: manager.full_name = branch.manager; manager.email = branch.email
+        session.add(AuditLog(id=str(uuid4()), company_id=1, branch_id=branch.id, actor_user_id='HQ_OWNER', action='branch_updated', target_user_id=branch.id, created_at=now_iso()))
         session.commit(); session.refresh(branch); return to_branch_payload(branch)
 
 @app.post('/api/auth/login')

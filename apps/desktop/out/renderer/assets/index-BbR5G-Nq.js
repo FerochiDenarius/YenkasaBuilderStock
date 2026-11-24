@@ -7963,6 +7963,11 @@ const branchApi = {
     method: "POST",
     headers: { "X-Role": "HQ_ADMIN" },
     body: JSON.stringify(branch)
+  }),
+  update: (id2, branch) => request(`/api/branches/${id2}`, {
+    method: "PATCH",
+    headers: { "X-Role": "HQ_ADMIN" },
+    body: JSON.stringify(branch)
   })
 };
 const deviceApi = {
@@ -11770,7 +11775,8 @@ const blank$1 = {
   username: "",
   email: "",
   role: "STOCK_MANAGER",
-  password: ""
+  password: "",
+  permissions: defaultPermissions("STOCK_MANAGER")
 };
 function StaffAccountsPage() {
   const stored = readSession();
@@ -12192,7 +12198,7 @@ function CreateModal({
           "select",
           {
             value: form.role,
-            onChange: (event) => setForm({ ...form, role: event.target.value }),
+            onChange: (event) => setForm({ ...form, role: event.target.value, permissions: defaultPermissions(event.target.value) }),
             children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "STOCK_MANAGER", children: "Stock Manager / Storekeeper" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "SALES_OFFICER", children: "Sales Officer" }),
@@ -12211,6 +12217,21 @@ function CreateModal({
           onChange: (value) => setForm({ ...form, password: value })
         }
       )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("fieldset", { className: "staff-permission-grid", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("legend", { children: "Initial branch permissions" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Grant or revoke modules for this account. The backend enforces these permissions." }),
+      permissionOptions.map(([key, label]) => /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "checkbox",
+            checked: form.permissions.includes(key),
+            onChange: (event) => setForm({ ...form, permissions: event.target.checked ? [...form.permissions, key] : form.permissions.filter((permission) => permission !== key) })
+          }
+        ),
+        label
+      ] }, key))
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "setup-actions", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(

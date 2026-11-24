@@ -263,6 +263,24 @@ def test_branch_manager_controls_sync_settings_and_owner_sees_branch_status(monk
     assert sync_rows
     assert 'Cloud Not Configured' in sync_rows[0]['details']
 
+def test_configured_cloud_database_is_reflected_in_sync_status(monkeypatch):
+    monkeypatch.setenv('CLOUD_DATABASE_URL', 'postgresql://configured-cloud.example/postgres')
+    client = TestClient(app)
+    branch = client.post('/api/branches', json={
+        'name': 'Configured Cloud Branch', 'code': 'CLOUDV', 'location': 'Accra',
+        'manager': 'Cloud Manager', 'managerUsername': 'cloud.manager',
+        'managerPassword': 'CloudManagerPass123',
+    }, headers={'X-Role': 'HQ_ADMIN'}).json()
+    manager = client.post('/api/auth/login', json={
+        'branchId': branch['id'], 'username': 'cloud.manager',
+        'password': 'CloudManagerPass123', 'loginRole': 'BRANCH_MANAGER',
+    }).json()
+    headers = {'X-User-Id': manager['userId'], 'X-Branch-Id': branch['id']}
+    result = client.post('/api/sync/run', headers=headers, json={'branchId': branch['id']})
+    assert result.status_code == 200
+    assert result.json()['syncState'] == 'CLOUD_READY'
+    assert 'CLOUD_NOT_CONFIGURED' not in result.text
+
 def test_cashier_payment_workflow_is_branch_scoped_and_idempotent():
     client = TestClient(app)
     branch = client.post('/api/branches', json={

@@ -93,6 +93,12 @@ export const branchApi = {
       headers: { 'X-Role': 'HQ_ADMIN' },
       body: JSON.stringify(branch),
     }),
+  update: (id: string, branch: Record<string, unknown>) =>
+    request<Branch>(`/api/branches/${id}`, {
+      method: 'PATCH',
+      headers: { 'X-Role': 'HQ_ADMIN' },
+      body: JSON.stringify(branch),
+    }),
 };
 
 export const deviceApi = {

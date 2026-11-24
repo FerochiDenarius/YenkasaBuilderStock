@@ -18,6 +18,7 @@ type Form = {
   email: string;
   role: 'STOCK_MANAGER' | 'SALES_OFFICER' | 'CASHIER' | 'SALES_CASHIER';
   password: string;
+  permissions: string[];
 };
 type EditForm = { fullName: string; email: string; permissions: string[] };
 type SessionLike = { userId: string; branchId: string; role: string };
@@ -55,6 +56,7 @@ const blank: Form = {
   email: '',
   role: 'STOCK_MANAGER',
   password: '',
+  permissions: defaultPermissions('STOCK_MANAGER'),
 };
 
 export function StaffAccountsPage() {
@@ -531,7 +533,7 @@ function CreateModal({
           <select
             value={form.role}
             onChange={(event) =>
-              setForm({ ...form, role: event.target.value as Form['role'] })
+              setForm({ ...form, role: event.target.value as Form['role'], permissions: defaultPermissions(event.target.value) })
             }
           >
             <option value="STOCK_MANAGER">Stock Manager / Storekeeper</option>
@@ -547,6 +549,20 @@ function CreateModal({
           onChange={(value) => setForm({ ...form, password: value })}
         />
       </div>
+      <fieldset className="staff-permission-grid">
+        <legend>Initial branch permissions</legend>
+        <p>Grant or revoke modules for this account. The backend enforces these permissions.</p>
+        {permissionOptions.map(([key, label]) => (
+          <label key={key}>
+            <input
+              type="checkbox"
+              checked={form.permissions.includes(key)}
+              onChange={(event) => setForm({ ...form, permissions: event.target.checked ? [...form.permissions, key] : form.permissions.filter((permission) => permission !== key) })}
+            />
+            {label}
+          </label>
+        ))}
+      </fieldset>
       <div className="setup-actions">
         <button
           className="outline"
