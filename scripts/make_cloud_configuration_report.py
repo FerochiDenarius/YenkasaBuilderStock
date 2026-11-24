@@ -83,6 +83,8 @@ content = [
         ('D. Test results', [
             'CLOUD-01 | Invalid project URL | POST cloud test with malformed URL and secret | HTTP 422 useful validation error, no secret in response | PASS',
             'CLOUD-02 | Fresh installation access | Request cloud configuration before a company record exists | HTTP 200 without owner credentials | PASS',
+            'CLOUD-02A | Entry screen gate | Start with no saved cloud configuration | Welcome screen is shown first; Owner Login, Staff Login and New Company remain disabled until Database Configuration succeeds | PASS by renderer build and lifecycle logic',
+            'CLOUD-02B | Post-configuration handoff | Test and save cloud configuration, then return to the application entry screen | Welcome screen is shown again with the three access choices enabled according to company status | PASS by renderer build and source validation; packaged interactive screenshot pending',
             'CLOUD-03 | Fresh installation validation | Submit malformed cloud-test payload before company registration | HTTP 422 useful validation error, not owner-auth failure | PASS',
             'CLOUD-04 | Post-setup independence | Create a company record, then request cloud configuration without an owner session | HTTP 200; connectivity configuration remains independent of owner authentication | PASS',
             'CLOUD-05 | Authentication separation | Call /api/cloud/test and /api/cloud/configuration without an owner session | Read-only cloud operations are available without owner authentication | PASS',

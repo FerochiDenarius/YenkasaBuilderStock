@@ -15452,6 +15452,8 @@ function InstallationWelcomePage({
   onDatabase
 }) {
   const existingCompany = status.companyFound;
+  const databaseReady = status.cloudConnected;
+  const statusTitle = databaseReady ? existingCompany ? "Existing Company Found" : "Ready for Company Setup" : "Cloud PostgreSQL Not Configured";
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "installation-welcome", "aria-labelledby": "installation-welcome-title", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-welcome-header", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "installation-brand-mark", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Building2, { size: 32 }) }),
@@ -15464,18 +15466,21 @@ function InstallationWelcomePage({
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-status-strip", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-status-item", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(Database, { size: 28 }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Cloud PostgreSQL" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "installation-connected", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { size: 15 }),
-          " Connected"
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Cloud PostgreSQL" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: databaseReady ? "installation-connected" : "installation-disconnected", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { size: 15 }),
+            " ",
+            databaseReady ? "Connected" : "Configure first"
+          ] })
         ] })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "installation-status-divider" }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-status-item installation-company-status", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(Building2, { size: 28 }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: existingCompany ? "Existing Company Found" : "No Company Registered" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: existingCompany ? status.registeredName || "Company is already registered" : "This database is ready for initial setup" })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: statusTitle }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: existingCompany ? status.registeredName || "Company is already registered" : databaseReady ? "This database is ready for initial setup" : "Connect a database to continue" })
         ] })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "installation-details", type: "button", onClick: onDatabase, children: [
@@ -15485,22 +15490,23 @@ function InstallationWelcomePage({
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-welcome-copy", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { id: "installation-welcome-title", children: "Welcome to YenkasaBuildersStock" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: existingCompany ? "Your database is connected and a company is already registered." : "Your database is connected. Choose how you would like to begin." }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Select how you would like to continue." })
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: !databaseReady ? "Configure your cloud database before continuing." : existingCompany ? "Your database is connected and a company is already registered." : "Your database is connected. Choose how you would like to begin." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: databaseReady ? "Select how you would like to continue." : "Click Database Configuration below to get started." })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-access-grid", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(AccessCard, { icon: /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, {}), title: "Owner Login", description: "Access company setup, branding, branches, users and full system management.", action: "Login as Owner", onClick: onOwnerLogin, primary: false }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(AccessCard, { icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Users, {}), title: "Branch / Staff Login", description: "Login as a branch manager, cashier, sales staff or stock manager to perform daily operations.", action: "Login as Staff", onClick: onStaffLogin, primary: true }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(AccessCard, { icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Building2, {}), title: "Set Up New Company", description: existingCompany ? "A company already exists in this database. Connect to a different database to register another company." : "Register a new company, create an owner account and configure the first branch.", action: "Set Up New Company", onClick: onNewCompany, disabled: existingCompany })
+      /* @__PURE__ */ jsxRuntimeExports.jsx(AccessCard, { icon: /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, {}), title: "Owner Login", description: "Access company setup, branding, branches, users and full system management.", action: "Login as Owner", onClick: onOwnerLogin, primary: false, disabled: !databaseReady }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(AccessCard, { icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Users, {}), title: "Branch / Staff Login", description: "Login as a branch manager, cashier, sales staff or stock manager to perform daily operations.", action: "Login as Staff", onClick: onStaffLogin, primary: true, disabled: !databaseReady }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(AccessCard, { icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Building2, {}), title: "Set Up New Company", description: existingCompany ? "A company already exists in this database. Connect to a different database to register another company." : "Register a new company, create an owner account and configure the first branch.", action: "Set Up New Company", onClick: onNewCompany, disabled: !databaseReady || existingCompany })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-notice", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(Info, { size: 22 }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: existingCompany ? "A company is already registered on this database. Use Owner Login or Branch / Staff Login to continue. To set up a different company, connect to a different database." : "Initial company setup becomes protected after the owner account is created." })
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: !databaseReady ? "Database configuration is required before owner, staff or company setup access becomes available." : existingCompany ? "A company is already registered on this database. Use Owner Login or Branch / Staff Login to continue. To set up a different company, connect to a different database." : "Initial company setup becomes protected after the owner account is created." })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-footer-actions", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { type: "button", onClick: onDatabase, children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(Database, { size: 18 }),
-        " Database Configuration"
+        " ",
+        databaseReady ? "Database Configuration" : "Configure Database"
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { type: "button", onClick: onDatabase, children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { size: 18 }),
@@ -15663,7 +15669,13 @@ function Dashboard() {
   reactExports.useEffect(() => {
     window.desktopBridge?.cloud.getConfig().then((config) => {
       if (!config.passwordConfigured && !branchSession && !ownerSession) {
-        setActive("Cloud Database");
+        setInstallationStatus({
+          state: "DATABASE_NOT_CONFIGURED",
+          databaseConfigured: false,
+          cloudConnected: false,
+          companyFound: false
+        });
+        setActive("Installation Welcome");
         return;
       }
       return installationApi.status().then((status) => {
@@ -15784,7 +15796,7 @@ function Dashboard() {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
-      className: `dashboard-shell ${active === "Branch Login" && !branchSession ? "branch-login-shell" : ""}`,
+      className: `dashboard-shell ${active === "Branch Login" && !branchSession ? "branch-login-shell" : ""} ${active === "Installation Welcome" && !branchSession && !ownerSession ? "installation-shell" : ""}`,
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("aside", { className: `dashboard-sidebar ${sidebarOpen ? "open" : ""}`, children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "dashboard-brand", children: [
@@ -16016,12 +16028,7 @@ function Dashboard() {
               onSaved: () => {
                 void installationApi.status().then((status) => {
                   setInstallationStatus(status);
-                  if (!status.companyFound) {
-                    setInitialSetupMode(true);
-                    setActive("Business Information");
-                  } else {
-                    setActive("Installation Welcome");
-                  }
+                  setActive("Installation Welcome");
                 });
               }
             }

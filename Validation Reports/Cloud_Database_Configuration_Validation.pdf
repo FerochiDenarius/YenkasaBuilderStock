@@ -122,7 +122,7 @@ ET
 endstream
 endobj
 3 0 obj
-<< /Length 5195 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 5907 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -209,6 +209,27 @@ BT
 0 -11 Td
 /F1 8 Tf
 (exists | HTTP 200 without owner credentials | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-02A | Entry screen gate | Start with no saved cloud configuration | Welcome screen is) Tj
+0 -11 Td
+/F1 8 Tf
+(shown first; Owner Login, Staff Login and New Company remain disabled until Database) Tj
+0 -11 Td
+/F1 8 Tf
+(Configuration succeeds | PASS by renderer build and lifecycle logic) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-02B | Post-configuration handoff | Test and save cloud configuration, then return to the) Tj
+0 -11 Td
+/F1 8 Tf
+(application entry screen | Welcome screen is shown again with the three access choices enabled) Tj
+0 -11 Td
+/F1 8 Tf
+(according to company status | PASS by renderer build and source validation; packaged) Tj
+0 -11 Td
+/F1 8 Tf
+(interactive screenshot pending) Tj
 0 -11 Td
 /F1 8 Tf
 (CLOUD-03 | Fresh installation validation | Submit malformed cloud-test payload before company) Tj
@@ -422,14 +443,14 @@ xref
 0000000009 00000 n 
 0000000079 00000 n 
 0000003125 00000 n 
-0000008411 00000 n 
-0000010888 00000 n 
-0000010957 00000 n 
-0000011044 00000 n 
-0000011131 00000 n 
-0000011218 00000 n 
+0000009123 00000 n 
+0000011600 00000 n 
+0000011669 00000 n 
+0000011756 00000 n 
+0000011843 00000 n 
+0000011930 00000 n 
 trailer
 << /Size 10 /Root 9 0 R >>
 startxref
-11267
+11979
 %%EOF

@@ -187,7 +187,13 @@ export function Dashboard() {
     window.desktopBridge?.cloud.getConfig()
       .then((config) => {
         if (!config.passwordConfigured && !branchSession && !ownerSession) {
-          setActive('Cloud Database');
+          setInstallationStatus({
+            state: 'DATABASE_NOT_CONFIGURED',
+            databaseConfigured: false,
+            cloudConnected: false,
+            companyFound: false,
+          });
+          setActive('Installation Welcome');
           return;
         }
         return installationApi.status().then((status) => {
@@ -325,7 +331,7 @@ export function Dashboard() {
     (branchSession && active === 'Staff Accounts' && branchSession.role === 'BRANCH_MANAGER');
   return (
     <div
-      className={`dashboard-shell ${active === 'Branch Login' && !branchSession ? 'branch-login-shell' : ''}`}
+      className={`dashboard-shell ${active === 'Branch Login' && !branchSession ? 'branch-login-shell' : ''} ${active === 'Installation Welcome' && !branchSession && !ownerSession ? 'installation-shell' : ''}`}
     >
       <aside className={`dashboard-sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="dashboard-brand">
@@ -586,12 +592,7 @@ export function Dashboard() {
             onSaved={() => {
               void installationApi.status().then((status) => {
                 setInstallationStatus(status);
-                if (!status.companyFound) {
-                  setInitialSetupMode(true);
-                  setActive('Business Information');
-                } else {
-                  setActive('Installation Welcome');
-                }
+                setActive('Installation Welcome');
               });
             }}
           />
