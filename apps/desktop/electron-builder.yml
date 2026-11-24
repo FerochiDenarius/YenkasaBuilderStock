@@ -1,0 +1,28 @@
+appId: com.yenkasa.buildersstock
+productName: YenkasaBuildersStock
+electronVersion: 33.4.11
+directories:
+  output: release
+files:
+  - out/**
+  - package.json
+extraResources:
+  - from: packaging/local-api
+    to: local-api
+    filter:
+      - local-api*
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.business
+win:
+  target:
+    - nsis
+  artifactName: YenkasaBuildersStock-${version}-${arch}.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  deleteAppDataOnUninstall: false

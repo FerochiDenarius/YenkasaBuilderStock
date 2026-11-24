@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import os
+import shutil
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from uuid import uuid4
@@ -33,6 +34,11 @@ class Settings(BaseSettings):
     local_database_url: str = 'sqlite:///./data/yenkasa-local.db'
 
 settings = Settings()
+packaged_data_dir = os.getenv('YENKASA_DATA_DIR', '').strip()
+if packaged_data_dir:
+    packaged_path = Path(packaged_data_dir)
+    packaged_path.mkdir(parents=True, exist_ok=True)
+    settings.local_database_url = f'sqlite:///{packaged_path / "yenkasa-local.db"}'
 if settings.local_database_url.startswith('sqlite:///./'):
     Path('data').mkdir(exist_ok=True)
 engine_options = {'connect_args': {'check_same_thread': False} if settings.local_database_url.startswith('sqlite') else {}}
@@ -427,6 +433,20 @@ class PurchasePayload(BaseModel):
 
 app = FastAPI(title='YenkasaBuildersStock Local API')
 app.add_middleware(CORSMiddleware, allow_origins=['null', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174', 'file://'], allow_methods=['GET', 'PUT', 'POST', 'PATCH', 'OPTIONS'], allow_headers=['Content-Type', 'X-Role', 'X-User-Id', 'X-Branch-Id', 'X-Device-Id'])
+
+def backup_sqlite_before_startup_changes() -> None:
+    if not settings.local_database_url.startswith('sqlite:///'):
+        return
+    raw_path = settings.local_database_url.removeprefix('sqlite:///')
+    database_path = Path(raw_path).resolve()
+    if not database_path.exists() or database_path.name == ':memory:':
+        return
+    backup_dir = database_path.parent / 'backups'
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    backup_path = backup_dir / f'{database_path.stem}.pre-startup-{datetime.now().strftime("%Y%m%d-%H%M%S")}.db'
+    shutil.copy2(database_path, backup_path)
+
+backup_sqlite_before_startup_changes()
 Base.metadata.create_all(engine)
 
 def ensure_branch_columns() -> None:

@@ -55,7 +55,7 @@ function startLocalApi(): void {
     : join(__dirname, '../../../..', 'services/local-api');
   const developmentPython = join(servicePath, '.venv', 'bin', 'python');
   const python = isPackaged
-    ? join(servicePath, 'local-api')
+    ? join(servicePath, process.platform === 'win32' ? 'local-api.exe' : 'local-api')
     : (process.env.PYTHON ??
       (existsSync(developmentPython) ? developmentPython : 'python3'));
   const args = isPackaged
@@ -77,6 +77,9 @@ function startLocalApi(): void {
       ...process.env,
       LOCAL_API_HOST: '127.0.0.1',
       LOCAL_API_PORT: '8765',
+      ...(isPackaged
+        ? { YENKASA_DATA_DIR: join(app.getPath('userData'), 'data') }
+        : {}),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });

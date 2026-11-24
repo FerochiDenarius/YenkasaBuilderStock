@@ -1,0 +1,43 @@
+name: Build Installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*.*.*']
+
+jobs:
+  installer:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-13
+            command: dist:mac
+            artifact: macos-intel
+          - os: macos-14
+            command: dist:mac
+            artifact: macos-arm64
+          - os: windows-latest
+            command: dist:win
+            artifact: windows-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: python -m venv services/local-api/.venv
+      - run: services/local-api/.venv/bin/python -m pip install -r services/local-api/requirements.txt -r services/local-api/requirements-build.txt
+        if: runner.os != 'Windows'
+      - run: services/local-api/.venv/Scripts/python.exe -m pip install -r services/local-api/requirements.txt -r services/local-api/requirements-build.txt
+        if: runner.os == 'Windows'
+      - run: npm --workspace apps/desktop run ${{ matrix.command }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YenkasaBuildersStock-${{ matrix.artifact }}
+          path: apps/desktop/release/**
