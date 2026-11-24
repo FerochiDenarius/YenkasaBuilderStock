@@ -83,7 +83,8 @@ content = [
         ('D. Test results', [
             'CLOUD-01 | Invalid project URL | POST cloud test with malformed URL and secret | HTTP 422 useful validation error, no secret in response | PASS',
             'CLOUD-02 | Fresh installation access | Request cloud configuration before a company record exists | HTTP 200 without owner credentials | PASS',
-            'CLOUD-02A | Entry screen gate | Start with no saved cloud configuration | Welcome screen is shown first; Owner Login, Staff Login and New Company remain disabled until Database Configuration succeeds | PASS by renderer build and lifecycle logic',
+            'CLOUD-02A | Entry screen gate | Start the rebuilt DMG with an isolated empty user-data profile | Welcome screen is shown first; Owner Login, Staff Login and New Company are disabled until Database Configuration succeeds | PASS; live packaged test',
+            'CLOUD-02C | Database configuration navigation | Click Configure Database in the live empty-profile DMG | Supabase connection setup screen opens | PASS; live packaged test',
             'CLOUD-02B | Post-configuration handoff | Test and save cloud configuration, then return to the application entry screen | Welcome screen is shown again with the three access choices enabled according to company status | PASS by renderer build and source validation; packaged interactive screenshot pending',
             'CLOUD-03 | Fresh installation validation | Submit malformed cloud-test payload before company registration | HTTP 422 useful validation error, not owner-auth failure | PASS',
             'CLOUD-04 | Post-setup independence | Create a company record, then request cloud configuration without an owner session | HTTP 200; connectivity configuration remains independent of owner authentication | PASS',
@@ -94,7 +95,7 @@ content = [
             'CLOUD-09 | Renderer lint | Run npm run lint | Clean | PASS',
             'CLOUD-10 | Desktop build | Run npm run build:desktop | Electron Vite production build completed | PASS',
             'CLOUD-11 | Packaged API build | Build the bundled local-api with the updated lifecycle endpoint | PyInstaller build completed and produced the packaged local-api executable | PASS',
-            'CLOUD-12 | Protected navigation gate | Start renderer with no owner or branch session after cloud status is available | Installation Welcome is shown; Company Setup pages are not rendered or listed until initial setup is explicitly selected or owner login succeeds | PASS by renderer build and source inspection; packaged interactive screenshot pending',
+            'CLOUD-12 | Protected navigation gate | Start renderer with no owner or branch session after cloud status is available | Installation Welcome is shown; Company Setup pages are not rendered or listed until initial setup is explicitly selected or owner login succeeds | PASS by live packaged empty-profile test',
             'CLOUD-13 | Existing env connection | Test the configured backend DATABASE_URL without printing the secret | Direct db host could not be resolved before authentication | FAIL; use the exact Session Pooler host, username and port 5432 from Supabase Connect.',
             'CLOUD-14 | Secure persistence restart | Save valid configuration, restart packaged app, reopen page | Metadata restored and password remains masked | NOT TESTED interactively.',
         ]),
@@ -103,13 +104,13 @@ content = [
         ('E. Proof of validation', [
             'The actual backend test suite executed 19 passing tests, including fresh-install cloud access, post-company owner authorization, lifecycle status and password non-disclosure checks for the cloud configuration endpoint.',
             'The actual bundled local API build completed after adding the lifecycle status endpoint. The renderer production build and lint completed after adding the access-selection view and protected-navigation gate.',
-            'The packaged macOS DMG was rebuilt at apps/desktop/release/YenkasaBuildersStock-0.1.0.dmg. It is unsigned in this development environment and requires interactive packaged safeStorage/first-install testing before release.',
+            'The packaged macOS DMG was rebuilt at apps/desktop/release/YenkasaBuildersStock-0.1.0.dmg. A live empty-profile run produced Validation Reports/Welcome_Fresh_Install.png and verified the Welcome screen plus Configure Database navigation. The DMG is unsigned in this development environment.',
             'No fabricated Supabase success is reported. The configured env was tested with the password withheld; the direct db host failed DNS resolution before authentication. The Session Pooler URI remains to be tested.',
         ]),
         ('F. Outstanding issues', [
             'The reference welcome/access selection is implemented inside the existing application shell; the separate multi-step installer shell shown in the reference image is not yet a distinct installer product.',
             'Actual cloud migration and SQLite-to-Supabase synchronization remain separate deployment phases. A customer build must not ship central PostgreSQL administrator credentials.',
-            'Before production release, replace the direct db host with the exact Supabase Session Pooler details from Supabase Connect (normally port 5432), then run a packaged macOS and Windows interactive safeStorage test and the actual Supabase migration.',
+            'Before production release, replace the direct db host with the exact Supabase Session Pooler details from Supabase Connect (normally port 5432), then run a packaged macOS and Windows interactive safeStorage test, Save and Continue handoff with valid credentials, and the actual Supabase migration.',
         ]),
     ]),
 ]

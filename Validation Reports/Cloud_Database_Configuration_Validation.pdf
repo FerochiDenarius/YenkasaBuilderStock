@@ -122,7 +122,7 @@ ET
 endstream
 endobj
 3 0 obj
-<< /Length 5907 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 6081 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -211,13 +211,19 @@ BT
 (exists | HTTP 200 without owner credentials | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-02A | Entry screen gate | Start with no saved cloud configuration | Welcome screen is) Tj
+(CLOUD-02A | Entry screen gate | Start the rebuilt DMG with an isolated empty user-data profile) Tj
 0 -11 Td
 /F1 8 Tf
-(shown first; Owner Login, Staff Login and New Company remain disabled until Database) Tj
+(| Welcome screen is shown first; Owner Login, Staff Login and New Company are disabled until) Tj
 0 -11 Td
 /F1 8 Tf
-(Configuration succeeds | PASS by renderer build and lifecycle logic) Tj
+(Database Configuration succeeds | PASS; live packaged test) Tj
+0 -11 Td
+/F1 8 Tf
+(CLOUD-02C | Database configuration navigation | Click Configure Database in the live) Tj
+0 -11 Td
+/F1 8 Tf
+(empty-profile DMG | Supabase connection setup screen opens | PASS; live packaged test) Tj
 0 -11 Td
 /F1 8 Tf
 (CLOUD-02B | Post-configuration handoff | Test and save cloud configuration, then return to the) Tj
@@ -301,7 +307,7 @@ BT
 (rendered or listed until initial setup is explicitly selected or owner login succeeds | PASS) Tj
 0 -11 Td
 /F1 8 Tf
-(by renderer build and source inspection; packaged interactive screenshot pending) Tj
+(by live packaged empty-profile test) Tj
 0 -11 Td
 /F1 8 Tf
 (CLOUD-13 | Existing env connection | Test the configured backend DATABASE_URL without printing) Tj
@@ -325,7 +331,7 @@ ET
 endstream
 endobj
 4 0 obj
-<< /Length 2386 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 2552 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -365,13 +371,16 @@ BT
 (protected-navigation gate.) Tj
 0 -11 Td
 /F1 8 Tf
-(The packaged macOS DMG was rebuilt at apps/desktop/release/YenkasaBuildersStock-0.1.0.dmg. It) Tj
+(The packaged macOS DMG was rebuilt at apps/desktop/release/YenkasaBuildersStock-0.1.0.dmg. A) Tj
 0 -11 Td
 /F1 8 Tf
-(is unsigned in this development environment and requires interactive packaged) Tj
+(live empty-profile run produced Validation Reports/Welcome_Fresh_Install.png and verified the) Tj
 0 -11 Td
 /F1 8 Tf
-(safeStorage/first-install testing before release.) Tj
+(Welcome screen plus Configure Database navigation. The DMG is unsigned in this development) Tj
+0 -11 Td
+/F1 8 Tf
+(environment.) Tj
 0 -11 Td
 /F1 8 Tf
 (No fabricated Supabase success is reported. The configured env was tested with the password) Tj
@@ -414,7 +423,10 @@ BT
 (details from Supabase Connect \(normally port 5432\), then run a packaged macOS and Windows) Tj
 0 -11 Td
 /F1 8 Tf
-(interactive safeStorage test and the actual Supabase migration.) Tj
+(interactive safeStorage test, Save and Continue handoff with valid credentials, and the actual) Tj
+0 -11 Td
+/F1 8 Tf
+(Supabase migration.) Tj
 0 -11 Td
 /F1 8 Tf
 () Tj
@@ -443,14 +455,14 @@ xref
 0000000009 00000 n 
 0000000079 00000 n 
 0000003125 00000 n 
-0000009123 00000 n 
-0000011600 00000 n 
-0000011669 00000 n 
-0000011756 00000 n 
-0000011843 00000 n 
-0000011930 00000 n 
+0000009297 00000 n 
+0000011940 00000 n 
+0000012009 00000 n 
+0000012096 00000 n 
+0000012183 00000 n 
+0000012270 00000 n 
 trailer
 << /Size 10 /Root 9 0 R >>
 startxref
-11979
+12319
 %%EOF
