@@ -16,6 +16,7 @@ type CloudConfigInput = {
   databaseName: string;
   databaseUser: string;
   databasePassword?: string;
+  ownerSession?: string;
 };
 
 type StoredCloudConfig = {
@@ -74,13 +75,17 @@ async function decryptCloudPassword(config: StoredCloudConfig | null): Promise<s
 }
 
 async function cloudApiRequest(path: string, payload: CloudConfigInput) {
+  const { ownerSession, ...connectionPayload } = payload;
   const response = await fetch(`http://127.0.0.1:${localApiPort}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Role': 'HQ_ADMIN' },
-    body: JSON.stringify(payload),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(ownerSession ? { 'X-Owner-Session': ownerSession } : { 'X-Role': 'HQ_ADMIN' }),
+    },
+    body: JSON.stringify(connectionPayload),
   });
-  const body = (await response.json().catch(() => ({}))) as { detail?: string; message?: string };
-  if (!response.ok) throw new Error(body.detail ?? body.message ?? 'Supabase connection failed.');
+  const body = (await response.json().catch(() => ({}))) as { detail?: string; message?: string; error?: { message?: string } };
+  if (!response.ok) throw new Error(body.error?.message ?? body.detail ?? body.message ?? 'Supabase connection failed.');
   return body;
 }
 
@@ -128,7 +133,6 @@ ipcMain.handle('cloud:save-config', async (_event, input: CloudConfigInput) => {
   await mkdir(app.getPath('userData'), { recursive: true });
   await writeFile(cloudConfigPath(), JSON.stringify(stored, null, 2), { encoding: 'utf8', mode: 0o600 });
   await chmod(cloudConfigPath(), 0o600);
-  await restartLocalApi();
   return { ok: true, passwordConfigured: true };
 });
 
@@ -280,11 +284,6 @@ function decryptCloudPasswordSync(config: StoredCloudConfig | null): string {
   } catch {
     return '';
   }
-}
-
-async function restartLocalApi(): Promise<void> {
-  stopLocalApi();
-  await startLocalApi();
 }
 
 function stopLocalApi(): void {

@@ -13,6 +13,7 @@ This backlog records issues found during live application testing. Each item mus
 - [ ] 07 — Application icon: add an authorized application-icon upload field, validate PNG input, persist it, use it for the runtime desktop icon where supported, and replace the Electron default in distributable branding assets.
 - [ ] 08 — Owner Setup lock: after owner credentials exist, hide Company Setup until a valid owner session unlocks it; branch staff and owner logout must relock setup.
 - [ ] 09 — Brand palette propagation: saved primary, secondary and accent colors must apply to the shared application UI after save and reload, not only to branding previews.
+- [ ] 10 — Supabase test IPC regression: Electron cloud:test-config must forward the authenticated owner session and preserve actionable backend error messages after setup locking.
 
 ## Validation rule
 

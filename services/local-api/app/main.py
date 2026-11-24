@@ -488,7 +488,7 @@ class SyncRunPayload(BaseModel):
     branchId: str
 
 app = FastAPI(title='YenkasaBuildersStock Local API')
-app.add_middleware(CORSMiddleware, allow_origins=['null', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174', 'file://'], allow_methods=['GET', 'PUT', 'POST', 'PATCH', 'OPTIONS'], allow_headers=['Content-Type', 'X-Role', 'X-User-Id', 'X-Branch-Id', 'X-Device-Id'])
+app.add_middleware(CORSMiddleware, allow_origins=['null', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174', 'file://'], allow_methods=['GET', 'PUT', 'POST', 'PATCH', 'OPTIONS'], allow_headers=['Content-Type', 'X-Role', 'X-Owner-Session', 'X-User-Id', 'X-Branch-Id', 'X-Device-Id'])
 
 def backup_sqlite_before_startup_changes() -> None:
     if not settings.local_database_url.startswith('sqlite:///'):
@@ -758,7 +758,7 @@ def owner_activity(request: Request) -> list[dict]:
 
 @app.get('/api/cloud/configuration')
 def local_cloud_configuration(request: Request) -> dict:
-    require_hq(request)
+    require_hq(request, allow_initial_setup=True)
     configured = bool(os.getenv('CLOUD_DATABASE_URL', '').strip())
     return {
         'projectUrl': os.getenv('SUPABASE_URL', '').strip(),
@@ -770,7 +770,7 @@ def local_cloud_configuration(request: Request) -> dict:
 
 @app.post('/api/cloud/test')
 def test_cloud_connection(payload: CloudConnectionPayload, request: Request) -> dict:
-    require_hq(request)
+    require_hq(request, allow_initial_setup=True)
     project_url = payload.projectUrl.strip()
     project_ref = payload.projectRef.strip()
     parsed_project_url = urlsplit(project_url)

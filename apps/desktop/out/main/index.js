@@ -51,13 +51,17 @@ async function decryptCloudPassword(config) {
   }
 }
 async function cloudApiRequest(path, payload) {
+  const { ownerSession, ...connectionPayload } = payload;
   const response = await fetch(`http://127.0.0.1:${localApiPort}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Role": "HQ_ADMIN" },
-    body: JSON.stringify(payload)
+    headers: {
+      "Content-Type": "application/json",
+      ...ownerSession ? { "X-Owner-Session": ownerSession } : { "X-Role": "HQ_ADMIN" }
+    },
+    body: JSON.stringify(connectionPayload)
   });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.detail ?? body.message ?? "Supabase connection failed.");
+  if (!response.ok) throw new Error(body.error?.message ?? body.detail ?? body.message ?? "Supabase connection failed.");
   return body;
 }
 async function testCloudConfig(input) {
@@ -101,7 +105,6 @@ ipcMain.handle("cloud:save-config", async (_event, input) => {
   await mkdir(app.getPath("userData"), { recursive: true });
   await writeFile(cloudConfigPath(), JSON.stringify(stored, null, 2), { encoding: "utf8", mode: 384 });
   await chmod(cloudConfigPath(), 384);
-  await restartLocalApi();
   return { ok: true, passwordConfigured: true };
 });
 ipcMain.handle("desktop:print", async (event) => {
@@ -231,10 +234,6 @@ function decryptCloudPasswordSync(config) {
   } catch {
     return "";
   }
-}
-async function restartLocalApi() {
-  stopLocalApi();
-  await startLocalApi();
 }
 function stopLocalApi() {
   if (localApi && !localApi.killed) localApi.kill();

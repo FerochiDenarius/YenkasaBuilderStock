@@ -15273,7 +15273,7 @@ function CloudDatabaseSetupPage() {
     setError("");
     setMessage("Testing the Supabase connection securely…");
     try {
-      await window.desktopBridge.cloud.testConfig({ ...form, projectUrl: normalizeProjectUrl(form.projectUrl), databasePort: Number(form.databasePort) });
+      await window.desktopBridge.cloud.testConfig({ ...form, projectUrl: normalizeProjectUrl(form.projectUrl), databasePort: Number(form.databasePort), ownerSession: sessionStorage.getItem("yenkasa-owner-session") ?? void 0 });
       setTested(true);
       setStatus("Connection verified");
       setMessage("Supabase is reachable. You can now save this configuration.");
@@ -15297,7 +15297,7 @@ function CloudDatabaseSetupPage() {
     setSaving(true);
     setError("");
     try {
-      await window.desktopBridge.cloud.saveConfig({ ...form, projectUrl: normalizeProjectUrl(form.projectUrl), databasePort: Number(form.databasePort) });
+      await window.desktopBridge.cloud.saveConfig({ ...form, projectUrl: normalizeProjectUrl(form.projectUrl), databasePort: Number(form.databasePort), ownerSession: sessionStorage.getItem("yenkasa-owner-session") ?? void 0 });
       setPasswordConfigured(true);
       setForm((current) => ({ ...current, databasePassword: "" }));
       setMessage("Cloud configuration saved securely on this computer.");
