@@ -1,0 +1,305 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Length 1960 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 15 Tf
+36 806 Td
+(Supabase PostgreSQL Phase 1) Tj
+0 -11 Td
+/F1 8 Tf
+0 -18 Td
+(YenkasaBuildersStock | Validation date: 23 November 2026) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(A. Page Information) Tj
+0 -11 Td
+/F1 8 Tf
+(--------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(Scope: central PostgreSQL foundation for Supabase project xwyblizsmfeulyykufwg in eu-west-1.) Tj
+0 -11 Td
+/F1 8 Tf
+(Implementation: backend-only DATABASE_URL configuration, SSL-required PostgreSQL pooling, safe) Tj
+0 -11 Td
+/F1 8 Tf
+(cloud health diagnostics, Alembic migration and retained validation script.) Tj
+0 -11 Td
+/F1 8 Tf
+(Relevant source files: services/cloud-api/app/main.py; services/cloud-api/alembic/env.py;) Tj
+0 -11 Td
+/F1 8 Tf
+(services/cloud-api/alembic/versions/0001_central_schema.py; scripts/validate_supabase.py;) Tj
+0 -11 Td
+/F1 8 Tf
+(docs/database/supabase-phase-1.md; .env.example.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(B. Functionality Checklist) Tj
+0 -11 Td
+/F1 8 Tf
+(--------------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(Cloud service resolves DATABASE_URL or CLOUD_DATABASE_URL without exposing credentials to the) Tj
+0 -11 Td
+/F1 8 Tf
+(renderer | PASS \(configuration path\)) Tj
+0 -11 Td
+/F1 8 Tf
+(SSL is required when the PostgreSQL URI does not already specify sslmode | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(\(implementation inspected\)) Tj
+0 -11 Td
+/F1 8 Tf
+(Connection pooling and pre-ping are configured | PASS \(implementation inspected\)) Tj
+0 -11 Td
+/F1 8 Tf
+(Central schema includes company/branch-scoped business entities and sync_outbox | PASS \(local) Tj
+0 -11 Td
+/F1 8 Tf
+(migration smoke test\)) Tj
+0 -11 Td
+/F1 8 Tf
+(SQLite remains the desktop operational database and now has a local sync_outbox structure |) Tj
+0 -11 Td
+/F1 8 Tf
+(PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(Actual Supabase PostgreSQL connection | NOT TESTED  DATABASE_URL is not configured in this) Tj
+0 -11 Td
+/F1 8 Tf
+(environment) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+ET
+endstream
+endobj
+3 0 obj
+<< /Length 2229 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 15 Tf
+36 806 Td
+(Supabase PostgreSQL Phase 1) Tj
+0 -11 Td
+/F1 8 Tf
+0 -18 Td
+(YenkasaBuildersStock | Validation date: 23 November 2026) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(C. Backend Integration) Tj
+0 -11 Td
+/F1 8 Tf
+(----------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(The cloud migration creates 22 tables covering companies, owners, branches, roles,) Tj
+0 -11 Td
+/F1 8 Tf
+(permissions, users, devices, products, stock movements, suppliers, customers, purchases,) Tj
+0 -11 Td
+/F1 8 Tf
+(sales, payments, receipts, releases, templates, audit logs and outbox events.) Tj
+0 -11 Td
+/F1 8 Tf
+(Every branch-owned table includes company_id and branch_id where applicable. Unique) Tj
+0 -11 Td
+/F1 8 Tf
+(constraints cover branch document numbers, role permissions and outbox idempotency keys.) Tj
+0 -11 Td
+/F1 8 Tf
+(Automatic SQLite-to-PostgreSQL synchronization is intentionally not enabled in Phase 1.) Tj
+0 -11 Td
+/F1 8 Tf
+(sync_outbox is the prepared boundary for Phase 2 conflict and retry work.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(D. Test Results) Tj
+0 -11 Td
+/F1 8 Tf
+(--------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(SUPA-01 | Cloud API import | Import app with no credentials | Service loads without connecting) Tj
+0 -11 Td
+/F1 8 Tf
+(to an unintended database | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SUPA-02 | Missing configuration | GET /health with no DATABASE_URL | 503) Tj
+0 -11 Td
+/F1 8 Tf
+(configuration_required and no secret disclosure | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SUPA-03 | Migration smoke test | Apply Alembic migration to temporary SQLite | 22 tables) Tj
+0 -11 Td
+/F1 8 Tf
+(created, required table set present | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SUPA-04 | Local regression | Run services/local-api pytest | 13 passed | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SUPA-05 | Desktop regression | Run npm run lint and npm run build:desktop | Both passed | PASS) Tj
+0 -11 Td
+/F1 8 Tf
+(SUPA-06 | Supabase connection | Connect to supplied project | Requires DATABASE_URL/password |) Tj
+0 -11 Td
+/F1 8 Tf
+(NOT TESTED) Tj
+0 -11 Td
+/F1 8 Tf
+(SUPA-07 | Cloud insert/isolation | Run scripts/validate_supabase.py | Requires migrated) Tj
+0 -11 Td
+/F1 8 Tf
+(Supabase database | NOT TESTED) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+ET
+endstream
+endobj
+4 0 obj
+<< /Length 1988 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 15 Tf
+36 806 Td
+(Supabase PostgreSQL Phase 1) Tj
+0 -11 Td
+/F1 8 Tf
+0 -18 Td
+(YenkasaBuildersStock | Validation date: 23 November 2026) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(E. Proof of Validation) Tj
+0 -11 Td
+/F1 8 Tf
+(----------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(Evidence generated from actual commands: temporary SQLite migration created 22 tables; local) Tj
+0 -11 Td
+/F1 8 Tf
+(FastAPI regression suite reported 13 passed; Electron renderer lint and production build) Tj
+0 -11 Td
+/F1 8 Tf
+(passed; cloud health returned configuration_required without credentials.) Tj
+0 -11 Td
+/F1 8 Tf
+(No fabricated Supabase screenshot or query result is included. The cloud connection and cloud) Tj
+0 -11 Td
+/F1 8 Tf
+(record validation remain clearly marked NOT TESTED because the project ID/region alone do not) Tj
+0 -11 Td
+/F1 8 Tf
+(authenticate PostgreSQL.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+/F1 8 Tf
+(F. Outstanding Issues) Tj
+0 -11 Td
+/F1 8 Tf
+(---------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(Required from the owner: configure the Supabase PostgreSQL URI/password in a backend-only) Tj
+0 -11 Td
+/F1 8 Tf
+(services/cloud-api/.env or deployment secret as DATABASE_URL. Do not paste it into the) Tj
+0 -11 Td
+/F1 8 Tf
+(renderer or commit it.) Tj
+0 -11 Td
+/F1 8 Tf
+(After configuration, run the Alembic upgrade and scripts/validate_supabase.py. The resulting) Tj
+0 -11 Td
+/F1 8 Tf
+(database name, current user, retained validation IDs and isolation check will be the genuine) Tj
+0 -11 Td
+/F1 8 Tf
+(Phase 1 cloud evidence.) Tj
+0 -11 Td
+/F1 8 Tf
+(Phase 2 remains pending: tested SQLite-to-PostgreSQL outbox processing, retries, conflict) Tj
+0 -11 Td
+/F1 8 Tf
+(handling and synchronization of operational records.) Tj
+0 -11 Td
+/F1 8 Tf
+(Installer packaging still needs a release build that embeds the local FastAPI executable under) Tj
+0 -11 Td
+/F1 8 Tf
+(resources/local-api; the development build already bundles JavaScript dependencies.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Pages /Kids [6 0 R 7 0 R 8 0 R] /Count 3 >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595 842] /Contents 2 0 R >>
+endobj
+7 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595 842] /Contents 3 0 R >>
+endobj
+8 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595 842] /Contents 4 0 R >>
+endobj
+9 0 obj
+<< /Type /Catalog /Pages 5 0 R >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000002130 00000 n 
+0000004450 00000 n 
+0000006529 00000 n 
+0000006598 00000 n 
+0000006685 00000 n 
+0000006772 00000 n 
+0000006859 00000 n 
+trailer
+<< /Size 10 /Root 9 0 R >>
+startxref
+6908
+%%EOF

@@ -1,0 +1,399 @@
+import type {
+  AuthSession,
+  Branch,
+  CompanyRegistration,
+  OwnerAccount,
+  OwnerActivity,
+  OwnerSecurity,
+  PaymentRecord,
+  PurchaseRecord,
+  ReceiptRecord,
+  MaterialReleaseRecord,
+  SaleRecord,
+  SalesProduct,
+  StaffAccount,
+} from '@yenkasa/contracts';
+export interface DeviceRecord {
+  id: string;
+  branchId: string;
+  branchName: string;
+  deviceName: string;
+  activationCode: string;
+  deviceType: string;
+  validity: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export const LOCAL_API_URL =
+  import.meta.env.VITE_LOCAL_API_URL ?? 'http://127.0.0.1:8765';
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${LOCAL_API_URL}${path}`, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => undefined);
+    throw new Error(
+      body?.error?.message ?? `Local API request failed (${response.status})`,
+    );
+  }
+  return response.json() as Promise<T>;
+}
+
+export const companyApi = {
+  get: () => request<CompanyRegistration | null>('/api/company'),
+  save: (company: CompanyRegistration) =>
+    request<CompanyRegistration>('/api/company', {
+      method: 'PUT',
+      body: JSON.stringify(company),
+    }),
+};
+
+export const ownerApi = {
+  get: () => request<OwnerAccount | null>('/api/owner'),
+  save: (owner: OwnerAccount) =>
+    request<OwnerAccount>('/api/owner', {
+      method: 'PUT',
+      body: JSON.stringify(owner),
+    }),
+  getSecurity: () =>
+    request<OwnerSecurity>('/api/owner/security', {
+      headers: { 'X-Role': 'HQ_ADMIN' },
+    }),
+  saveSecurity: (security: {
+    username: string;
+    email: string;
+    password?: string;
+    twoFactorEnabled: boolean;
+    emailNotifications: boolean;
+    smsNotifications: boolean;
+    recoveryPhone: string;
+    recoveryEmail: string;
+  }) =>
+    request<OwnerSecurity>('/api/owner/security', {
+      method: 'PUT',
+      headers: { 'X-Role': 'HQ_ADMIN' },
+      body: JSON.stringify(security),
+    }),
+  activity: () =>
+    request<OwnerActivity[]>('/api/owner/activity', {
+      headers: { 'X-Role': 'HQ_ADMIN' },
+    }),
+};
+
+export const branchApi = {
+  list: () => request<Branch[]>('/api/branches'),
+  activatedList: () => request<Branch[]>('/api/activated-branches'),
+  create: (branch: Record<string, unknown>) =>
+    request<Branch>('/api/branches', {
+      method: 'POST',
+      headers: { 'X-Role': 'HQ_ADMIN' },
+      body: JSON.stringify(branch),
+    }),
+};
+
+export const deviceApi = {
+  list: () =>
+    request<DeviceRecord[]>('/api/devices', {
+      headers: { 'X-Role': 'HQ_ADMIN' },
+    }),
+  create: (payload: {
+    branchId: string;
+    deviceName: string;
+    deviceType: string;
+    validity: string;
+  }) =>
+    request<DeviceRecord>('/api/devices', {
+      method: 'POST',
+      headers: { 'X-Role': 'HQ_ADMIN' },
+      body: JSON.stringify(payload),
+    }),
+  update: (id: string, active: boolean) =>
+    request<DeviceRecord>(`/api/devices/${id}`, {
+      method: 'PATCH',
+      headers: { 'X-Role': 'HQ_ADMIN' },
+      body: JSON.stringify({ active }),
+    }),
+};
+
+export const authApi = {
+  login: (payload: {
+    branchId: string;
+    username: string;
+    password: string;
+    loginRole: string;
+    deviceId?: string;
+  }) =>
+    request<AuthSession>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  logout: (userId: string) =>
+    request<{ ok: boolean }>('/api/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
+};
+
+export const staffApi = {
+  companyUsers: () =>
+    request<StaffAccount[]>('/api/company-users', {
+      headers: { 'X-Role': 'HQ_ADMIN' },
+    }),
+  list: (branchId: string, userId: string) =>
+    request<StaffAccount[]>(
+      `/api/staff?branchId=${encodeURIComponent(branchId)}`,
+      { headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId } },
+    ),
+  create: (
+    branchId: string,
+    userId: string,
+    payload: {
+      username: string;
+      email: string;
+      fullName: string;
+      role: string;
+      password: string;
+      permissions?: string[];
+    },
+  ) =>
+    request<StaffAccount>('/api/staff', {
+      method: 'POST',
+      headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
+      body: JSON.stringify({ ...payload, branchId }),
+    }),
+  update: (
+    id: string,
+    branchId: string,
+    userId: string,
+    payload: {
+      fullName?: string;
+      email?: string;
+      active?: boolean;
+      permissions?: string[];
+    },
+  ) =>
+    request<StaffAccount>(`/api/staff/${id}`, {
+      method: 'PATCH',
+      headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
+      body: JSON.stringify(payload),
+    }),
+  resetPassword: (
+    id: string,
+    branchId: string,
+    userId: string,
+    password: string,
+  ) =>
+    request<StaffAccount>(`/api/staff/${id}/reset-password`, {
+      method: 'POST',
+      headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
+      body: JSON.stringify({ password }),
+    }),
+  audit: (branchId?: string, userId?: string) =>
+    request<
+      Array<{
+        id: string;
+        action: string;
+        actorUserId: string;
+        targetUserId: string;
+        createdAt: string;
+      }>
+    >(
+      branchId
+        ? `/api/audit-log?branchId=${encodeURIComponent(branchId)}`
+        : '/api/company-audit-log',
+      {
+        headers: branchId
+          ? { 'X-User-Id': userId ?? '', 'X-Branch-Id': branchId }
+          : { 'X-Role': 'HQ_ADMIN' },
+      },
+    ),
+};
+
+export const salesApi = {
+  products: (branchId: string, userId: string) =>
+    request<SalesProduct[]>(
+      `/api/products?branchId=${encodeURIComponent(branchId)}`,
+      { headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId } },
+    ),
+  list: (branchId: string, userId: string) =>
+    request<SaleRecord[]>(
+      `/api/sales?branchId=${encodeURIComponent(branchId)}`,
+      { headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId } },
+    ),
+  create: (
+    payload: {
+      branchId: string;
+      documentType: 'SALE' | 'QUOTATION' | 'INVOICE';
+      customerName: string;
+      vatPercent: number;
+      notes: string;
+      items: Array<{
+        sku: string;
+        name: string;
+        quantity: number;
+        unit: string;
+        unitPrice: number;
+        discountPercent: number;
+      }>;
+    },
+    userId: string,
+  ) =>
+    request<SaleRecord>('/api/sales', {
+      method: 'POST',
+      headers: { 'X-User-Id': userId, 'X-Branch-Id': payload.branchId },
+      body: JSON.stringify(payload),
+    }),
+};
+
+export const inventoryApi = {
+  list: (branchId: string, userId: string) => salesApi.products(branchId, userId),
+  create: (
+    branchId: string,
+    userId: string,
+    payload: {
+      sku: string;
+      barcode: string;
+      name: string;
+      category: string;
+      brand: string;
+      productType: string;
+      variant: string;
+      unit: string;
+      stock: number;
+      price: number;
+    },
+  ) =>
+    request<SalesProduct>('/api/products', {
+      method: 'POST',
+      headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
+      body: JSON.stringify({ branchId, ...payload }),
+    }),
+  adjustStock: (
+    branchId: string,
+    userId: string,
+    sku: string,
+    quantity: number,
+    reason: string,
+  ) =>
+    request<SalesProduct>(`/api/products/${encodeURIComponent(sku)}/stock`, {
+      method: 'PATCH',
+      headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
+      body: JSON.stringify({ branchId, quantity, reason }),
+    }),
+};
+
+export const purchasingApi = {
+  list: (branchId: string, userId: string) =>
+    request<PurchaseRecord[]>(`/api/purchases?branchId=${encodeURIComponent(branchId)}`, {
+      headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
+    }),
+  create: (
+    branchId: string,
+    userId: string,
+    payload: {
+      supplier: string;
+      purchaseDate: string;
+      reference: string;
+      paymentType: string;
+      discount: number;
+      notes: string;
+      items: Array<{ sku: string; name: string; quantity: number; unit: string; unitCost: number }>;
+    },
+  ) =>
+    request<PurchaseRecord>('/api/purchases', {
+      method: 'POST',
+      headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
+      body: JSON.stringify({ branchId, ...payload }),
+    }),
+};
+
+export const paymentsApi = {
+  invoices: (branchId: string, userId: string, search = '') =>
+    request<SaleRecord[]>(
+      `/api/cashier/invoices?branchId=${encodeURIComponent(branchId)}&search=${encodeURIComponent(search)}`,
+      { headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId } },
+    ),
+  history: (branchId: string, userId: string) =>
+    request<PaymentRecord[]>(
+      `/api/payments/history?branchId=${encodeURIComponent(branchId)}`,
+      { headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId } },
+    ),
+  record: (
+    payload: {
+      branchId: string;
+      saleId: string;
+      amount: number;
+      method: PaymentRecord['method'];
+      reference: string;
+      evidenceNote: string;
+      idempotencyKey: string;
+    },
+    userId: string,
+  ) =>
+    request<{
+      payment: PaymentRecord;
+      invoice: SaleRecord;
+      receipt: ReceiptRecord | null;
+    }>('/api/payments', {
+      method: 'POST',
+      headers: { 'X-User-Id': userId, 'X-Branch-Id': payload.branchId },
+      body: JSON.stringify(payload),
+    }),
+  verify: (
+    paymentId: string,
+    branchId: string,
+    userId: string,
+    evidenceNote: string,
+  ) =>
+    request<{
+      payment: PaymentRecord;
+      invoice: SaleRecord;
+      receipt: ReceiptRecord;
+    }>(`/api/payments/${paymentId}/verify`, {
+      method: 'POST',
+      headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
+      body: JSON.stringify({ evidenceNote }),
+    }),
+};
+
+export const materialReleaseApi = {
+  invoices: (branchId: string, userId: string, search = '') =>
+    request<
+      Array<SaleRecord & { receiptNumber: string; releaseableItems: Array<{
+        sku: string;
+        name: string;
+        quantity: number;
+        unit: string;
+        remainingQuantity: number;
+        stock: number;
+      }> }>
+    >(
+      `/api/material-release/invoices?branchId=${encodeURIComponent(branchId)}&search=${encodeURIComponent(search)}`,
+      { headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId } },
+    ),
+  create: (
+    branchId: string,
+    userId: string,
+    saleId: string,
+    items: Array<{ sku: string; quantity: number }>,
+  ) =>
+    request<{
+      release: MaterialReleaseRecord;
+      invoice: SaleRecord;
+      remainingItems: Array<{
+        sku: string;
+        name: string;
+        quantity: number;
+        unit: string;
+        remainingQuantity: number;
+        stock: number;
+      }>;
+    }>('/api/material-releases', {
+      method: 'POST',
+      headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
+      body: JSON.stringify({ branchId, saleId, items }),
+    }),
+};

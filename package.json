@@ -1,0 +1,23 @@
+{
+  "name": "yenkasabuildersstock",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:desktop": "npm --workspace apps/desktop run dev",
+    "build:desktop": "npm --workspace apps/desktop run build",
+    "dev:headquarters": "npm --workspace apps/headquarters run dev",
+    "build:headquarters": "npm --workspace apps/headquarters run build",
+    "test:desktop": "npm --workspace apps/desktop run test",
+    "test": "npm run test:desktop && python3 -m pytest tests/python",
+    "lint": "npm --workspace apps/desktop run lint",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "playwright": "^1.65.1",
+    "prettier": "^3.4.2"
+  }
+}

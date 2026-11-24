@@ -1,0 +1,2 @@
+const { chromium } = require('playwright');
+(async () => { const b = await chromium.connectOverCDP('http://127.0.0.1:9222'); const p = b.contexts()[0].pages()[0]; await p.waitForTimeout(500); const name = await p.locator('.branch-login-branch strong').innerText(); console.log('branch restored after restart', name); await p.screenshot({ path: 'Validation Reports/34_phase2_after_restart.png', fullPage: true }); await b.close(); })().catch(e => { console.error(e); process.exit(1); });
