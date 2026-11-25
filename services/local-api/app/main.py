@@ -388,6 +388,8 @@ class BranchUpdatePayload(BaseModel):
     email: str = ''
     managerContact: str = ''
     status: str = 'Active'
+    managerUsername: str = ''
+    managerPassword: str = ''
 
 class LoginPayload(BaseModel):
     branchId: str
@@ -1012,9 +1014,37 @@ def update_branch(branch_id: str, payload: BranchUpdatePayload, request: Request
         duplicate = session.scalar(select(Branch).where(Branch.company_id == 1, Branch.code == code, Branch.id != branch_id))
         if duplicate is not None: raise HTTPException(409, 'Branch code already exists')
         branch.name = payload.name.strip(); branch.code = code; branch.location = payload.location.strip(); branch.phone = payload.phone.strip(); branch.manager = payload.manager.strip(); branch.branch_type = payload.branchType.strip(); branch.email = payload.email.strip(); branch.manager_contact = payload.managerContact.strip(); branch.status = payload.status
-        if branch.manager_user_id:
-            manager = session.scalar(select(UserAccount).where(UserAccount.id == branch.manager_user_id, UserAccount.company_id == 1))
-            if manager is not None: manager.full_name = branch.manager; manager.email = branch.email
+        manager = session.scalar(select(UserAccount).where(UserAccount.id == branch.manager_user_id, UserAccount.company_id == 1, UserAccount.branch_id == branch.id)) if branch.manager_user_id else None
+        manager_username = payload.managerUsername.strip().lower()
+        if manager is None:
+            if not manager_username or not payload.managerPassword:
+                raise HTTPException(422, 'Branch Manager username and password are required because this branch has no manager login account')
+            if len(payload.managerPassword) < 8:
+                raise HTTPException(422, 'Branch Manager password must be at least 8 characters')
+            duplicate_user = session.scalar(select(UserAccount).where(UserAccount.company_id == 1, UserAccount.username == manager_username))
+            if duplicate_user is not None:
+                raise HTTPException(409, 'Branch Manager username already exists')
+            manager = UserAccount(id=str(uuid4()), company_id=1, branch_id=branch.id, username=manager_username, email=branch.email, full_name=branch.manager, role='BRANCH_MANAGER', password_hash=hash_password(payload.managerPassword), active=True, created_at=now_iso())
+            session.add(manager)
+            branch.manager_user_id = manager.id
+            branch.users_count = max(branch.users_count, 1)
+            session.add(AuditLog(id=str(uuid4()), company_id=1, branch_id=branch.id, actor_user_id='HQ_OWNER', action='branch_manager_created', target_user_id=manager.id, created_at=now_iso()))
+        else:
+            if not manager_username:
+                raise HTTPException(422, 'Branch Manager username is required')
+            duplicate_user = session.scalar(select(UserAccount).where(UserAccount.company_id == 1, UserAccount.username == manager_username, UserAccount.id != manager.id))
+            if duplicate_user is not None:
+                raise HTTPException(409, 'Branch Manager username already exists')
+            credentials_changed = manager.username != manager_username or bool(payload.managerPassword)
+            manager.username = manager_username
+            manager.full_name = branch.manager
+            manager.email = branch.email
+            if payload.managerPassword:
+                if len(payload.managerPassword) < 8:
+                    raise HTTPException(422, 'Branch Manager password must be at least 8 characters')
+                manager.password_hash = hash_password(payload.managerPassword)
+            if credentials_changed:
+                session.add(AuditLog(id=str(uuid4()), company_id=1, branch_id=branch.id, actor_user_id='HQ_OWNER', action='branch_manager_credentials_updated', target_user_id=manager.id, created_at=now_iso()))
         session.add(AuditLog(id=str(uuid4()), company_id=1, branch_id=branch.id, actor_user_id='HQ_OWNER', action='branch_updated', target_user_id=branch.id, created_at=now_iso()))
         session.commit(); session.refresh(branch); return to_branch_payload(branch)
 
@@ -1768,7 +1798,12 @@ def to_owner_security_payload(owner: Owner) -> dict:
     return {'username': owner.username, 'email': owner.email, 'passwordSet': bool(owner.password_hash), 'twoFactorEnabled': owner.two_factor_enabled, 'emailNotifications': owner.email_notifications, 'smsNotifications': owner.sms_notifications, 'recoveryPhone': owner.recovery_phone, 'recoveryEmail': owner.recovery_email}
 
 def to_branch_payload(branch: Branch) -> dict:
-    return {'id': branch.id, 'name': branch.name, 'code': branch.code, 'location': branch.location, 'phone': branch.phone, 'manager': branch.manager, 'status': branch.status, 'usersCount': branch.users_count, 'branchType': branch.branch_type, 'email': branch.email, 'managerContact': branch.manager_contact}
+    manager_username = ''
+    with Session(engine) as session:
+        if branch.manager_user_id:
+            manager = session.scalar(select(UserAccount).where(UserAccount.id == branch.manager_user_id, UserAccount.company_id == branch.company_id, UserAccount.branch_id == branch.id))
+            manager_username = manager.username if manager is not None else ''
+    return {'id': branch.id, 'name': branch.name, 'code': branch.code, 'location': branch.location, 'phone': branch.phone, 'manager': branch.manager, 'status': branch.status, 'usersCount': branch.users_count, 'branchType': branch.branch_type, 'email': branch.email, 'managerContact': branch.manager_contact, 'managerUsername': manager_username}
 
 def to_staff_payload(user: UserAccount) -> dict:
     try: permissions = json.loads(user.permissions_json or '[]')

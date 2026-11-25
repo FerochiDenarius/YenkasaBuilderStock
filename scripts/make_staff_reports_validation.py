@@ -55,6 +55,7 @@ def build_staff_report():
         ['Initial permissions', 'Manager can grant/revoke sales, payments, inventory, release and report permissions.', 'PASS — API and UI'],
         ['Edit', 'Manager can change name, email, role and permissions.', 'PASS — endpoint and live edit control'],
         ['Cashier role', 'Cashier account can be created and is not disabled for Branch Manager.', 'PASS — 23 API tests'],
+        ['Branch manager login', 'Owner can edit the manager username and replace the hashed password without exposing plaintext credentials.', 'PASS — branch API regression'],
         ['Deactivate / Reactivate', 'Manager can disable or restore a staff account.', 'PASS — existing API regression'],
         ['Reset password', 'Manager can reset credentials and view/hide the new password while entering it.', 'PASS — UI control present'],
         ['Audit Log', 'Staff-management actions remain visible to authorized manager/owner viewers.', 'PASS — existing audit endpoint'],

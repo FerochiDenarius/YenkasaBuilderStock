@@ -141,6 +141,7 @@ export interface Branch {
   branchType?: string;
   email?: string;
   managerContact?: string;
+  managerUsername?: string;
 }
 export type BranchRole =
   | 'BRANCH_MANAGER'

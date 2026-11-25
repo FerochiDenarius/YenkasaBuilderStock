@@ -286,6 +286,11 @@ export function Dashboard() {
   const hasBranchAccess = (label: string) => {
     if (!branchSession) return false;
     if (label === 'Dashboard') return true;
+    // A Branch Manager retains the complete operational workspace. Staff
+    // accounts are permission-scoped below, but the manager must never lose
+    // access to Cashier & Payments simply because an old session token has a
+    // stale permission snapshot.
+    if (branchSession.role === 'BRANCH_MANAGER' && roleNavigation.BRANCH_MANAGER.includes(label)) return true;
     if (label === 'Reports') {
       return branchSession.permissions.some((permission) => permission.endsWith('_reports') || permission === 'financial_reports');
     }

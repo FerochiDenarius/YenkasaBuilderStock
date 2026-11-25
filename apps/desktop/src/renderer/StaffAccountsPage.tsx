@@ -70,6 +70,7 @@ export function StaffAccountsPage() {
   const [editForm, setEditForm] = useState<EditForm>({
     fullName: '',
     email: '',
+    role: 'SALES_OFFICER',
     permissions: [],
   });
   const [open, setOpen] = useState(false);

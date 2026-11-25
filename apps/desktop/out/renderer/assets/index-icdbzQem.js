@@ -11366,18 +11366,30 @@ function BranchEditDialog({
     email: branch.email ?? "",
     manager: branch.manager,
     managerContact: branch.managerContact ?? "",
+    managerUsername: branch.managerUsername ?? "",
+    managerPassword: "",
+    confirmPassword: "",
     branchType: branch.branchType ?? "Sales & Warehouse",
     status: branch.status
   });
   const [error, setError] = reactExports.useState("");
   const [saving, setSaving] = reactExports.useState(false);
+  const [showPassword, setShowPassword] = reactExports.useState(false);
   const update = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
     setError("");
   };
   const save = async () => {
-    if (![form.name, form.code, form.location, form.manager].every((value) => value.trim())) {
+    if (![form.name, form.code, form.location, form.manager, form.managerUsername].every((value) => value.trim())) {
       setError("Branch name, code, address and manager name are required.");
+      return;
+    }
+    if (form.managerPassword && form.managerPassword.length < 8) {
+      setError("New Branch Manager password must be at least 8 characters.");
+      return;
+    }
+    if (form.managerPassword !== form.confirmPassword) {
+      setError("New password and confirmation do not match.");
       return;
     }
     setSaving(true);
@@ -11428,6 +11440,20 @@ function BranchEditDialog({
         /* @__PURE__ */ jsxRuntimeExports.jsx(Field$1, { name: "edit-email", label: "Email", value: form.email, type: "email", onChange: (value) => update("email", value) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(Field$1, { name: "edit-manager", label: "Branch Manager (Full Name)", value: form.manager, required: true, onChange: (value) => update("manager", value), icon: /* @__PURE__ */ jsxRuntimeExports.jsx(CircleUser, { size: 17 }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(Field$1, { name: "edit-manager-contact", label: "Manager Contact", value: form.managerContact, onChange: (value) => update("managerContact", value) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "branch-security-edit", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "branch-security-heading", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(LockKeyhole, { size: 18 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Branch Manager Login & Security" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: "Update the manager username or replace the password. Leave password fields blank to keep the current password." })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "wizard-fields", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field$1, { name: "edit-manager-username", label: "Manager Username", value: form.managerUsername, required: true, onChange: (value) => update("managerUsername", value.toLowerCase()), icon: /* @__PURE__ */ jsxRuntimeExports.jsx(CircleUser, { size: 17 }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SecretField, { name: "edit-manager-password", label: "New Password", value: form.managerPassword, visible: showPassword, onChange: (value) => update("managerPassword", value), onToggle: () => setShowPassword((value) => !value), placeholder: "Leave blank to keep current" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SecretField, { name: "edit-manager-confirm-password", label: "Confirm New Password", value: form.confirmPassword, visible: showPassword, onChange: (value) => update("confirmPassword", value), onToggle: () => setShowPassword((value) => !value), placeholder: "Confirm only when changing" })
+        ] })
       ] }),
       error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "wizard-error", role: "alert", children: error }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "wizard-footer", children: [
@@ -11951,6 +11977,24 @@ function Field$1({
     ] })
   ] });
 }
+function SecretField({
+  name,
+  label,
+  value,
+  visible,
+  onChange,
+  onToggle,
+  placeholder
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+    label,
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "wizard-input", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(LockKeyhole, { size: 17 }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "data-testid": `branch-${name}`, name, type: visible ? "text" : "password", value, placeholder, onChange: (event) => onChange(event.target.value) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", className: "field-visibility", onClick: onToggle, "aria-label": visible ? `Hide ${label}` : `Show ${label}`, children: visible ? /* @__PURE__ */ jsxRuntimeExports.jsx(EyeOff, { size: 16 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 16 }) })
+    ] })
+  ] });
+}
 function Stat$1({
   label,
   value,
@@ -12220,6 +12264,7 @@ function StaffAccountsPage() {
   const [editForm, setEditForm] = reactExports.useState({
     fullName: "",
     email: "",
+    role: "SALES_OFFICER",
     permissions: []
   });
   const [open, setOpen] = reactExports.useState(false);
@@ -16643,6 +16688,7 @@ function Dashboard() {
   const hasBranchAccess = (label) => {
     if (!branchSession) return false;
     if (label === "Dashboard") return true;
+    if (branchSession.role === "BRANCH_MANAGER" && roleNavigation.BRANCH_MANAGER.includes(label)) return true;
     if (label === "Reports") {
       return branchSession.permissions.some((permission) => permission.endsWith("_reports") || permission === "financial_reports");
     }

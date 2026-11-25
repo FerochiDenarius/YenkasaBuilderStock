@@ -184,16 +184,20 @@ def test_owner_can_edit_suspend_reactivate_and_delete_unused_branch():
         'name': 'Branch Controls Updated', 'code': 'BCTRL2', 'location': 'Tema', 'manager': 'Updated Manager',
         'status': 'Suspended', 'branchType': 'Warehouse Only', 'phone': '+233 20 000 0000',
         'email': 'controls@example.com', 'managerContact': '+233 24 000 0000',
+        'managerUsername': 'controls.updated', 'managerPassword': 'NewControlsPass123',
     })
     assert updated.status_code == 200
     assert updated.json()['status'] == 'Suspended'
+    assert updated.json()['managerUsername'] == 'controls.updated'
     blocked_login = client.post('/api/auth/login', json={'branchId': branch['id'], 'username': 'controls.manager', 'password': 'ControlsPass123', 'loginRole': 'BRANCH_MANAGER'})
     assert blocked_login.status_code == 401
     reactivated = client.patch(f"/api/branches/{branch['id']}", headers=owner_headers(client), json={
         'name': 'Branch Controls Updated', 'code': 'BCTRL2', 'location': 'Tema', 'manager': 'Updated Manager',
-        'status': 'Active', 'branchType': 'Warehouse Only',
+        'status': 'Active', 'branchType': 'Warehouse Only', 'managerUsername': 'controls.updated',
     })
     assert reactivated.status_code == 200
+    new_login = client.post('/api/auth/login', json={'branchId': branch['id'], 'username': 'controls.updated', 'password': 'NewControlsPass123', 'loginRole': 'BRANCH_MANAGER'})
+    assert new_login.status_code == 200
     deleted = client.delete(f"/api/branches/{branch['id']}", headers=owner_headers(client))
     assert deleted.status_code == 200
     assert all(item['id'] != branch['id'] for item in client.get('/api/branches', headers=owner_headers(client)).json())

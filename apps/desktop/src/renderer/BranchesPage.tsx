@@ -13,6 +13,8 @@ import {
   Check,
   ChevronDown,
   Edit3,
+  Eye,
+  EyeOff,
   LockKeyhole,
   MapPin,
   Monitor,
@@ -300,18 +302,30 @@ function BranchEditDialog({
     email: branch.email ?? '',
     manager: branch.manager,
     managerContact: branch.managerContact ?? '',
+    managerUsername: branch.managerUsername ?? '',
+    managerPassword: '',
+    confirmPassword: '',
     branchType: branch.branchType ?? 'Sales & Warehouse',
     status: branch.status,
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const update = (key: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
     setError('');
   };
   const save = async () => {
-    if (![form.name, form.code, form.location, form.manager].every((value) => value.trim())) {
+    if (![form.name, form.code, form.location, form.manager, form.managerUsername].every((value) => value.trim())) {
       setError('Branch name, code, address and manager name are required.');
+      return;
+    }
+    if (form.managerPassword && form.managerPassword.length < 8) {
+      setError('New Branch Manager password must be at least 8 characters.');
+      return;
+    }
+    if (form.managerPassword !== form.confirmPassword) {
+      setError('New password and confirmation do not match.');
       return;
     }
     setSaving(true);
@@ -345,6 +359,14 @@ function BranchEditDialog({
           <Field name="edit-manager" label="Branch Manager (Full Name)" value={form.manager} required onChange={(value) => update('manager', value)} icon={<UserCircle size={17} />} />
           <Field name="edit-manager-contact" label="Manager Contact" value={form.managerContact} onChange={(value) => update('managerContact', value)} />
         </div>
+        <section className="branch-security-edit">
+          <div className="branch-security-heading"><LockKeyhole size={18} /><div><strong>Branch Manager Login &amp; Security</strong><small>Update the manager username or replace the password. Leave password fields blank to keep the current password.</small></div></div>
+          <div className="wizard-fields">
+            <Field name="edit-manager-username" label="Manager Username" value={form.managerUsername} required onChange={(value) => update('managerUsername', value.toLowerCase())} icon={<UserCircle size={17} />} />
+            <SecretField name="edit-manager-password" label="New Password" value={form.managerPassword} visible={showPassword} onChange={(value) => update('managerPassword', value)} onToggle={() => setShowPassword((value) => !value)} placeholder="Leave blank to keep current" />
+            <SecretField name="edit-manager-confirm-password" label="Confirm New Password" value={form.confirmPassword} visible={showPassword} onChange={(value) => update('confirmPassword', value)} onToggle={() => setShowPassword((value) => !value)} placeholder="Confirm only when changing" />
+          </div>
+        </section>
         {error && <div className="wizard-error" role="alert">{error}</div>}
         <div className="wizard-footer"><button type="button" className="outline" onClick={onCancel}><X size={16} />Cancel</button><button type="button" className="primary-button" onClick={() => void save()} disabled={saving}><Check size={16} />{saving ? 'Saving…' : 'Save Changes'}</button></div>
       </section>
@@ -878,6 +900,26 @@ function Field({
       </div>
     </label>
   );
+}
+
+function SecretField({
+  name,
+  label,
+  value,
+  visible,
+  onChange,
+  onToggle,
+  placeholder,
+}: {
+  name: string;
+  label: string;
+  value: string;
+  visible: boolean;
+  onChange: (value: string) => void;
+  onToggle: () => void;
+  placeholder: string;
+}) {
+  return <label>{label}<div className="wizard-input"><LockKeyhole size={17} /><input data-testid={`branch-${name}`} name={name} type={visible ? 'text' : 'password'} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /><button type="button" className="field-visibility" onClick={onToggle} aria-label={visible ? `Hide ${label}` : `Show ${label}`}>{visible ? <EyeOff size={16} /> : <Eye size={16} />}</button></div></label>;
 }
 function Stat({
   label,
