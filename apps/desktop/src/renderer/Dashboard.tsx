@@ -227,7 +227,7 @@ export function Dashboard() {
     const applyCompanyTheme = (company: Awaited<ReturnType<typeof companyApi.get>>) => {
       const root = document.documentElement;
       setCompanyLogo(company?.logoRef ?? '');
-      root.dataset.theme = company?.uiTheme ?? 'light';
+      root.dataset.theme = company?.uiTheme === 'dark' || (company?.uiTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
       root.style.setProperty('--ui-font-scale', String(company?.uiFontScale ?? 1));
       root.style.setProperty('--ui-icon-scale', String(company?.uiIconScale ?? 1));
       root.style.setProperty('--ui-control-scale', String(company?.uiControlScale ?? 1));

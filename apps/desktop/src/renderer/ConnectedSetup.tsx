@@ -292,7 +292,7 @@ export function ConnectedBranding() {
       root.style.setProperty('--brand-accent', '#d7263d');
       return;
     }
-    root.dataset.theme = value.uiTheme || 'light';
+    root.dataset.theme = value.uiTheme === 'dark' || (value.uiTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
     root.style.setProperty('--ui-font-scale', String(value.uiFontScale || 1));
     root.style.setProperty('--ui-icon-scale', String(value.uiIconScale || 1));
     root.style.setProperty('--ui-control-scale', String(value.uiControlScale || 1));

@@ -8314,7 +8314,7 @@ function ConnectedBranding() {
       root.style.setProperty("--brand-accent", "#d7263d");
       return;
     }
-    root.dataset.theme = value.uiTheme || "light";
+    root.dataset.theme = value.uiTheme === "dark" || value.uiTheme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     root.style.setProperty("--ui-font-scale", String(value.uiFontScale || 1));
     root.style.setProperty("--ui-icon-scale", String(value.uiIconScale || 1));
     root.style.setProperty("--ui-control-scale", String(value.uiControlScale || 1));
@@ -15929,7 +15929,7 @@ function Dashboard() {
     const applyCompanyTheme = (company) => {
       const root = document.documentElement;
       setCompanyLogo(company?.logoRef ?? "");
-      root.dataset.theme = company?.uiTheme ?? "light";
+      root.dataset.theme = company?.uiTheme === "dark" || company?.uiTheme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
       root.style.setProperty("--ui-font-scale", String(company?.uiFontScale ?? 1));
       root.style.setProperty("--ui-icon-scale", String(company?.uiIconScale ?? 1));
       root.style.setProperty("--ui-control-scale", String(company?.uiControlScale ?? 1));
