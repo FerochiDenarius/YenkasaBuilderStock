@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Check,
   Edit3,
+  Eye,
+  EyeOff,
   KeyRound,
   Plus,
   ShieldCheck,
@@ -20,7 +22,7 @@ type Form = {
   password: string;
   permissions: string[];
 };
-type EditForm = { fullName: string; email: string; permissions: string[] };
+type EditForm = { fullName: string; email: string; role: Form['role']; permissions: string[] };
 type SessionLike = { userId: string; branchId: string; role: string };
 const permissionOptions = [
   ['sales', 'Sales & Invoices'],
@@ -355,6 +357,7 @@ export function StaffAccountsPage() {
                       setEditForm({
                         fullName: account.fullName,
                         email: account.email,
+                        role: account.role === 'BRANCH_MANAGER' ? 'SALES_OFFICER' : account.role,
                         permissions: account.permissions?.length
                           ? account.permissions
                           : defaultPermissions(account.role),
@@ -447,6 +450,12 @@ function StaffRow({
                   ? 'Stock Manager / Storekeeper'
                   : 'Branch Manager'}
           {ownerMode && ` · ${account.branchName ?? 'Unassigned'}`}
+          <div className="staff-permission-summary">
+            {(account.permissions?.length ? account.permissions : defaultPermissions(account.role)).slice(0, 5).map((permission) => (
+              <span key={permission}>{permission.replaceAll('_', ' ')}</span>
+            ))}
+            {(account.permissions?.length ?? 0) > 5 && <span>+{account.permissions.length - 5} more</span>}
+          </div>
         </small>
       </div>
       <span
@@ -609,6 +618,24 @@ function EditModal({
           value={form.email}
           onChange={(value) => setForm({ ...form, email: value })}
         />
+        <label>
+          Role
+          <select
+            value={form.role}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                role: event.target.value as EditForm['role'],
+                permissions: defaultPermissions(event.target.value),
+              })
+            }
+          >
+            <option value="STOCK_MANAGER">Stock Manager / Storekeeper</option>
+            <option value="SALES_OFFICER">Sales Officer</option>
+            <option value="CASHIER">Cashier</option>
+            <option value="SALES_CASHIER">Sales + Cashier (Combined)</option>
+          </select>
+        </label>
       </div>
       <fieldset className="staff-permission-grid">
         <legend>Branch permissions</legend>
@@ -653,6 +680,7 @@ function ResetModal({
   onClose: () => void;
   onReset: () => void;
 }) {
+  const [visible, setVisible] = useState(false);
   return (
     <section className="panel staff-create staff-modal">
       <div className="panel-heading">
@@ -664,10 +692,14 @@ function ResetModal({
       <div className="staff-fields">
         <Field
           label="New Password"
-          type="password"
+          type={visible ? 'text' : 'password'}
           value={password}
           onChange={setPassword}
         />
+        <button className="password-toggle" type="button" onClick={() => setVisible((current) => !current)}>
+          {visible ? <EyeOff size={15} /> : <Eye size={15} />}
+          {visible ? 'Hide password' : 'View password'}
+        </button>
       </div>
       <div className="setup-actions">
         <button className="outline" type="button" onClick={onClose}>

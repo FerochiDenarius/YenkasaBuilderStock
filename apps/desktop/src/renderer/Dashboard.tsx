@@ -11,6 +11,7 @@ import {
   Image,
   LayoutDashboard,
   LockKeyhole,
+  LogOut,
   Menu,
   Monitor,
   Package,
@@ -41,6 +42,8 @@ import { MaterialReleasePage } from './MaterialReleasePage';
 import { InventoryPage } from './InventoryPage';
 import { PurchasingPage } from './PurchasingPage';
 import { SyncSettingsPage } from './SyncSettingsPage';
+import { ReportsPage } from './ReportsPage';
+import { CustomersPage } from './CustomersPage';
 import { CloudDatabaseSetupPage } from './CloudDatabaseSetupPage';
 import { companyApi, installationApi, salesApi, type InstallationStatus } from './api';
 import { InstallationWelcomePage } from './InstallationWelcomePage';
@@ -126,8 +129,8 @@ const roleNavigation: Record<string, string[]> = {
     'Suppliers',
     'Reports',
   ],
-  SALES_OFFICER: ['Dashboard', 'Sales & Invoices', 'Inventory', 'Customers'],
-  CASHIER: ['Dashboard', 'Cashier & Payments', 'Reports'],
+  SALES_OFFICER: ['Dashboard', 'Sales & Invoices', 'Inventory', 'Reports'],
+  CASHIER: ['Dashboard', 'Cashier & Payments', 'Customers', 'Reports'],
   STOCK_MANAGER: [
     'Dashboard',
     'Inventory',
@@ -494,7 +497,7 @@ export function Dashboard() {
           <button
           className="user-card"
           type="button"
-          onClick={branchSession ? logout : ownerSession ? ownerLogout : undefined}
+          onClick={undefined}
         >
           <div className="avatar">
             {branchSession
@@ -518,9 +521,15 @@ export function Dashboard() {
           </div>
           <ChevronDown size={16} />
         </button>
+        {(branchSession || ownerSession) && (
+          <button className="sidebar-logout" type="button" onClick={branchSession ? logout : ownerLogout}>
+            <LogOut size={16} />
+            <span>Logout</span>
+          </button>
+        )}
       </aside>
       <main className="dashboard-main">
-        <header className="dashboard-header">
+        {!['Installation Welcome', 'Reports', 'Users & Roles', 'Staff Accounts', 'Business Information', 'Business Branding', 'Branches', 'Owner Account', 'Device Activation', 'Cloud Database'].includes(active) && <header className="dashboard-header">
           <button
             className="mobile-menu"
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -542,7 +551,7 @@ export function Dashboard() {
             </button>
             <div className="header-avatar">KO</div>
           </div>
-        </header>
+        </header>}
         {active === 'Installation Welcome' && !branchSession && !ownerSession && installationStatus ? (
           <InstallationWelcomePage
             status={installationStatus}
@@ -596,6 +605,10 @@ export function Dashboard() {
           <PurchasingPage session={branchSession} />
         ) : active === 'Material Release' && branchSession && hasBranchAccess('Material Release') ? (
           <MaterialReleasePage session={branchSession} />
+        ) : active === 'Customers' && branchSession && hasBranchAccess('Customers') ? (
+          <CustomersPage session={branchSession} />
+        ) : active === 'Reports' && branchSession && hasBranchAccess('Reports') ? (
+          <ReportsPage session={branchSession} />
         ) : active === 'Sync Settings' && branchSession && branchSession.role === 'BRANCH_MANAGER' ? (
           <SyncSettingsPage session={branchSession} />
         ) : protectedOperationalLabels.has(active) && !branchSession ? (

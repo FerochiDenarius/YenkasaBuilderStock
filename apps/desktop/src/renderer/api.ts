@@ -245,6 +245,7 @@ export const staffApi = {
     payload: {
       fullName?: string;
       email?: string;
+      role?: string;
       active?: boolean;
       permissions?: string[];
     },
@@ -283,6 +284,112 @@ export const staffApi = {
           ? { 'X-User-Id': userId ?? '', 'X-Branch-Id': branchId }
           : ownerHeaders(),
       },
+    ),
+};
+
+export type CustomerRecord = {
+  id: string;
+  branchId: string;
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  customerType: string;
+  creditLimit: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export const customersApi = {
+  list: (branchId: string, userId: string, search = '') =>
+    request<CustomerRecord[]>(`/api/customers?branchId=${encodeURIComponent(branchId)}&search=${encodeURIComponent(search)}`, {
+      headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
+    }),
+  create: (branchId: string, userId: string, payload: Omit<CustomerRecord, 'id' | 'createdAt' | 'updatedAt' | 'branchId'>) =>
+    request<CustomerRecord>('/api/customers', {
+      method: 'POST', headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId }, body: JSON.stringify({ branchId, ...payload }),
+    }),
+  update: (id: string, branchId: string, userId: string, payload: Omit<CustomerRecord, 'id' | 'createdAt' | 'updatedAt' | 'branchId'>) =>
+    request<CustomerRecord>(`/api/customers/${encodeURIComponent(id)}`, {
+      method: 'PATCH', headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId }, body: JSON.stringify({ branchId, ...payload }),
+    }),
+  remove: (id: string, branchId: string, userId: string) =>
+    request<CustomerRecord>(`/api/customers/${encodeURIComponent(id)}?branchId=${encodeURIComponent(branchId)}`, {
+      method: 'DELETE', headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
+    }),
+};
+
+export type CashierReportRow = {
+  date: string;
+  cashierId: string;
+  cashierName: string;
+  transactions: number;
+  salesAmount: number;
+  paymentMethods: string[];
+};
+export type CashierTransactionRow = {
+  id: string;
+  transactionNumber: string;
+  time: string;
+  date: string;
+  cashierId: string;
+  cashierName: string;
+  saleId: string;
+  customerName: string;
+  items: number;
+  totalAmount: number;
+  paymentMethod: string;
+  verificationStatus: string;
+};
+export type TransactionDetails = {
+  payment: PaymentRecord;
+  invoice: SaleRecord;
+  cashierName: string;
+  transactionNumber: string;
+};
+
+export const reportsApi = {
+  cashierSummary: (
+    branchId: string,
+    userId: string,
+    filters: { startDate: string; endDate: string; cashierUserId?: string; paymentMethod?: string },
+  ) => {
+    const params = new URLSearchParams({ branchId, startDate: filters.startDate, endDate: filters.endDate });
+    if (filters.cashierUserId) params.set('cashierUserId', filters.cashierUserId);
+    if (filters.paymentMethod) params.set('paymentMethod', filters.paymentMethod);
+    return request<{
+      branchId: string;
+      startDate: string;
+      endDate: string;
+      totalTransactions: number;
+      totalPaid: number;
+      cashTotal: number;
+      electronicTotal: number;
+      rows: CashierReportRow[];
+    }>(`/api/reports/cashier-summary?${params.toString()}`, {
+      headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
+    });
+  },
+  cashierTransactions: (
+    branchId: string,
+    userId: string,
+    filters: { date: string; cashierUserId?: string; startTime?: string; endTime?: string; paymentMethod?: string },
+  ) => {
+    const params = new URLSearchParams({ branchId, date: filters.date });
+    if (filters.cashierUserId) params.set('cashierUserId', filters.cashierUserId);
+    if (filters.startTime) params.set('startTime', filters.startTime);
+    if (filters.endTime) params.set('endTime', filters.endTime);
+    if (filters.paymentMethod) params.set('paymentMethod', filters.paymentMethod);
+    return request<{ date: string; transactions: CashierTransactionRow[]; totalTransactions: number; totalPaid: number }>(
+      `/api/reports/cashier-transactions?${params.toString()}`,
+      { headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId } },
+    );
+  },
+  transactionDetails: (paymentId: string, branchId: string, userId: string) =>
+    request<TransactionDetails>(
+      `/api/reports/transactions/${encodeURIComponent(paymentId)}?branchId=${encodeURIComponent(branchId)}`,
+      { headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId } },
     ),
 };
 

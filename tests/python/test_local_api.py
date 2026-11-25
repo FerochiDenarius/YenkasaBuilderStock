@@ -315,6 +315,96 @@ def test_separate_branch_roles_receive_only_authorized_permissions():
     assert client.post('/api/branch-actions/material_release', headers={'X-User-Id': created['STOCK_MANAGER']['userId'], 'X-Branch-Id': branch_id}).status_code == 200
     assert client.post('/api/branch-actions/payments', headers={'X-User-Id': created['STOCK_MANAGER']['userId'], 'X-Branch-Id': branch_id}).status_code == 403
 
+def test_branch_manager_can_assign_cashier_and_report_permissions_with_audit_safe_reports():
+    client = TestClient(app)
+    branch = client.post('/api/branches', json={
+        'name': 'Reports Validation Branch', 'code': 'RPTV', 'location': 'Accra',
+        'manager': 'Reports Manager', 'managerUsername': 'reports.manager',
+        'managerPassword': 'ReportsManagerPass123',
+    }, headers=owner_headers(client)).json()
+    branch_id = branch['id']
+    manager = client.post('/api/auth/login', json={
+        'branchId': branch_id, 'username': 'reports.manager',
+        'password': 'ReportsManagerPass123', 'loginRole': 'BRANCH_MANAGER',
+    }).json()
+    manager_headers = {'X-User-Id': manager['userId'], 'X-Branch-Id': branch_id}
+    cashier = client.post('/api/staff', headers=manager_headers, json={
+        'branchId': branch_id, 'username': 'reports.cashier', 'fullName': 'Reports Cashier',
+        'role': 'CASHIER', 'password': 'ReportsCashierPass123',
+        'permissions': ['payments', 'receipts', 'payment_reports'],
+    })
+    assert cashier.status_code == 200
+    cashier_id = cashier.json()['id']
+    granted = client.patch(f'/api/staff/{cashier_id}', headers=manager_headers, json={
+        'role': 'SALES_CASHIER',
+        'permissions': ['sales', 'quotations', 'invoices', 'payments', 'receipts', 'payment_reports'],
+    })
+    assert granted.status_code == 200
+    cashier_login = client.post('/api/auth/login', json={
+        'branchId': branch_id, 'username': 'reports.cashier',
+        'password': 'ReportsCashierPass123', 'loginRole': 'SALES_CASHIER',
+    }).json()
+    assert 'sales' in cashier_login['permissions']
+    assert client.post('/api/branch-actions/sales', headers={'X-User-Id': cashier_id, 'X-Branch-Id': branch_id}).status_code == 200
+
+    product = client.get(f'/api/products?branchId={branch_id}', headers=manager_headers).json()[0]
+    invoice = client.post('/api/sales', headers=manager_headers, json={
+        'branchId': branch_id, 'documentType': 'INVOICE', 'customerName': 'Reports Customer',
+        'vatPercent': 0, 'items': [{'sku': product['sku'], 'name': product['name'], 'quantity': 1,
+        'unit': product['unit'], 'unitPrice': product['price'], 'discountPercent': 0}],
+    }).json()
+    payment = client.post('/api/payments', headers={'X-User-Id': cashier_id, 'X-Branch-Id': branch_id}, json={
+        'branchId': branch_id, 'saleId': invoice['id'], 'amount': invoice['total'],
+        'method': 'CASH', 'idempotencyKey': 'reports-validation-payment',
+    })
+    assert payment.status_code == 200
+    summary = client.get(f'/api/reports/cashier-summary?branchId={branch_id}&startDate=2000-01-01&endDate=2999-12-31', headers={'X-User-Id': manager['userId'], 'X-Branch-Id': branch_id})
+    assert summary.status_code == 200
+    assert summary.json()['totalTransactions'] >= 1
+    day = payment.json()['payment']['createdAt'][:10]
+    transactions = client.get(f'/api/reports/cashier-transactions?branchId={branch_id}&date={day}', headers={'X-User-Id': manager['userId'], 'X-Branch-Id': branch_id})
+    assert transactions.status_code == 200
+    row = next(item for item in transactions.json()['transactions'] if item['id'] == payment.json()['payment']['id'])
+    details = client.get(f"/api/reports/transactions/{row['id']}?branchId={branch_id}", headers=manager_headers)
+    assert details.status_code == 200
+    assert details.json()['invoice']['customerName'] == 'Reports Customer'
+    assert details.json()['invoice']['items'][0]['name'] == product['name']
+
+def test_customers_are_branch_scoped_and_available_to_cashier_not_sales_officer():
+    client = TestClient(app)
+    branch = client.post('/api/branches', json={
+        'name': 'Customer Validation Branch', 'code': 'CUSTV', 'location': 'Accra',
+        'manager': 'Customer Manager', 'managerUsername': 'customer.manager',
+        'managerPassword': 'CustomerManagerPass123',
+    }, headers=owner_headers(client)).json()
+    branch_id = branch['id']
+    manager = client.post('/api/auth/login', json={
+        'branchId': branch_id, 'username': 'customer.manager',
+        'password': 'CustomerManagerPass123', 'loginRole': 'BRANCH_MANAGER',
+    }).json()
+    manager_headers = {'X-User-Id': manager['userId'], 'X-Branch-Id': branch_id}
+    cashier = client.post('/api/staff', headers=manager_headers, json={
+        'branchId': branch_id, 'username': 'customer.cashier', 'fullName': 'Customer Cashier',
+        'role': 'CASHIER', 'password': 'CustomerCashierPass123',
+    }).json()
+    sales = client.post('/api/staff', headers=manager_headers, json={
+        'branchId': branch_id, 'username': 'customer.sales', 'fullName': 'Customer Sales',
+        'role': 'SALES_OFFICER', 'password': 'CustomerSalesPass123',
+    }).json()
+    customer = client.post('/api/customers', headers=manager_headers, json={
+        'branchId': branch_id, 'name': 'Customer Validation Ltd', 'phone': '+233 20 000 0000',
+        'email': 'customer.validation@example.com', 'customerType': 'Business', 'creditLimit': 1000,
+    })
+    assert customer.status_code == 200
+    cashier_headers = {'X-User-Id': cashier['id'], 'X-Branch-Id': branch_id}
+    assert client.get(f'/api/customers?branchId={branch_id}', headers=cashier_headers).status_code == 200
+    assert client.patch(f"/api/customers/{customer.json()['id']}", headers=cashier_headers, json={**customer.json(), 'branchId': branch_id, 'name': 'Customer Validation Updated'}).status_code == 200
+    sales_headers = {'X-User-Id': sales['id'], 'X-Branch-Id': branch_id}
+    assert client.get(f'/api/customers?branchId={branch_id}', headers=sales_headers).status_code == 403
+    deactivated = client.delete(f"/api/customers/{customer.json()['id']}?branchId={branch_id}", headers=cashier_headers)
+    assert deactivated.status_code == 200
+    assert deactivated.json()['active'] is False
+
 def test_branch_manager_controls_sync_settings_and_owner_sees_branch_status(monkeypatch):
     monkeypatch.delenv('DATABASE_URL', raising=False)
     monkeypatch.delenv('SYNC_BACKEND_URL', raising=False)

@@ -7182,6 +7182,36 @@ const Building2 = createLucideIcon("Building2", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
+const CalendarDays = createLucideIcon("CalendarDays", [
+  ["path", { d: "M8 2v4", key: "1cmpym" }],
+  ["path", { d: "M16 2v4", key: "4m81vk" }],
+  ["rect", { width: "18", height: "18", x: "3", y: "4", rx: "2", key: "1hopcy" }],
+  ["path", { d: "M3 10h18", key: "8toen8" }],
+  ["path", { d: "M8 14h.01", key: "6423bh" }],
+  ["path", { d: "M12 14h.01", key: "1etili" }],
+  ["path", { d: "M16 14h.01", key: "1gbofw" }],
+  ["path", { d: "M8 18h.01", key: "lrp35t" }],
+  ["path", { d: "M12 18h.01", key: "mhygvu" }],
+  ["path", { d: "M16 18h.01", key: "kzsmim" }]
+]);
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const ChartColumn = createLucideIcon("ChartColumn", [
+  ["path", { d: "M3 3v16a2 2 0 0 0 2 2h16", key: "c24i48" }],
+  ["path", { d: "M18 17V9", key: "2bz60n" }],
+  ["path", { d: "M13 17V5", key: "1frdt8" }],
+  ["path", { d: "M8 17v-3", key: "17ska0" }]
+]);
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
 const Check = createLucideIcon("Check", [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]]);
 /**
  * @license lucide-react v0.468.0 - ISC
@@ -7415,6 +7445,18 @@ const Eye = createLucideIcon("Eye", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
+const FileDown = createLucideIcon("FileDown", [
+  ["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", key: "1rqfz7" }],
+  ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }],
+  ["path", { d: "M12 18v-6", key: "17g6i2" }],
+  ["path", { d: "m9 15 3 3 3-3", key: "1npd3o" }]
+]);
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
 const FileText = createLucideIcon("FileText", [
   ["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", key: "1rqfz7" }],
   ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }],
@@ -7534,6 +7576,17 @@ const LogIn = createLucideIcon("LogIn", [
   ["path", { d: "M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4", key: "u53s6r" }],
   ["polyline", { points: "10 17 15 12 10 7", key: "1ail0h" }],
   ["line", { x1: "15", x2: "3", y1: "12", y2: "12", key: "v6grx8" }]
+]);
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const LogOut = createLucideIcon("LogOut", [
+  ["path", { d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4", key: "1uf3rs" }],
+  ["polyline", { points: "16 17 21 12 16 7", key: "1gabdz" }],
+  ["line", { x1: "21", x2: "9", y1: "12", y2: "12", key: "1uyos4" }]
 ]);
 /**
  * @license lucide-react v0.468.0 - ISC
@@ -8115,6 +8168,50 @@ const staffApi = {
     {
       headers: branchId ? { "X-User-Id": userId ?? "", "X-Branch-Id": branchId } : ownerHeaders()
     }
+  )
+};
+const customersApi = {
+  list: (branchId, userId, search = "") => request(`/api/customers?branchId=${encodeURIComponent(branchId)}&search=${encodeURIComponent(search)}`, {
+    headers: { "X-User-Id": userId, "X-Branch-Id": branchId }
+  }),
+  create: (branchId, userId, payload) => request("/api/customers", {
+    method: "POST",
+    headers: { "X-User-Id": userId, "X-Branch-Id": branchId },
+    body: JSON.stringify({ branchId, ...payload })
+  }),
+  update: (id2, branchId, userId, payload) => request(`/api/customers/${encodeURIComponent(id2)}`, {
+    method: "PATCH",
+    headers: { "X-User-Id": userId, "X-Branch-Id": branchId },
+    body: JSON.stringify({ branchId, ...payload })
+  }),
+  remove: (id2, branchId, userId) => request(`/api/customers/${encodeURIComponent(id2)}?branchId=${encodeURIComponent(branchId)}`, {
+    method: "DELETE",
+    headers: { "X-User-Id": userId, "X-Branch-Id": branchId }
+  })
+};
+const reportsApi = {
+  cashierSummary: (branchId, userId, filters) => {
+    const params = new URLSearchParams({ branchId, startDate: filters.startDate, endDate: filters.endDate });
+    if (filters.cashierUserId) params.set("cashierUserId", filters.cashierUserId);
+    if (filters.paymentMethod) params.set("paymentMethod", filters.paymentMethod);
+    return request(`/api/reports/cashier-summary?${params.toString()}`, {
+      headers: { "X-User-Id": userId, "X-Branch-Id": branchId }
+    });
+  },
+  cashierTransactions: (branchId, userId, filters) => {
+    const params = new URLSearchParams({ branchId, date: filters.date });
+    if (filters.cashierUserId) params.set("cashierUserId", filters.cashierUserId);
+    if (filters.startTime) params.set("startTime", filters.startTime);
+    if (filters.endTime) params.set("endTime", filters.endTime);
+    if (filters.paymentMethod) params.set("paymentMethod", filters.paymentMethod);
+    return request(
+      `/api/reports/cashier-transactions?${params.toString()}`,
+      { headers: { "X-User-Id": userId, "X-Branch-Id": branchId } }
+    );
+  },
+  transactionDetails: (paymentId, branchId, userId) => request(
+    `/api/reports/transactions/${encodeURIComponent(paymentId)}?branchId=${encodeURIComponent(branchId)}`,
+    { headers: { "X-User-Id": userId, "X-Branch-Id": branchId } }
   )
 };
 const salesApi = {
@@ -12106,7 +12203,7 @@ const defaultPermissions = (role) => {
   };
   return defaults[role] ?? [];
 };
-const blank$1 = {
+const blank$2 = {
   fullName: "",
   username: "",
   email: "",
@@ -12119,7 +12216,7 @@ function StaffAccountsPage() {
   const ownerMode = !stored;
   const managerMode = stored?.role === "BRANCH_MANAGER";
   const [accounts, setAccounts] = reactExports.useState([]);
-  const [form, setForm] = reactExports.useState(blank$1);
+  const [form, setForm] = reactExports.useState(blank$2);
   const [editForm, setEditForm] = reactExports.useState({
     fullName: "",
     email: "",
@@ -12175,7 +12272,7 @@ function StaffAccountsPage() {
     try {
       await staffApi.create(stored.branchId, stored.userId, form);
       await load();
-      setForm(blank$1);
+      setForm(blank$2);
       setOpen(false);
       setStatus("Staff account created securely");
       setError("");
@@ -12373,6 +12470,7 @@ function StaffAccountsPage() {
             setEditForm({
               fullName: account.fullName,
               email: account.email,
+              role: account.role === "BRANCH_MANAGER" ? "SALES_OFFICER" : account.role,
               permissions: account.permissions?.length ? account.permissions : defaultPermissions(account.role)
             });
           },
@@ -12439,7 +12537,15 @@ function StaffRow({
         " ·",
         " ",
         account.role === "SALES_CASHIER" ? "Sales + Cashier (Combined)" : account.role === "SALES_OFFICER" ? "Sales Officer" : account.role === "CASHIER" ? "Cashier" : account.role === "STOCK_MANAGER" ? "Stock Manager / Storekeeper" : "Branch Manager",
-        ownerMode && ` · ${account.branchName ?? "Unassigned"}`
+        ownerMode && ` · ${account.branchName ?? "Unassigned"}`,
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-permission-summary", children: [
+          (account.permissions?.length ? account.permissions : defaultPermissions(account.role)).slice(0, 5).map((permission) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: permission.replaceAll("_", " ") }, permission)),
+          (account.permissions?.length ?? 0) > 5 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+            "+",
+            account.permissions.length - 5,
+            " more"
+          ] })
+        ] })
       ] })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -12575,7 +12681,7 @@ function CreateModal({
         {
           className: "outline",
           type: "button",
-          onClick: () => setForm(blank$1),
+          onClick: () => setForm(blank$2),
           children: "Reset"
         }
       ),
@@ -12613,7 +12719,27 @@ function EditModal({
           value: form.email,
           onChange: (value) => setForm({ ...form, email: value })
         }
-      )
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+        "Role",
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "select",
+          {
+            value: form.role,
+            onChange: (event) => setForm({
+              ...form,
+              role: event.target.value,
+              permissions: defaultPermissions(event.target.value)
+            }),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "STOCK_MANAGER", children: "Stock Manager / Storekeeper" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "SALES_OFFICER", children: "Sales Officer" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "CASHIER", children: "Cashier" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "SALES_CASHIER", children: "Sales + Cashier (Combined)" })
+            ]
+          }
+        )
+      ] })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("fieldset", { className: "staff-permission-grid", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("legend", { children: "Branch permissions" }),
@@ -12645,20 +12771,27 @@ function ResetModal({
   onClose,
   onReset
 }) {
+  const [visible, setVisible] = reactExports.useState(false);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "panel staff-create staff-modal", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-heading", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Reset Password" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", className: "icon-button", onClick: onClose, children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 18 }) })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "staff-fields", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-      Field,
-      {
-        label: "New Password",
-        type: "password",
-        value: password,
-        onChange: setPassword
-      }
-    ) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-fields", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Field,
+        {
+          label: "New Password",
+          type: visible ? "text" : "password",
+          value: password,
+          onChange: setPassword
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "password-toggle", type: "button", onClick: () => setVisible((current) => !current), children: [
+        visible ? /* @__PURE__ */ jsxRuntimeExports.jsx(EyeOff, { size: 15 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 15 }),
+        visible ? "Hide password" : "View password"
+      ] })
+    ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "setup-actions", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "outline", type: "button", onClick: onClose, children: "Cancel" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-button", type: "button", onClick: onReset, children: "Reset Password" })
@@ -12698,7 +12831,7 @@ function Stat({ label, value }) {
     /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: value })
   ] });
 }
-const blank = {
+const blank$1 = {
   branchId: "",
   deviceName: "",
   deviceType: "Windows PC",
@@ -12707,7 +12840,7 @@ const blank = {
 function DeviceActivationPage() {
   const [branches, setBranches] = reactExports.useState([]);
   const [devices, setDevices] = reactExports.useState([]);
-  const [form, setForm] = reactExports.useState(blank);
+  const [form, setForm] = reactExports.useState(blank$1);
   const [query, setQuery] = reactExports.useState("");
   const [loading, setLoading] = reactExports.useState(true);
   const [saving, setSaving] = reactExports.useState(false);
@@ -13083,7 +13216,7 @@ const fallbackProducts = [
     price: 95
   }
 ];
-const money$3 = (value) => `GH₵ ${value.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money$5 = (value) => `GH₵ ${value.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 function SalesPage({ session }) {
   const [mode, setMode] = reactExports.useState("INVOICE");
   const [view, setView] = reactExports.useState("CREATE");
@@ -13442,7 +13575,7 @@ function SalesPage({ session }) {
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: new Date(record.createdAt).toLocaleDateString("en-GH") }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$3(record.total) })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$5(record.total) })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `sales-history-status ${record.paymentStatus.toLowerCase()}`, children: record.paymentStatus.replaceAll("_", " ") }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "outline", type: "button", onClick: () => {
@@ -13537,7 +13670,7 @@ function SalesPage({ session }) {
                 ] })
               ] }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "sales-product-action", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$3(product.price) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$5(product.price) }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("i", { "aria-hidden": "true", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 16 }) })
               ] })
             ]
@@ -13636,7 +13769,7 @@ function SalesPage({ session }) {
                 }
               )
             ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: money$3(item.unitPrice) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: money$5(item.unitPrice) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs(
               "select",
               {
@@ -13656,7 +13789,7 @@ function SalesPage({ session }) {
                 ]
               }
             ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$3(
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$5(
               item.quantity * item.unitPrice * (1 - item.discountPercent / 100)
             ) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -13686,7 +13819,7 @@ function SalesPage({ session }) {
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sales-summary", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Subtotal" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$3(subtotal) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$5(subtotal) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
               "VAT (15%)",
               " ",
@@ -13700,16 +13833,16 @@ function SalesPage({ session }) {
                 }
               )
             ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$3(vat) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$5(vat) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Discount" }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("strong", { className: "discount-total", children: [
               "− ",
-              money$3(discount)
+              money$5(discount)
             ] })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sales-total", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: "Total Payable" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$3(total) })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$5(total) })
           ] })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sales-actions", children: [
@@ -13891,26 +14024,26 @@ function SalesPage({ session }) {
                     /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.name }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.quantity }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.unit }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: money$3(item.unitPrice) }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: money$3(item.amount) })
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: money$5(item.unitPrice) }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: money$5(item.amount) })
                   ] }, `${item.sku}-${index}`)) })
                 ] }),
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sales-print-totals", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Subtotal" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$3(savedInvoice.subtotal) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$5(savedInvoice.subtotal) }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Discount" }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("strong", { children: [
                     "− ",
-                    money$3(savedInvoice.discount)
+                    money$5(savedInvoice.discount)
                   ] }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
                     "VAT (",
                     savedInvoice.vatPercent || 0,
                     "%)"
                   ] }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$3(savedInvoice.tax) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$5(savedInvoice.tax) }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: "Total (GH₵)" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$3(savedInvoice.total) })
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$5(savedInvoice.total) })
                 ] }),
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "sales-print-notes", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Payment Terms:" }),
@@ -13928,7 +14061,7 @@ function SalesPage({ session }) {
     )
   ] });
 }
-const money$2 = (value) => `GH₵ ${value.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money$4 = (value) => `GH₵ ${value.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const methodOptions = [
   ["CASH", "Cash", Banknote],
   ["MOBILE_MONEY", "Mobile Money", Smartphone],
@@ -14006,25 +14139,25 @@ function ReceiptDocument({
             /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.name }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.quantity }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.unit }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: money$2(item.amount) })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: money$4(item.amount) })
           ] }, `${item.sku}-${index}`)) })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-receipt-totals", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Invoice total" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$2(sale.total) })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$4(sale.total) })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Amount received" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$2(receipt.amount) })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$4(receipt.amount) })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Paid to date" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$2(sale.amountPaid) })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$4(sale.amountPaid) })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Balance due" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$2(amountDue) })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$4(amountDue) })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Payment method" }),
@@ -14262,7 +14395,7 @@ function CashierPage({ session }) {
                   /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: invoice.saleNumber }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: invoice.customerName })
                 ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$2(invoice.total - invoice.amountPaid) })
+                /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$4(invoice.total - invoice.amountPaid) })
               ]
             },
             invoice.id
@@ -14301,17 +14434,17 @@ function CashierPage({ session }) {
                 " ",
                 item.unit
               ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: money$2(item.amount) })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: money$4(item.amount) })
             ] }, `${item.sku}-${index}`)) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-total", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: "Total Amount" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$2(selected.total) })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$4(selected.total) })
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-balance", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Already Paid" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$2(selected.amountPaid) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$4(selected.amountPaid) }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Balance Due" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$2(outstanding) })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$4(outstanding) })
             ] })
           ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "cashier-empty", children: "Select an unpaid invoice to collect payment." })
         ] })
@@ -14347,7 +14480,7 @@ function CashierPage({ session }) {
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-balance-card", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Balance Due (GH₵)" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$2(outstanding) })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$4(outstanding) })
         ] }),
         method !== "CASH" && /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "cashier-field", children: [
           "Payment Reference",
@@ -14455,7 +14588,7 @@ function CashierPage({ session }) {
         /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
           payment.method,
           " · ",
-          money$2(payment.amount),
+          money$4(payment.amount),
           " ·",
           " ",
           payment.verificationStatus
@@ -14804,7 +14937,7 @@ function MaterialReleasePage({ session }) {
     ] })
   ] });
 }
-const money$1 = (value) => `GH₵ ${value.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money$3 = (value) => `GH₵ ${value.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const emptyForm = {
   sku: "",
   barcode: "",
@@ -14926,7 +15059,7 @@ function InventoryPage({ session }) {
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Total Stock Value" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$1(totals.value) })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$3(totals.value) })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "In Stock" }),
@@ -14985,7 +15118,7 @@ function InventoryPage({ session }) {
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: item.unit }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: item.stock.toLocaleString() }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: money$1(item.price) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: money$3(item.price) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `inventory-status ${itemStatus.toLowerCase().replaceAll(" ", "-")}`, children: itemStatus }),
             canManage ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "outline compact-button", type: "button", onClick: () => {
               setSelected(item);
@@ -15041,7 +15174,7 @@ function InventoryPage({ session }) {
     ] }) })
   ] });
 }
-const money = (value) => `GH₵ ${value.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money$2 = (value) => `GH₵ ${value.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const suppliers = ["BuildPro Ghana Ltd", "Accra Materials Hub", "Kumasi Cement Depot", "Other Supplier"];
 function PurchasingPage({ session }) {
   const [products, setProducts] = reactExports.useState([]);
@@ -15161,7 +15294,7 @@ function PurchasingPage({ session }) {
           record.items.length,
           " items"
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money(record.total) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$2(record.total) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: record.paymentType })
       ] }, record.id)) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "purchasing-empty", children: "No purchases recorded for this branch." })
     ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("form", { className: "purchasing-form", onSubmit: save, children: [
@@ -15239,7 +15372,7 @@ function PurchasingPage({ session }) {
             /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "aria-label": `Quantity for ${item.name}`, type: "number", min: "0.01", step: "any", value: item.quantity, onChange: (event) => updateLine(item.sku, "quantity", Number(event.target.value)) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: item.unit }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "aria-label": `Unit cost for ${item.name}`, type: "number", min: "0", step: "0.01", value: item.unitCost, onChange: (event) => updateLine(item.sku, "unitCost", Number(event.target.value)) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money(item.quantity * item.unitCost) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$2(item.quantity * item.unitCost) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", "aria-label": `Remove ${item.name}`, onClick: () => setLines((current) => current.filter((line) => line.sku !== item.sku)), children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 15 }) })
           ] }, item.sku))
         ] }),
@@ -15252,7 +15385,7 @@ function PurchasingPage({ session }) {
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "purchasing-total", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
               "Subtotal ",
-              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money(subtotal) })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$2(subtotal) })
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
               "Discount",
@@ -15260,7 +15393,7 @@ function PurchasingPage({ session }) {
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("b", { children: [
               "Total ",
-              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money(total) })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$2(total) })
             ] })
           ] })
         ] })
@@ -15446,6 +15579,535 @@ function formatSyncDate(value) {
   if (!value) return "Never";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+}
+const money$1 = (value) => `GHS ${value.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const today = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+const previousMonth = () => {
+  const value = /* @__PURE__ */ new Date();
+  value.setDate(value.getDate() - 30);
+  return value.toISOString().slice(0, 10);
+};
+const labelDate = (value) => (/* @__PURE__ */ new Date(`${value}T12:00:00`)).toLocaleDateString("en-GH", { month: "short", day: "numeric", year: "numeric" });
+function ReportsPage({ session }) {
+  const [tab, setTab] = reactExports.useState(() => session.permissions.includes("payment_reports") || session.permissions.includes("financial_reports") ? "cashier" : session.permissions.includes("sales") || session.permissions.includes("limited_reports") ? "sales" : "inventory");
+  const [startDate, setStartDate] = reactExports.useState(previousMonth());
+  const [endDate, setEndDate] = reactExports.useState(today());
+  const [cashierId, setCashierId] = reactExports.useState("");
+  const [paymentMethod, setPaymentMethod] = reactExports.useState("");
+  const [cashiers, setCashiers] = reactExports.useState([]);
+  const [summary, setSummary] = reactExports.useState(null);
+  const [transactions, setTransactions] = reactExports.useState([]);
+  const [selectedDate, setSelectedDate] = reactExports.useState("");
+  const [transactionCashier, setTransactionCashier] = reactExports.useState("");
+  const [startTime, setStartTime] = reactExports.useState("");
+  const [endTime, setEndTime] = reactExports.useState("");
+  const [details, setDetails] = reactExports.useState(null);
+  const [status, setStatus] = reactExports.useState("");
+  const [error, setError] = reactExports.useState("");
+  const canCashier = session.permissions.includes("payment_reports") || session.permissions.includes("financial_reports");
+  const canSales = session.permissions.includes("sales") || session.permissions.includes("limited_reports") || session.permissions.includes("financial_reports");
+  const canInventory = session.permissions.includes("stock_reports") || session.permissions.includes("financial_reports");
+  const canRelease = session.permissions.includes("material_release") || session.permissions.includes("financial_reports");
+  const loadSummary = async () => {
+    setError("");
+    try {
+      const result = await reportsApi.cashierSummary(session.branchId, session.userId, { startDate, endDate, cashierUserId: cashierId, paymentMethod });
+      setSummary(result);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to load cashier reports.");
+    }
+  };
+  reactExports.useEffect(() => {
+    if (canCashier) void loadSummary();
+    else if (!canSales && canInventory) setTab("inventory");
+    if (session.role === "BRANCH_MANAGER") {
+      staffApi.list(session.branchId, session.userId).then((rows) => setCashiers(rows.filter((row) => row.role === "CASHIER" || row.role === "SALES_CASHIER").map((row) => ({ id: row.id, fullName: row.fullName })))).catch(() => void 0);
+    } else {
+      setCashiers([{ id: session.userId, fullName: session.fullName }]);
+      setCashierId(session.role === "CASHIER" ? session.userId : "");
+    }
+  }, [session.branchId, session.userId, canCashier, canInventory, canSales]);
+  const openDay = async (date, row) => {
+    setSelectedDate(date);
+    setTransactionCashier(row?.cashierId ?? "");
+    setStartTime("");
+    setEndTime("");
+    setError("");
+    try {
+      const result = await reportsApi.cashierTransactions(session.branchId, session.userId, { date, cashierUserId: row?.cashierId ?? "", paymentMethod });
+      setTransactions(result.transactions);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to load transactions.");
+    }
+  };
+  const filterDay = async () => {
+    if (!selectedDate) return;
+    try {
+      const result = await reportsApi.cashierTransactions(session.branchId, session.userId, { date: selectedDate, cashierUserId: transactionCashier, startTime, endTime, paymentMethod });
+      setTransactions(result.transactions);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to filter transactions.");
+    }
+  };
+  const openDetails = async (row) => {
+    try {
+      setDetails(await reportsApi.transactionDetails(row.id, session.branchId, session.userId));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to load transaction details.");
+    }
+  };
+  const print = async () => {
+    setStatus("Opening the system print dialog…");
+    try {
+      const result = await window.desktopBridge?.print?.();
+      setStatus(result === false ? "Print dialog could not be opened." : "Report sent to the system print dialog.");
+    } catch {
+      setStatus("Print dialog could not be opened.");
+    }
+  };
+  const exportPdf = async () => {
+    try {
+      const result = await window.desktopBridge?.exportPdf?.("Yenkasa-Cashier-Report.pdf", "A4");
+      setStatus(result ? `PDF saved to ${result}` : "PDF export cancelled or unavailable.");
+    } catch {
+      setStatus("PDF export failed.");
+    }
+  };
+  const detailSale = details?.invoice;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "reports-page", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "reports-heading", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "reports-heading-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(ChartColumn, { size: 26 }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: selectedDate ? "Cashier Transactions" : "Reports" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: selectedDate ? `${labelDate(selectedDate)} · payment transactions` : "Branch payments, sales, stock and material release reports" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "reports-date-range", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(CalendarDays, { size: 17 }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "aria-label": "Report start date", type: "date", value: startDate, onChange: (event) => setStartDate(event.target.value) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "–" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "aria-label": "Report end date", type: "date", value: endDate, onChange: (event) => setEndDate(event.target.value) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronDown, { size: 15 })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "reports-tabs", role: "tablist", children: [
+      canCashier && /* @__PURE__ */ jsxRuntimeExports.jsx(ReportTabButton, { active: tab === "cashier", icon: Receipt, label: "Cashier Reports", onClick: () => {
+        setTab("cashier");
+        setSelectedDate("");
+      } }),
+      canSales && /* @__PURE__ */ jsxRuntimeExports.jsx(ReportTabButton, { active: tab === "sales", icon: ShoppingCart, label: "Sales Reports", onClick: () => {
+        setTab("sales");
+        setSelectedDate("");
+      } }),
+      canInventory && /* @__PURE__ */ jsxRuntimeExports.jsx(ReportTabButton, { active: tab === "inventory", icon: Package, label: "Inventory Reports", onClick: () => {
+        setTab("inventory");
+        setSelectedDate("");
+      } }),
+      canRelease && /* @__PURE__ */ jsxRuntimeExports.jsx(ReportTabButton, { active: tab === "release", icon: FileText, label: "Material Release Reports", onClick: () => {
+        setTab("release");
+        setSelectedDate("");
+      } })
+    ] }),
+    selectedDate ? /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "reports-card reports-detail-page", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "reports-section-heading", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "compact-outline", type: "button", onClick: () => setSelectedDate(""), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowLeft, { size: 15 }),
+          " Back to Summary"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { children: [
+            "Cashier Transactions – ",
+            labelDate(selectedDate)
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Filter by cashier, time range or payment method." })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "reports-mini-stat", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Transactions" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: transactions.length })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "reports-filters", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { "aria-label": "Filter cashier", value: transactionCashier, onChange: (event) => setTransactionCashier(event.target.value), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "All Cashiers" }),
+          cashiers.map((cashier) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: cashier.id, children: cashier.fullName }, cashier.id))
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "aria-label": "Start time", type: "time", value: startTime, onChange: (event) => setStartTime(event.target.value) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "aria-label": "End time", type: "time", value: endTime, onChange: (event) => setEndTime(event.target.value) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { "aria-label": "Filter payment method", value: paymentMethod, onChange: (event) => setPaymentMethod(event.target.value), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "All Payment Methods" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "CASH", children: "Cash" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "MOBILE_MONEY", children: "MoMo" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "BANK_TRANSFER", children: "Bank" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "CARD", children: "Card" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "compact-primary", type: "button", onClick: () => void filterDay(), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCw, { size: 15 }),
+          " Filter"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(TransactionTable, { rows: transactions, onView: openDetails })
+    ] }) : tab === "cashier" ? /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "reports-card", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "reports-section-heading", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Cashier Reports" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Cashier transactions, payments and receipts" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "reports-actions", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { "aria-label": "Summary cashier", value: cashierId, onChange: (event) => setCashierId(event.target.value), children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "All Cashiers" }),
+            cashiers.map((cashier) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: cashier.id, children: cashier.fullName }, cashier.id))
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { "aria-label": "Summary payment method", value: paymentMethod, onChange: (event) => setPaymentMethod(event.target.value), children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "All Payment Methods" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "CASH", children: "Cash" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "MOBILE_MONEY", children: "MoMo" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "BANK_TRANSFER", children: "Bank" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "CARD", children: "Card" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "compact-primary", type: "button", onClick: () => void loadSummary(), children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCw, { size: 15 }),
+            " Generate"
+          ] })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "reports-stat-grid", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ReportStat, { icon: Receipt, label: "Total Transactions", value: String(summary?.totalTransactions ?? 0), tone: "blue" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ReportStat, { icon: ShoppingCart, label: "Total Sales (Paid)", value: money$1(summary?.totalPaid ?? 0), tone: "green" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ReportStat, { icon: Receipt, label: "Cash Payments", value: money$1(summary?.cashTotal ?? 0), tone: "purple" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ReportStat, { icon: CalendarDays, label: "MoMo / Bank", value: money$1(summary?.electronicTotal ?? 0), tone: "orange" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(SummaryTable, { rows: summary?.rows ?? [], onView: openDay }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(ReportFooter, { onPrint: () => void print(), onExport: () => void exportPdf() })
+    ] }) }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "reports-card reports-empty", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: tab === "sales" ? "Sales Reports" : tab === "inventory" ? "Inventory Reports" : "Material Release Reports" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "This report category is available from the same branch reporting workspace. Select Cashier Reports for payment transactions, or continue with the next report implementation." })
+    ] }),
+    status && /* @__PURE__ */ jsxRuntimeExports.jsx("small", { className: "save-status", role: "status", children: status }),
+    error && /* @__PURE__ */ jsxRuntimeExports.jsx("small", { className: "save-error", role: "alert", children: error }),
+    details && detailSale && /* @__PURE__ */ jsxRuntimeExports.jsx(TransactionDetailsModal, { details, onClose: () => setDetails(null), onPrint: () => void print(), onExport: () => void exportPdf() })
+  ] });
+}
+function ReportTabButton({ active, icon: Icon2, label, onClick }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: `reports-tab ${active ? "active" : ""}`, type: "button", role: "tab", "aria-selected": active, onClick, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { size: 22 }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: label })
+  ] });
+}
+function ReportStat({ icon: Icon2, label, value, tone }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "reports-stat", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `reports-stat-icon ${tone}`, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { size: 18 }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: label }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: value })
+    ] })
+  ] });
+}
+function SummaryTable({ rows, onView }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "reports-table-wrap", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "reports-table", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Date" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Cashier" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Transactions" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Sales Amount" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Payments" })
+    ] }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: rows.length ? rows.map((row) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { tabIndex: 0, onClick: () => onView(row.date, row), onKeyDown: (event) => {
+      if (event.key === "Enter") onView(row.date, row);
+    }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: labelDate(row.date) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.cashierName }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.transactions }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: money$1(row.salesAmount) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.paymentMethods.map((method) => method.replace("MOBILE_MONEY", "MoMo").replace("BANK_TRANSFER", "Bank")).join(", ") })
+    ] }, `${row.date}-${row.cashierId}`)) : /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 5, className: "reports-no-data", children: "No payments found for this date range." }) }) })
+  ] }) });
+}
+function TransactionTable({ rows, onView }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "reports-table-wrap", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "reports-table transaction-table", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "#" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Time" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Cashier" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Transaction No." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Items" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Total Amount" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Payment Method" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Actions" })
+    ] }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: rows.length ? rows.map((row, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: index + 1 }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.time }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.cashierName }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.transactionNumber }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.items }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: money$1(row.totalAmount) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.paymentMethod.replace("MOBILE_MONEY", "MoMo").replace("BANK_TRANSFER", "Bank") }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "table-action", type: "button", onClick: () => onView(row), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 14 }),
+        " View"
+      ] }) })
+    ] }, row.id)) : /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 8, className: "reports-no-data", children: "No transactions match these filters." }) }) })
+  ] }) });
+}
+function ReportFooter({ onPrint, onExport }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "reports-footer", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "compact-outline", type: "button", onClick: onPrint, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Printer, { size: 15 }),
+      " Print"
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "compact-outline", type: "button", onClick: onExport, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(FileDown, { size: 15 }),
+      " Export PDF"
+    ] })
+  ] });
+}
+function TransactionDetailsModal({ details, onClose, onPrint, onExport }) {
+  const sale = details.invoice;
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "reports-modal-backdrop", role: "dialog", "aria-modal": "true", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "reports-modal", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "reports-modal-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 20 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Transaction Details" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: details.transactionNumber })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "icon-button", type: "button", onClick: onClose, "aria-label": "Close", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "transaction-summary-grid", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Transaction No." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: details.transactionNumber }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Date" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: labelDate(sale.createdAt.slice(0, 10)) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Cashier" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: details.cashierName }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Payment Method" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: details.payment.method.replace("MOBILE_MONEY", "MoMo").replace("BANK_TRANSFER", "Bank") }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Verification" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: details.payment.verificationStatus.replaceAll("_", " ") })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Customer" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: sale.customerName }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Subtotal" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$1(sale.subtotal) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "VAT" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$1(sale.tax) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Discount" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: money$1(sale.discount) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Total Paid" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { className: "transaction-total", children: money$1(details.payment.amount) })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "transaction-items-title", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Package, { size: 18 }),
+      " Items (",
+      sale.items.length,
+      ")"
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "reports-table-wrap", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "reports-table", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "#" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Item" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Qty" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Unit Price" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Amount" })
+      ] }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: sale.items.map((item, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: index + 1 }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.name }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { children: [
+          item.quantity,
+          " ",
+          item.unit
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: money$1(item.unitPrice) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: money$1(item.amount) })
+      ] }, `${item.sku}-${index}`)) })
+    ] }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("footer", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "compact-outline", type: "button", onClick: onPrint, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Printer, { size: 15 }),
+        " Print Receipt"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "compact-outline", type: "button", onClick: onPrint, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 15 }),
+        " Print Invoice"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "compact-outline", type: "button", onClick: onExport, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(FileDown, { size: 15 }),
+        " Export PDF"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "compact-primary", type: "button", onClick: onClose, children: "Close" })
+    ] })
+  ] }) });
+}
+const blank = { name: "", phone: "", email: "", address: "", customerType: "Retail", creditLimit: "0", active: true };
+const money = (value) => `GHS ${value.toLocaleString("en-GH", { minimumFractionDigits: 2 })}`;
+function CustomersPage({ session }) {
+  const [customers, setCustomers] = reactExports.useState([]);
+  const [form, setForm] = reactExports.useState(blank);
+  const [editing, setEditing] = reactExports.useState(null);
+  const [query, setQuery] = reactExports.useState("");
+  const [error, setError] = reactExports.useState("");
+  const [status, setStatus] = reactExports.useState("");
+  const [open, setOpen] = reactExports.useState(true);
+  const load = async () => {
+    try {
+      setCustomers(await customersApi.list(session.branchId, session.userId, query));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to load customers.");
+    }
+  };
+  reactExports.useEffect(() => {
+    void load();
+  }, [session.branchId, session.userId, query]);
+  const activeCustomers = reactExports.useMemo(() => customers.filter((customer) => customer.active).length, [customers]);
+  const submit = async (event) => {
+    event.preventDefault();
+    setError("");
+    if (!form.name.trim()) {
+      setError("Customer name is required.");
+      return;
+    }
+    try {
+      const payload = { branchId: session.branchId, name: form.name, phone: form.phone, email: form.email, address: form.address, customerType: form.customerType, creditLimit: Number(form.creditLimit), active: form.active };
+      const saved = editing ? await customersApi.update(editing.id, session.branchId, session.userId, payload) : await customersApi.create(session.branchId, session.userId, payload);
+      setCustomers((current) => editing ? current.map((item) => item.id === saved.id ? saved : item) : [...current, saved].sort((a, b) => a.name.localeCompare(b.name)));
+      setEditing(null);
+      setForm(blank);
+      setOpen(false);
+      setStatus(editing ? "Customer updated." : "Customer saved.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to save customer.");
+    }
+  };
+  const edit = (customer) => {
+    setEditing(customer);
+    setForm({ name: customer.name, phone: customer.phone, email: customer.email, address: customer.address, customerType: customer.customerType, creditLimit: String(customer.creditLimit), active: customer.active });
+    setOpen(true);
+    setError("");
+  };
+  const remove = async (customer) => {
+    if (!window.confirm(`Deactivate ${customer.name}?`)) return;
+    try {
+      const updated = await customersApi.remove(customer.id, session.branchId, session.userId);
+      setCustomers((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setStatus("Customer deactivated.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to deactivate customer.");
+    }
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "customers-page", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "customers-heading", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "customers-heading-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Users, { size: 25 }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Customers" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Manage customer records for invoices, payments and branch collection." })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "compact-primary", type: "button", onClick: () => {
+        setEditing(null);
+        setForm(blank);
+        setOpen(true);
+      }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 15 }),
+        " New Customer"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "customers-layout", children: [
+      open && /* @__PURE__ */ jsxRuntimeExports.jsxs("form", { className: "panel customer-form", onSubmit: submit, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-heading", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: editing ? "Edit Customer" : "Add New Customer" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Cashier and Branch Manager customer access" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "icon-button", type: "button", onClick: () => setOpen(false), "aria-label": "Close", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 17 }) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(CustomerField, { label: "Customer Name", required: true, value: form.name, onChange: (value) => setForm({ ...form, name: value }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(CustomerField, { label: "Phone Number", value: form.phone, onChange: (value) => setForm({ ...form, phone: value }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(CustomerField, { label: "Email (optional)", type: "email", value: form.email, onChange: (value) => setForm({ ...form, email: value }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "customer-field", children: [
+          "Address",
+          /* @__PURE__ */ jsxRuntimeExports.jsx("textarea", { value: form.address, onChange: (event) => setForm({ ...form, address: event.target.value }) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "customer-field", children: [
+          "Customer Type",
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: form.customerType, onChange: (event) => setForm({ ...form, customerType: event.target.value }), children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Retail" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Business" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Contractor" })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(CustomerField, { label: "Credit Limit (GHS)", type: "number", min: "0", value: form.creditLimit, onChange: (value) => setForm({ ...form, creditLimit: value }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "customer-check", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "checkbox", checked: form.active, onChange: (event) => setForm({ ...form, active: event.target.checked }) }),
+          " Active"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "customer-form-actions", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "compact-outline", type: "button", onClick: () => {
+            setEditing(null);
+            setForm(blank);
+            setOpen(false);
+          }, children: "Cancel" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "compact-primary", type: "submit", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 15 }),
+            " ",
+            editing ? "Save Changes" : "Save Customer"
+          ] })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "panel customer-list", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "panel-heading", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Customers List" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+            activeCustomers,
+            " active customer",
+            activeCustomers === 1 ? "" : "s",
+            " in this branch"
+          ] })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "customer-search", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Search, { size: 16 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { placeholder: "Search customers...", value: query, onChange: (event) => setQuery(event.target.value) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "customer-table-wrap", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "customer-table", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "#" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Customer Name" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Phone" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Type" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Credit Limit" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Status" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Actions" })
+          ] }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: customers.length ? customers.map((customer, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: index + 1 }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: customer.name }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: customer.email || customer.address })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: customer.phone || "—" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: customer.customerType }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: money(customer.creditLimit) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `customer-status ${customer.active ? "active" : "inactive"}`, children: customer.active ? "Active" : "Inactive" }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "table-icon-button", type: "button", onClick: () => edit(customer), "aria-label": `Edit ${customer.name}`, children: /* @__PURE__ */ jsxRuntimeExports.jsx(PenLine, { size: 14 }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "table-icon-button danger", type: "button", onClick: () => void remove(customer), "aria-label": `Deactivate ${customer.name}`, disabled: !customer.active, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
+            ] })
+          ] }, customer.id)) : /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 7, className: "customer-empty", children: "No customers found." }) }) })
+        ] }) })
+      ] })
+    ] }),
+    status && /* @__PURE__ */ jsxRuntimeExports.jsx("small", { className: "save-status", role: "status", children: status }),
+    error && /* @__PURE__ */ jsxRuntimeExports.jsx("small", { className: "save-error", role: "alert", children: error })
+  ] });
+}
+function CustomerField({ label, value, onChange, type = "text", required = false, min }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "customer-field", children: [
+    label,
+    required && /* @__PURE__ */ jsxRuntimeExports.jsx("em", { children: " *" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("input", { required, type, min, value, onChange: (event) => onChange(event.target.value) })
+  ] });
 }
 const initialForm = {
   projectUrl: "",
@@ -15827,8 +16489,8 @@ const roleNavigation = {
     "Suppliers",
     "Reports"
   ],
-  SALES_OFFICER: ["Dashboard", "Sales & Invoices", "Inventory", "Customers"],
-  CASHIER: ["Dashboard", "Cashier & Payments", "Reports"],
+  SALES_OFFICER: ["Dashboard", "Sales & Invoices", "Inventory", "Reports"],
+  CASHIER: ["Dashboard", "Cashier & Payments", "Customers", "Reports"],
   STOCK_MANAGER: [
     "Dashboard",
     "Inventory",
@@ -16183,7 +16845,7 @@ function Dashboard() {
             {
               className: "user-card",
               type: "button",
-              onClick: branchSession ? logout : ownerSession ? ownerLogout : void 0,
+              onClick: void 0,
               children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "avatar", children: branchSession ? branchSession.fullName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase() : ownerSession ? ownerSession.fullName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase() : "KO" }),
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
@@ -16193,10 +16855,14 @@ function Dashboard() {
                 /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronDown, { size: 16 })
               ]
             }
-          )
+          ),
+          (branchSession || ownerSession) && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "sidebar-logout", type: "button", onClick: branchSession ? logout : ownerLogout, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(LogOut, { size: 16 }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Logout" })
+          ] })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "dashboard-main", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "dashboard-header", children: [
+          !["Installation Welcome", "Reports", "Users & Roles", "Staff Accounts", "Business Information", "Business Branding", "Branches", "Owner Account", "Device Activation", "Cloud Database"].includes(active) && /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "dashboard-header", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               "button",
               {
@@ -16259,7 +16925,7 @@ function Dashboard() {
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "placeholder-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LockKeyhole, {}) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Access restricted" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Your Branch Manager has not assigned this module to your account." })
-          ] }) : active === "Sales & Invoices" && branchSession && hasBranchAccess("Sales & Invoices") ? /* @__PURE__ */ jsxRuntimeExports.jsx(SalesPage, { session: branchSession }) : active === "Cashier & Payments" && branchSession && hasBranchAccess("Cashier & Payments") ? /* @__PURE__ */ jsxRuntimeExports.jsx(CashierPage, { session: branchSession }) : active === "Inventory" && branchSession && hasBranchAccess("Inventory") ? /* @__PURE__ */ jsxRuntimeExports.jsx(InventoryPage, { session: branchSession }) : active === "Purchasing" && branchSession && hasBranchAccess("Purchasing") ? /* @__PURE__ */ jsxRuntimeExports.jsx(PurchasingPage, { session: branchSession }) : active === "Material Release" && branchSession && hasBranchAccess("Material Release") ? /* @__PURE__ */ jsxRuntimeExports.jsx(MaterialReleasePage, { session: branchSession }) : active === "Sync Settings" && branchSession && branchSession.role === "BRANCH_MANAGER" ? /* @__PURE__ */ jsxRuntimeExports.jsx(SyncSettingsPage, { session: branchSession }) : protectedOperationalLabels.has(active) && !branchSession ? /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "placeholder-page", role: "alert", children: [
+          ] }) : active === "Sales & Invoices" && branchSession && hasBranchAccess("Sales & Invoices") ? /* @__PURE__ */ jsxRuntimeExports.jsx(SalesPage, { session: branchSession }) : active === "Cashier & Payments" && branchSession && hasBranchAccess("Cashier & Payments") ? /* @__PURE__ */ jsxRuntimeExports.jsx(CashierPage, { session: branchSession }) : active === "Inventory" && branchSession && hasBranchAccess("Inventory") ? /* @__PURE__ */ jsxRuntimeExports.jsx(InventoryPage, { session: branchSession }) : active === "Purchasing" && branchSession && hasBranchAccess("Purchasing") ? /* @__PURE__ */ jsxRuntimeExports.jsx(PurchasingPage, { session: branchSession }) : active === "Material Release" && branchSession && hasBranchAccess("Material Release") ? /* @__PURE__ */ jsxRuntimeExports.jsx(MaterialReleasePage, { session: branchSession }) : active === "Customers" && branchSession && hasBranchAccess("Customers") ? /* @__PURE__ */ jsxRuntimeExports.jsx(CustomersPage, { session: branchSession }) : active === "Reports" && branchSession && hasBranchAccess("Reports") ? /* @__PURE__ */ jsxRuntimeExports.jsx(ReportsPage, { session: branchSession }) : active === "Sync Settings" && branchSession && branchSession.role === "BRANCH_MANAGER" ? /* @__PURE__ */ jsxRuntimeExports.jsx(SyncSettingsPage, { session: branchSession }) : protectedOperationalLabels.has(active) && !branchSession ? /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "placeholder-page", role: "alert", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "placeholder-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LockKeyhole, {}) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Branch login required" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Sign in to an authorized branch account before opening branch operations." }),

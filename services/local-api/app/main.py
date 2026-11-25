@@ -130,6 +130,21 @@ class UserAccount(Base):
     device_id: Mapped[str] = mapped_column(String(100), default='')
     permissions_json: Mapped[str] = mapped_column(Text, default='[]')
 
+class Customer(Base):
+    __tablename__ = 'customers'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    company_id: Mapped[int] = mapped_column(default=1, index=True)
+    branch_id: Mapped[str] = mapped_column(String(36), index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    phone: Mapped[str] = mapped_column(String(50), default='')
+    email: Mapped[str] = mapped_column(String(320), default='')
+    address: Mapped[str] = mapped_column(String(400), default='')
+    customer_type: Mapped[str] = mapped_column(String(30), default='Retail')
+    credit_limit: Mapped[float] = mapped_column(default=0)
+    active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[str] = mapped_column(String(40), default='')
+    updated_at: Mapped[str] = mapped_column(String(40), default='')
+
 class AuditLog(Base):
     __tablename__ = 'audit_logs'
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -393,8 +408,19 @@ class StaffPayload(BaseModel):
 class StaffUpdatePayload(BaseModel):
     fullName: Optional[str] = None
     email: Optional[str] = None
+    role: Optional[str] = None
     active: Optional[bool] = None
     permissions: Optional[list[str]] = None
+
+class CustomerPayload(BaseModel):
+    branchId: str
+    name: str
+    phone: str = ''
+    email: str = ''
+    address: str = ''
+    customerType: str = 'Retail'
+    creditLimit: float = 0
+    active: bool = True
 
 class PasswordResetPayload(BaseModel):
     password: str
@@ -496,7 +522,7 @@ class SyncRunPayload(BaseModel):
     branchId: str
 
 app = FastAPI(title='YenkasaBuildersStock Local API')
-app.add_middleware(CORSMiddleware, allow_origins=['null', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174', 'file://'], allow_methods=['GET', 'PUT', 'POST', 'PATCH', 'OPTIONS'], allow_headers=['Content-Type', 'X-Role', 'X-Owner-Session', 'X-Cloud-Test', 'X-User-Id', 'X-Branch-Id', 'X-Device-Id'])
+app.add_middleware(CORSMiddleware, allow_origins=['null', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174', 'file://'], allow_methods=['GET', 'PUT', 'POST', 'PATCH', 'DELETE', 'OPTIONS'], allow_headers=['Content-Type', 'X-Role', 'X-Owner-Session', 'X-Cloud-Test', 'X-User-Id', 'X-Branch-Id', 'X-Device-Id'])
 
 def backup_sqlite_before_startup_changes() -> None:
     if not settings.local_database_url.startswith('sqlite:///'):
@@ -1098,6 +1124,64 @@ def list_purchases(branchId: str, request: Request) -> list[dict]:
         rows = session.scalars(select(PurchaseRecordModel).where(PurchaseRecordModel.company_id == actor.company_id, PurchaseRecordModel.branch_id == actor.branch_id).order_by(PurchaseRecordModel.created_at.desc())).all()
         return [to_purchase_payload(row) for row in rows]
 
+CUSTOMER_ROLES = {'BRANCH_MANAGER', 'CASHIER', 'SALES_CASHIER'}
+
+@app.get('/api/customers')
+def list_customers(branchId: str, request: Request, search: str = '') -> list[dict]:
+    actor = require_actor(request, CUSTOMER_ROLES, branchId, 'customers')
+    with Session(engine) as session:
+        rows = list(session.scalars(select(Customer).where(Customer.company_id == actor.company_id, Customer.branch_id == actor.branch_id).order_by(Customer.name)).all())
+        query = search.strip().lower()
+        if query:
+            rows = [row for row in rows if query in f'{row.name} {row.phone} {row.email} {row.address}'.lower()]
+        return [to_customer_payload(row) for row in rows]
+
+@app.post('/api/customers')
+def create_customer(payload: CustomerPayload, request: Request) -> dict:
+    actor = require_actor(request, CUSTOMER_ROLES, payload.branchId, 'customers')
+    if not payload.name.strip():
+        raise HTTPException(422, 'Customer name is required')
+    if payload.email.strip() and '@' not in payload.email:
+        raise HTTPException(422, 'Customer email must be valid')
+    if payload.creditLimit < 0:
+        raise HTTPException(422, 'Credit limit cannot be negative')
+    with Session(engine) as session:
+        customer = Customer(id=str(uuid4()), company_id=actor.company_id, branch_id=actor.branch_id, name=payload.name.strip(), phone=payload.phone.strip(), email=payload.email.strip().lower(), address=payload.address.strip(), customer_type=payload.customerType.strip() or 'Retail', credit_limit=round(payload.creditLimit, 2), active=payload.active, created_at=now_iso(), updated_at=now_iso())
+        session.add(customer)
+        session.add(AuditLog(id=str(uuid4()), company_id=actor.company_id, branch_id=actor.branch_id, actor_user_id=actor.id, action='customer_created', target_user_id=customer.id, created_at=now_iso()))
+        session.commit(); session.refresh(customer)
+        return to_customer_payload(customer)
+
+@app.patch('/api/customers/{customer_id}')
+def update_customer(customer_id: str, payload: CustomerPayload, request: Request) -> dict:
+    actor = require_actor(request, CUSTOMER_ROLES, payload.branchId, 'customers')
+    if not payload.name.strip():
+        raise HTTPException(422, 'Customer name is required')
+    if payload.email.strip() and '@' not in payload.email:
+        raise HTTPException(422, 'Customer email must be valid')
+    if payload.creditLimit < 0:
+        raise HTTPException(422, 'Credit limit cannot be negative')
+    with Session(engine) as session:
+        customer = session.scalar(select(Customer).where(Customer.id == customer_id, Customer.company_id == actor.company_id, Customer.branch_id == actor.branch_id))
+        if customer is None:
+            raise HTTPException(404, 'Customer not found in this branch')
+        customer.name = payload.name.strip(); customer.phone = payload.phone.strip(); customer.email = payload.email.strip().lower(); customer.address = payload.address.strip(); customer.customer_type = payload.customerType.strip() or 'Retail'; customer.credit_limit = round(payload.creditLimit, 2); customer.active = payload.active; customer.updated_at = now_iso()
+        session.add(AuditLog(id=str(uuid4()), company_id=actor.company_id, branch_id=actor.branch_id, actor_user_id=actor.id, action='customer_updated', target_user_id=customer.id, created_at=now_iso()))
+        session.commit(); session.refresh(customer)
+        return to_customer_payload(customer)
+
+@app.delete('/api/customers/{customer_id}')
+def deactivate_customer(customer_id: str, branchId: str, request: Request) -> dict:
+    actor = require_actor(request, CUSTOMER_ROLES, branchId, 'customers')
+    with Session(engine) as session:
+        customer = session.scalar(select(Customer).where(Customer.id == customer_id, Customer.company_id == actor.company_id, Customer.branch_id == actor.branch_id))
+        if customer is None:
+            raise HTTPException(404, 'Customer not found in this branch')
+        customer.active = False; customer.updated_at = now_iso()
+        session.add(AuditLog(id=str(uuid4()), company_id=actor.company_id, branch_id=actor.branch_id, actor_user_id=actor.id, action='customer_deactivated', target_user_id=customer.id, created_at=now_iso()))
+        session.commit(); session.refresh(customer)
+        return to_customer_payload(customer)
+
 @app.post('/api/purchases')
 def create_purchase(payload: PurchasePayload, request: Request) -> dict:
     actor = require_actor(request, STOCK_ROLES, payload.branchId, 'purchases')
@@ -1204,6 +1288,169 @@ def payment_history(branchId: str, request: Request) -> list[dict]:
     actor = require_actor(request, BRANCH_ROLES, branchId, 'payments')
     with Session(engine) as session:
         return [to_payment_payload(row) for row in session.scalars(select(PaymentRecordModel).where(PaymentRecordModel.company_id == actor.company_id, PaymentRecordModel.branch_id == actor.branch_id).order_by(PaymentRecordModel.created_at.desc())).all()]
+
+def report_actor(request: Request, branch_id: str) -> UserAccount:
+    actor = require_any_permission(
+        request,
+        BRANCH_ROLES,
+        branch_id,
+        {'financial_reports', 'payment_reports', 'sales', 'payments'},
+    )
+    # Cashiers may review their own payment report only. Branch managers retain
+    # branch-wide reporting; the restriction is enforced here, not in the UI.
+    return actor
+
+def report_date_bounds(start_date: str, end_date: str) -> tuple[str, str]:
+    start = start_date.strip() or datetime.now(timezone.utc).date().isoformat()
+    end = end_date.strip() or start
+    try:
+        datetime.fromisoformat(start)
+        datetime.fromisoformat(end)
+    except ValueError as exc:
+        raise HTTPException(422, 'Dates must use YYYY-MM-DD format') from exc
+    if end < start:
+        raise HTTPException(422, 'End date cannot be before start date')
+    return f'{start}T00:00:00', f'{end}T23:59:59.999999'
+
+@app.get('/api/reports/cashier-summary')
+def cashier_report_summary(
+    branchId: str,
+    request: Request,
+    startDate: str = '',
+    endDate: str = '',
+    cashierUserId: str = '',
+    paymentMethod: str = '',
+) -> dict:
+    actor = report_actor(request, branchId)
+    start, end = report_date_bounds(startDate, endDate)
+    with Session(engine) as session:
+        branch = session.scalar(select(Branch).where(Branch.id == actor.branch_id, Branch.company_id == actor.company_id))
+        if branch is None:
+            raise HTTPException(404, 'Branch not found')
+        selected_cashier = cashierUserId.strip()
+        if actor.role == 'CASHIER' and 'financial_reports' not in permissions_for(actor, branch):
+            selected_cashier = actor.id
+        query = select(PaymentRecordModel).where(
+            PaymentRecordModel.company_id == actor.company_id,
+            PaymentRecordModel.branch_id == actor.branch_id,
+            PaymentRecordModel.created_at >= start,
+            PaymentRecordModel.created_at <= end,
+        ).order_by(PaymentRecordModel.created_at.desc())
+        payments = list(session.scalars(query).all())
+        if selected_cashier:
+            payments = [row for row in payments if row.cashier_user_id == selected_cashier]
+        method = paymentMethod.strip().upper().replace(' ', '_')
+        if method and method != 'ALL':
+            payments = [row for row in payments if row.method == method]
+        user_ids = {row.cashier_user_id for row in payments}
+        users = {
+            user.id: user.full_name
+            for user in session.scalars(select(UserAccount).where(UserAccount.company_id == actor.company_id, UserAccount.id.in_(user_ids))).all()
+        }
+        grouped: dict[str, dict] = {}
+        for row in payments:
+            day = row.created_at[:10]
+            key = f'{day}:{row.cashier_user_id}'
+            current = grouped.setdefault(key, {
+                'date': day,
+                'cashierId': row.cashier_user_id,
+                'cashierName': users.get(row.cashier_user_id, 'Unknown cashier'),
+                'transactions': 0,
+                'salesAmount': 0,
+                'paymentMethods': [],
+            })
+            current['transactions'] += 1
+            current['salesAmount'] = round(current['salesAmount'] + float(row.amount), 2)
+            if row.method not in current['paymentMethods']:
+                current['paymentMethods'].append(row.method)
+        cash_total = round(sum(float(row.amount) for row in payments if row.method == 'CASH'), 2)
+        electronic_total = round(sum(float(row.amount) for row in payments if row.method in {'MOBILE_MONEY', 'BANK_TRANSFER', 'CARD'}), 2)
+        return {
+            'branchId': actor.branch_id,
+            'startDate': start[:10],
+            'endDate': end[:10],
+            'totalTransactions': len(payments),
+            'totalPaid': round(sum(float(row.amount) for row in payments), 2),
+            'cashTotal': cash_total,
+            'electronicTotal': electronic_total,
+            'rows': sorted(grouped.values(), key=lambda row: (row['date'], row['cashierName']), reverse=True),
+        }
+
+@app.get('/api/reports/cashier-transactions')
+def cashier_report_transactions(
+    branchId: str,
+    request: Request,
+    date: str,
+    cashierUserId: str = '',
+    startTime: str = '',
+    endTime: str = '',
+    paymentMethod: str = '',
+) -> dict:
+    actor = report_actor(request, branchId)
+    start, end = report_date_bounds(date, date)
+    with Session(engine) as session:
+        branch = session.scalar(select(Branch).where(Branch.id == actor.branch_id, Branch.company_id == actor.company_id))
+        selected_cashier = cashierUserId.strip()
+        if actor.role == 'CASHIER' and branch and 'financial_reports' not in permissions_for(actor, branch):
+            selected_cashier = actor.id
+        payments = list(session.scalars(select(PaymentRecordModel).where(
+            PaymentRecordModel.company_id == actor.company_id,
+            PaymentRecordModel.branch_id == actor.branch_id,
+            PaymentRecordModel.created_at >= start,
+            PaymentRecordModel.created_at <= end,
+        ).order_by(PaymentRecordModel.created_at.asc())).all())
+        if selected_cashier:
+            payments = [row for row in payments if row.cashier_user_id == selected_cashier]
+        method = paymentMethod.strip().upper().replace(' ', '_')
+        if method and method != 'ALL':
+            payments = [row for row in payments if row.method == method]
+        if startTime:
+            payments = [row for row in payments if row.created_at[11:16] >= startTime]
+        if endTime:
+            payments = [row for row in payments if row.created_at[11:16] <= endTime]
+        user_ids = {row.cashier_user_id for row in payments}
+        users = {user.id: user.full_name for user in session.scalars(select(UserAccount).where(UserAccount.company_id == actor.company_id, UserAccount.id.in_(user_ids))).all()}
+        sale_ids = {row.sale_id for row in payments}
+        sales = {sale.id: sale for sale in session.scalars(select(SaleRecordModel).where(SaleRecordModel.company_id == actor.company_id, SaleRecordModel.branch_id == actor.branch_id, SaleRecordModel.id.in_(sale_ids))).all()}
+        rows = []
+        for index, payment in enumerate(payments, start=1):
+            sale = sales.get(payment.sale_id)
+            rows.append({
+                'id': payment.id,
+                'transactionNumber': payment.receipt_number or (sale.sale_number if sale else f'TXN-{index:04d}'),
+                'time': payment.created_at[11:16],
+                'date': payment.created_at[:10],
+                'cashierId': payment.cashier_user_id,
+                'cashierName': users.get(payment.cashier_user_id, 'Unknown cashier'),
+                'saleId': payment.sale_id,
+                'customerName': sale.customer_name if sale else 'Unknown customer',
+                'items': len((json.loads(sale.payload_json or '{}').get('items', []) if sale else [])),
+                'totalAmount': float(payment.amount),
+                'paymentMethod': payment.method,
+                'verificationStatus': payment.verification_status,
+            })
+        return {'date': date, 'transactions': rows, 'totalTransactions': len(rows), 'totalPaid': round(sum(row['totalAmount'] for row in rows), 2)}
+
+@app.get('/api/reports/transactions/{payment_id}')
+def cashier_transaction_details(payment_id: str, branchId: str, request: Request) -> dict:
+    actor = report_actor(request, branchId)
+    with Session(engine) as session:
+        payment = session.scalar(select(PaymentRecordModel).where(PaymentRecordModel.id == payment_id, PaymentRecordModel.company_id == actor.company_id, PaymentRecordModel.branch_id == actor.branch_id))
+        if payment is None:
+            raise HTTPException(404, 'Transaction not found in this branch')
+        branch = session.scalar(select(Branch).where(Branch.id == actor.branch_id, Branch.company_id == actor.company_id))
+        if actor.role == 'CASHIER' and branch and 'financial_reports' not in permissions_for(actor, branch) and payment.cashier_user_id != actor.id:
+            raise HTTPException(403, 'Cashiers may only view their own transactions')
+        sale = session.scalar(select(SaleRecordModel).where(SaleRecordModel.id == payment.sale_id, SaleRecordModel.company_id == actor.company_id, SaleRecordModel.branch_id == actor.branch_id))
+        cashier = session.get(UserAccount, payment.cashier_user_id)
+        if sale is None:
+            raise HTTPException(404, 'Invoice for this transaction was not found')
+        return {
+            'payment': to_payment_payload(payment),
+            'invoice': to_sale_payload(sale),
+            'cashierName': cashier.full_name if cashier else 'Unknown cashier',
+            'transactionNumber': payment.receipt_number or sale.sale_number,
+        }
 
 @app.post('/api/payments')
 def record_payment(payload: PaymentPayload, request: Request) -> dict:
@@ -1457,6 +1704,10 @@ def update_staff(user_id: str, payload: StaffUpdatePayload, request: Request) ->
     with Session(engine) as session:
         user = session.scalar(select(UserAccount).where(UserAccount.id == user_id, UserAccount.company_id == actor.company_id, UserAccount.branch_id == actor.branch_id, UserAccount.role.in_(['STOCK_MANAGER', 'SALES_OFFICER', 'CASHIER', 'SALES_CASHIER'])))
         if user is None: raise HTTPException(404, 'Staff account not found in this branch')
+        if payload.role is not None:
+            if payload.role not in {'STOCK_MANAGER', 'SALES_OFFICER', 'CASHIER', 'SALES_CASHIER'}:
+                raise HTTPException(403, 'Branch Managers may only assign authorized staff roles')
+            user.role = payload.role
         if payload.fullName is not None: user.full_name = payload.fullName.strip()
         if payload.email is not None: user.email = payload.email.strip().lower()
         if payload.active is not None: user.active = payload.active
@@ -1492,9 +1743,9 @@ def company_audit_log(request: Request) -> list[dict]:
 def protected_branch_action(action: str, request: Request) -> dict:
     actor = require_actor(request, BRANCH_ROLES, request.headers.get('x-branch-id', ''))
     allowed = {
-        'BRANCH_MANAGER': {'sales', 'quotations', 'invoices', 'payments', 'receipts', 'inventory_view', 'inventory', 'stock_receipts', 'purchases', 'stock_adjustments', 'material_release', 'financial_reports', 'system_settings', 'staff_management', 'edit_selling_prices'},
-        'SALES_OFFICER': {'sales', 'quotations', 'invoices', 'inventory_view', 'customers', 'limited_reports'},
-        'CASHIER': {'invoice_view', 'payments', 'receipts', 'payment_reports'},
+        'BRANCH_MANAGER': {'sales', 'quotations', 'invoices', 'payments', 'receipts', 'customers', 'suppliers', 'inventory_view', 'inventory', 'stock_receipts', 'purchases', 'stock_adjustments', 'material_release', 'financial_reports', 'system_settings', 'staff_management', 'edit_selling_prices'},
+        'SALES_OFFICER': {'sales', 'quotations', 'invoices', 'inventory_view', 'limited_reports'},
+        'CASHIER': {'invoice_view', 'payments', 'receipts', 'customers', 'payment_reports'},
         'STOCK_MANAGER': {'inventory_view', 'inventory', 'stock_receipts', 'purchases', 'stock_adjustments', 'material_release', 'stock_reports'},
         # Kept for existing installations; new accounts should use separate roles.
         'SALES_CASHIER': {'sales', 'quotations', 'invoices', 'payments', 'receipts', 'inventory_view'},
@@ -1524,6 +1775,9 @@ def to_staff_payload(user: UserAccount) -> dict:
     except json.JSONDecodeError: permissions = []
     if isinstance(permissions, dict): permissions = permissions.get('permissions', [])
     return {'id': user.id, 'username': user.username, 'email': user.email, 'fullName': user.full_name, 'role': user.role, 'branchId': user.branch_id, 'active': user.active, 'createdAt': user.created_at, 'lastLogin': user.last_login, 'permissions': permissions if isinstance(permissions, list) else []}
+
+def to_customer_payload(customer: Customer) -> dict:
+    return {'id': customer.id, 'branchId': customer.branch_id, 'name': customer.name, 'phone': customer.phone, 'email': customer.email, 'address': customer.address, 'customerType': customer.customer_type, 'creditLimit': customer.credit_limit, 'active': customer.active, 'createdAt': customer.created_at, 'updatedAt': customer.updated_at}
 
 def to_product_payload(product: ProductCatalogItem) -> dict:
     return {'sku': product.sku, 'barcode': product.barcode, 'name': product.name, 'category': product.category, 'brand': product.brand, 'productType': product.product_type, 'variant': product.variant, 'stock': product.stock, 'unit': product.unit, 'price': product.selling_price}
@@ -1606,9 +1860,9 @@ def verify_password(password: str, encoded: str) -> bool:
 
 def permissions_for(user: UserAccount, branch: Branch) -> list[str]:
     defaults = {
-        'BRANCH_MANAGER': ['sales', 'quotations', 'invoices', 'payments', 'receipts', 'inventory_view', 'inventory', 'stock_receipts', 'purchases', 'stock_adjustments', 'material_release', 'financial_reports', 'system_settings', 'staff_management', 'edit_selling_prices'],
-        'SALES_OFFICER': ['sales', 'quotations', 'invoices', 'inventory_view', 'customers', 'limited_reports'],
-        'CASHIER': ['invoice_view', 'payments', 'receipts', 'payment_reports'],
+        'BRANCH_MANAGER': ['sales', 'quotations', 'invoices', 'payments', 'receipts', 'customers', 'suppliers', 'inventory_view', 'inventory', 'stock_receipts', 'purchases', 'stock_adjustments', 'material_release', 'financial_reports', 'system_settings', 'staff_management', 'edit_selling_prices'],
+        'SALES_OFFICER': ['sales', 'quotations', 'invoices', 'inventory_view', 'limited_reports'],
+        'CASHIER': ['invoice_view', 'payments', 'receipts', 'customers', 'payment_reports'],
         'STOCK_MANAGER': ['inventory_view', 'inventory', 'stock_receipts', 'purchases', 'suppliers', 'stock_adjustments', 'material_release', 'stock_reports'],
         'SALES_CASHIER': ['sales', 'quotations', 'invoices', 'payments', 'receipts', 'inventory_view'],
     }
