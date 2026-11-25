@@ -122,7 +122,7 @@ ET
 endstream
 endobj
 3 0 obj
-<< /Length 6081 /Resources << /Font << /F1 1 0 R >> >> >>
+<< /Length 6610 /Resources << /Font << /F1 1 0 R >> >> >>
 stream
 BT
 /F1 15 Tf
@@ -226,6 +226,18 @@ BT
 (empty-profile DMG | Supabase connection setup screen opens | PASS; live packaged test) Tj
 0 -11 Td
 /F1 8 Tf
+(CLOUD-02D | Startup failure fallback | Launch with a saved profile whose cloud status cannot) Tj
+0 -11 Td
+/F1 8 Tf
+(be confirmed | App must not remain on Branch Login; it routes to Cloud Database for) Tj
+0 -11 Td
+/F1 8 Tf
+(reconnection | PASS by source/build validation; clean-profile live test passed the primary) Tj
+0 -11 Td
+/F1 8 Tf
+(entry path) Tj
+0 -11 Td
+/F1 8 Tf
 (CLOUD-02B | Post-configuration handoff | Test and save cloud configuration, then return to the) Tj
 0 -11 Td
 /F1 8 Tf
@@ -319,10 +331,16 @@ BT
 (Session Pooler host, username and port 5432 from Supabase Connect.) Tj
 0 -11 Td
 /F1 8 Tf
-(CLOUD-14 | Secure persistence restart | Save valid configuration, restart packaged app, reopen) Tj
+(CLOUD-14 | Save handoff | Test and save a valid connection in the same packaged profile | App) Tj
 0 -11 Td
 /F1 8 Tf
-(page | Metadata restored and password remains masked | NOT TESTED interactively.) Tj
+(immediately returns to Welcome while status refreshes in the background | NOT TESTED with a) Tj
+0 -11 Td
+/F1 8 Tf
+(valid live Supabase profile; copied safeStorage data could not be used as a valid connection) Tj
+0 -11 Td
+/F1 8 Tf
+(profile.) Tj
 0 -11 Td
 /F1 8 Tf
 () Tj
@@ -455,14 +473,14 @@ xref
 0000000009 00000 n 
 0000000079 00000 n 
 0000003125 00000 n 
-0000009297 00000 n 
-0000011940 00000 n 
-0000012009 00000 n 
-0000012096 00000 n 
-0000012183 00000 n 
-0000012270 00000 n 
+0000009826 00000 n 
+0000012469 00000 n 
+0000012538 00000 n 
+0000012625 00000 n 
+0000012712 00000 n 
+0000012799 00000 n 
 trailer
 << /Size 10 /Root 9 0 R >>
 startxref
-12319
+12848
 %%EOF

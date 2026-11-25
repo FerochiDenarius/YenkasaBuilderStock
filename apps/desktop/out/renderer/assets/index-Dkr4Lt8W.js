@@ -15644,9 +15644,15 @@ const navigationPermission = {
   Customers: "customers",
   Suppliers: "suppliers"
 };
+const initialInstallationStatus = {
+  state: "DATABASE_NOT_CONFIGURED",
+  databaseConfigured: false,
+  cloudConnected: false,
+  companyFound: false
+};
 function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = reactExports.useState(false);
-  const [active, setActive] = reactExports.useState("Branch Login");
+  const [active, setActive] = reactExports.useState("Installation Welcome");
   const [setupExpanded, setSetupExpanded] = reactExports.useState(true);
   const [branchSession, setBranchSession] = reactExports.useState(() => {
     try {
@@ -15664,27 +15670,44 @@ function Dashboard() {
     }
   });
   const [ownerStatusLoaded, setOwnerStatusLoaded] = reactExports.useState(false);
-  const [installationStatus, setInstallationStatus] = reactExports.useState(null);
+  const [installationStatus, setInstallationStatus] = reactExports.useState(initialInstallationStatus);
   const [initialSetupMode, setInitialSetupMode] = reactExports.useState(false);
   reactExports.useEffect(() => {
-    window.desktopBridge?.cloud.getConfig().then((config) => {
-      if (!config.passwordConfigured && !branchSession && !ownerSession) {
-        setInstallationStatus({
-          state: "DATABASE_NOT_CONFIGURED",
-          databaseConfigured: false,
-          cloudConnected: false,
-          companyFound: false
-        });
-        setActive("Installation Welcome");
-        return;
-      }
-      return installationApi.status().then((status) => {
-        setInstallationStatus(status);
-        if (!branchSession && !ownerSession) {
-          setActive(status.state === "CLOUD_UNAVAILABLE" ? "Cloud Database" : "Installation Welcome");
+    if (branchSession || ownerSession) return;
+    let cancelled = false;
+    const loadInstallationState = async () => {
+      try {
+        const config = await window.desktopBridge?.cloud.getConfig();
+        if (!config.passwordConfigured && !branchSession && !ownerSession) {
+          if (!cancelled) setInstallationStatus({
+            state: "DATABASE_NOT_CONFIGURED",
+            databaseConfigured: false,
+            cloudConnected: false,
+            companyFound: false
+          });
+          if (!cancelled) setActive("Installation Welcome");
+          return;
         }
-      });
-    }).catch(() => void 0);
+        const status = await installationApi.status();
+        if (cancelled) return;
+        setInstallationStatus(status);
+        setActive(status.state === "CLOUD_UNAVAILABLE" ? "Cloud Database" : "Installation Welcome");
+      } catch {
+        if (cancelled) return;
+        setInstallationStatus((current) => current.databaseConfigured ? { ...current, state: "CLOUD_UNAVAILABLE", cloudConnected: false, companyFound: false } : initialInstallationStatus);
+        setActive("Cloud Database");
+      }
+    };
+    void loadInstallationState();
+    return () => {
+      cancelled = true;
+    };
+  }, [branchSession, ownerSession]);
+  reactExports.useEffect(() => {
+    if (branchSession && active === "Installation Welcome") setActive("Dashboard");
+    if (ownerSession && active === "Installation Welcome") setActive("Owner Account");
+  }, [active, branchSession, ownerSession]);
+  reactExports.useEffect(() => {
     companyApi.get().then((company) => {
       const root = document.documentElement;
       if (!company?.useBrandColours) {
@@ -15699,7 +15722,7 @@ function Dashboard() {
       root.style.setProperty("--brand-secondary", company?.secondaryColor || "#f7b500");
       root.style.setProperty("--brand-accent", company?.accentColor || "#d7263d");
     }).catch(() => void 0);
-  }, [branchSession, ownerSession]);
+  }, []);
   reactExports.useEffect(() => {
     const sync = () => {
       try {
@@ -16026,10 +16049,17 @@ function Dashboard() {
             CloudDatabaseSetupPage,
             {
               onSaved: () => {
-                void installationApi.status().then((status) => {
-                  setInstallationStatus(status);
-                  setActive("Installation Welcome");
-                });
+                setInstallationStatus((current) => ({
+                  state: "CLOUD_CONNECTED_SCHEMA_PENDING",
+                  databaseConfigured: true,
+                  cloudConnected: true,
+                  companyFound: current?.companyFound ?? false,
+                  schemaReady: false,
+                  registeredName: current?.registeredName,
+                  tradingName: current?.tradingName
+                }));
+                setActive("Installation Welcome");
+                void installationApi.status().then(setInstallationStatus).catch(() => void 0);
               }
             }
           ) : canRenderSetup ? /* @__PURE__ */ jsxRuntimeExports.jsx(SetupPage, { page: active, onNavigate: setActive }) : setupItems.some(([, label]) => label === active) && (branchSession || !setupUnlocked) ? /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "placeholder-page", role: "alert", children: [

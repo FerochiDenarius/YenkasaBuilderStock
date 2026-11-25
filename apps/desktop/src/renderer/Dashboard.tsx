@@ -160,10 +160,16 @@ const navigationPermission: Record<string, string | undefined> = {
   Customers: 'customers',
   Suppliers: 'suppliers',
 };
+const initialInstallationStatus: InstallationStatus = {
+  state: 'DATABASE_NOT_CONFIGURED',
+  databaseConfigured: false,
+  cloudConnected: false,
+  companyFound: false,
+};
 
 export function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [active, setActive] = useState('Branch Login');
+  const [active, setActive] = useState('Installation Welcome');
   const [setupExpanded, setSetupExpanded] = useState(true);
   const [branchSession, setBranchSession] = useState<AuthSession | null>(() => {
     try {
@@ -181,29 +187,42 @@ export function Dashboard() {
     }
   });
   const [ownerStatusLoaded, setOwnerStatusLoaded] = useState(false);
-  const [installationStatus, setInstallationStatus] = useState<InstallationStatus | null>(null);
+  const [installationStatus, setInstallationStatus] = useState<InstallationStatus>(initialInstallationStatus);
   const [initialSetupMode, setInitialSetupMode] = useState(false);
   useEffect(() => {
-    window.desktopBridge?.cloud.getConfig()
-      .then((config) => {
+    if (branchSession || ownerSession) return;
+    let cancelled = false;
+    const loadInstallationState = async () => {
+      try {
+        const config = await window.desktopBridge?.cloud.getConfig();
         if (!config.passwordConfigured && !branchSession && !ownerSession) {
-          setInstallationStatus({
+          if (!cancelled) setInstallationStatus({
             state: 'DATABASE_NOT_CONFIGURED',
             databaseConfigured: false,
             cloudConnected: false,
             companyFound: false,
           });
-          setActive('Installation Welcome');
+          if (!cancelled) setActive('Installation Welcome');
           return;
         }
-        return installationApi.status().then((status) => {
-          setInstallationStatus(status);
-          if (!branchSession && !ownerSession) {
-            setActive(status.state === 'CLOUD_UNAVAILABLE' ? 'Cloud Database' : 'Installation Welcome');
-          }
-        });
-      })
-      .catch(() => undefined);
+        const status = await installationApi.status();
+        if (cancelled) return;
+        setInstallationStatus(status);
+        setActive(status.state === 'CLOUD_UNAVAILABLE' ? 'Cloud Database' : 'Installation Welcome');
+      } catch {
+        if (cancelled) return;
+        setInstallationStatus((current) => current.databaseConfigured ? { ...current, state: 'CLOUD_UNAVAILABLE', cloudConnected: false, companyFound: false } : initialInstallationStatus);
+        setActive('Cloud Database');
+      }
+    };
+    void loadInstallationState();
+    return () => { cancelled = true; };
+  }, [branchSession, ownerSession]);
+  useEffect(() => {
+    if (branchSession && active === 'Installation Welcome') setActive('Dashboard');
+    if (ownerSession && active === 'Installation Welcome') setActive('Owner Account');
+  }, [active, branchSession, ownerSession]);
+  useEffect(() => {
     companyApi.get().then((company) => {
       const root = document.documentElement;
       if (!company?.useBrandColours) {
@@ -218,7 +237,7 @@ export function Dashboard() {
       root.style.setProperty('--brand-secondary', company?.secondaryColor || '#f7b500');
       root.style.setProperty('--brand-accent', company?.accentColor || '#d7263d');
     }).catch(() => undefined);
-  }, [branchSession, ownerSession]);
+  }, []);
   useEffect(() => {
     const sync = () => {
       try {
@@ -590,10 +609,17 @@ export function Dashboard() {
         ) : active === 'Cloud Database' ? (
           <CloudDatabaseSetupPage
             onSaved={() => {
-              void installationApi.status().then((status) => {
-                setInstallationStatus(status);
-                setActive('Installation Welcome');
-              });
+              setInstallationStatus((current) => ({
+                state: 'CLOUD_CONNECTED_SCHEMA_PENDING',
+                databaseConfigured: true,
+                cloudConnected: true,
+                companyFound: current?.companyFound ?? false,
+                schemaReady: false,
+                registeredName: current?.registeredName,
+                tradingName: current?.tradingName,
+              }));
+              setActive('Installation Welcome');
+              void installationApi.status().then(setInstallationStatus).catch(() => undefined);
             }}
           />
         ) : canRenderSetup ? (

@@ -85,6 +85,7 @@ content = [
             'CLOUD-02 | Fresh installation access | Request cloud configuration before a company record exists | HTTP 200 without owner credentials | PASS',
             'CLOUD-02A | Entry screen gate | Start the rebuilt DMG with an isolated empty user-data profile | Welcome screen is shown first; Owner Login, Staff Login and New Company are disabled until Database Configuration succeeds | PASS; live packaged test',
             'CLOUD-02C | Database configuration navigation | Click Configure Database in the live empty-profile DMG | Supabase connection setup screen opens | PASS; live packaged test',
+            'CLOUD-02D | Startup failure fallback | Launch with a saved profile whose cloud status cannot be confirmed | App must not remain on Branch Login; it routes to Cloud Database for reconnection | PASS by source/build validation; clean-profile live test passed the primary entry path',
             'CLOUD-02B | Post-configuration handoff | Test and save cloud configuration, then return to the application entry screen | Welcome screen is shown again with the three access choices enabled according to company status | PASS by renderer build and source validation; packaged interactive screenshot pending',
             'CLOUD-03 | Fresh installation validation | Submit malformed cloud-test payload before company registration | HTTP 422 useful validation error, not owner-auth failure | PASS',
             'CLOUD-04 | Post-setup independence | Create a company record, then request cloud configuration without an owner session | HTTP 200; connectivity configuration remains independent of owner authentication | PASS',
@@ -97,7 +98,7 @@ content = [
             'CLOUD-11 | Packaged API build | Build the bundled local-api with the updated lifecycle endpoint | PyInstaller build completed and produced the packaged local-api executable | PASS',
             'CLOUD-12 | Protected navigation gate | Start renderer with no owner or branch session after cloud status is available | Installation Welcome is shown; Company Setup pages are not rendered or listed until initial setup is explicitly selected or owner login succeeds | PASS by live packaged empty-profile test',
             'CLOUD-13 | Existing env connection | Test the configured backend DATABASE_URL without printing the secret | Direct db host could not be resolved before authentication | FAIL; use the exact Session Pooler host, username and port 5432 from Supabase Connect.',
-            'CLOUD-14 | Secure persistence restart | Save valid configuration, restart packaged app, reopen page | Metadata restored and password remains masked | NOT TESTED interactively.',
+            'CLOUD-14 | Save handoff | Test and save a valid connection in the same packaged profile | App immediately returns to Welcome while status refreshes in the background | NOT TESTED with a valid live Supabase profile; copied safeStorage data could not be used as a valid connection profile.',
         ]),
     ]),
     page('Cloud Database Configuration Validation', [

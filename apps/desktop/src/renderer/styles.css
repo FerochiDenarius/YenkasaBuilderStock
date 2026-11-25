@@ -6316,11 +6316,11 @@ footer {
   color: #fff;
   background: linear-gradient(110deg, #0a3971, #0d4e8d);
 }
-.installation-welcome-header strong { display: block; font-size: 22px; }
-.installation-welcome-header span:not(.installation-version) { display: block; margin-top: 3px; color: #d8e8fb; font-size: 14px; }
-.installation-brand-mark { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 10px; color: #fff; background: #2469d5; }
-.installation-version { margin-left: auto; padding: 7px 12px; border-radius: 12px; color: #fff; background: #37689b; font-size: 14px; font-weight: 800; }
-.installation-status-strip { display: flex; align-items: center; gap: 22px; margin-top: 18px; padding: 15px 25px; border: 1px solid #d4e0f0; border-radius: 14px; background: #f7fbff; color: #102b58; }
+.installation-welcome-header strong { display: block; font-size: 19px; }
+.installation-welcome-header span:not(.installation-version) { display: block; margin-top: 3px; color: #d8e8fb; font-size: 12px; }
+.installation-brand-mark { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 9px; color: #fff; background: #2469d5; }
+.installation-version { margin-left: auto; padding: 6px 10px; border-radius: 10px; color: #fff; background: #37689b; font-size: 12px; font-weight: 800; }
+.installation-status-strip { display: flex; align-items: center; gap: 18px; margin-top: 16px; padding: 12px 20px; border: 1px solid #d4e0f0; border-radius: 12px; background: #f7fbff; color: #102b58; }
 .installation-status-item { display: flex; align-items: center; gap: 14px; min-width: 310px; }
 .installation-status-item > svg { color: #159349; }
 .installation-status-item strong, .installation-status-item span { display: block; }
@@ -6331,24 +6331,24 @@ footer {
 .installation-company-status { flex: 1; }
 .installation-details, .installation-footer-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #b8cbe4; border-radius: 10px; color: #102b58; background: #fff; font-weight: 700; cursor: pointer; }
 .installation-details { padding: 10px 15px; white-space: nowrap; }
-.installation-welcome-copy { padding: 31px 0 23px; text-align: center; color: #102b58; }
-.installation-welcome-copy h1 { margin: 0 0 7px; font-size: clamp(26px, 2.6vw, 36px); }
-.installation-welcome-copy p { margin: 4px 0; color: #36557d; font-size: 16px; }
-.installation-access-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; max-width: 1140px; margin: 0 auto; }
-.installation-access-card { display: flex; flex-direction: column; align-items: center; min-height: 248px; padding: 15px 20px 17px; border: 1px solid #cfdbed; border-radius: 15px; background: #fff; box-shadow: 0 7px 17px rgba(23, 54, 95, .06); text-align: center; }
+.installation-welcome-copy { padding: 25px 0 19px; text-align: center; color: #102b58; }
+.installation-welcome-copy h1 { margin: 0 0 6px; font-size: clamp(23px, 2.3vw, 31px); }
+.installation-welcome-copy p { margin: 3px 0; color: #36557d; font-size: 14px; }
+.installation-access-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; max-width: 1080px; margin: 0 auto; }
+.installation-access-card { display: flex; flex-direction: column; align-items: center; min-height: 208px; padding: 12px 16px 14px; border: 1px solid #cfdbed; border-radius: 13px; background: #fff; box-shadow: 0 6px 14px rgba(23, 54, 95, .06); text-align: center; }
 .installation-access-card.disabled { opacity: .62; }
-.installation-access-icon { display: grid; place-items: center; width: 62px; height: 62px; margin-bottom: 10px; border-radius: 50%; color: #0d4c8c; background: #e6efff; }
+.installation-access-icon { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 8px; border-radius: 50%; color: #0d4c8c; background: #e6efff; }
 .installation-access-card:nth-child(2) .installation-access-icon { color: #0b9438; background: #ddf7e6; }
 .installation-access-card:nth-child(3) .installation-access-icon { color: #554eb0; background: #e9e7ff; }
-.installation-access-card h2 { margin: 0 0 7px; color: #0e2146; font-size: 20px; }
-.installation-access-card p { min-height: 58px; margin: 0 0 14px; color: #36557d; font-size: 14px; line-height: 1.4; }
-.installation-access-card button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: 100%; margin-top: auto; padding: 9px 13px; border-radius: 9px; font-size: 14px; font-weight: 800; cursor: pointer; }
+.installation-access-card h2 { margin: 0 0 6px; color: #0e2146; font-size: 17px; }
+.installation-access-card p { min-height: 48px; margin: 0 0 11px; color: #36557d; font-size: 12px; line-height: 1.35; }
+.installation-access-card button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: auto; padding: 7px 10px; border-radius: 8px; font-size: 12px; font-weight: 800; cursor: pointer; }
 .installation-primary-action { border: 1px solid #0b9438; color: #fff; background: #0b9438; }
 .installation-secondary-action { border: 1px solid #174f91; color: #174f91; background: #fff; }
 .installation-access-card button:disabled { cursor: not-allowed; }
-.installation-notice { display: flex; align-items: center; gap: 12px; max-width: 1080px; margin: 20px auto 17px; padding: 12px 18px; border: 1px solid #c9d9f0; border-radius: 12px; color: #174f91; background: #f8fbff; font-size: 14px; }
-.installation-footer-actions { display: flex; justify-content: space-between; gap: 12px; max-width: 1140px; margin: 0 auto; padding-top: 15px; border-top: 1px solid #d4e0f0; }
-.installation-footer-actions button { padding: 8px 17px; font-size: 13px; }
+.installation-notice { display: flex; align-items: center; gap: 10px; max-width: 1020px; margin: 16px auto 14px; padding: 9px 14px; border: 1px solid #c9d9f0; border-radius: 10px; color: #174f91; background: #f8fbff; font-size: 12px; }
+.installation-footer-actions { display: flex; justify-content: space-between; gap: 10px; max-width: 1080px; margin: 0 auto; padding-top: 12px; border-top: 1px solid #d4e0f0; }
+.installation-footer-actions button { padding: 6px 13px; font-size: 11px; }
 @media (max-width: 980px) {
   .installation-status-strip { flex-wrap: wrap; }
   .installation-status-divider { display: none; }
