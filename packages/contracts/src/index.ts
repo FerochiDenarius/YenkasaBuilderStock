@@ -73,6 +73,10 @@ export interface CompanyRegistration {
   showLogoReceipts: boolean;
   showLogoInvoices: boolean;
   useBrandColours: boolean;
+  uiTheme?: 'light' | 'dark' | 'system';
+  uiFontScale?: number;
+  uiIconScale?: number;
+  uiControlScale?: number;
   documentTemplates: DocumentTemplateSettings;
 }
 export interface OwnerAccount {

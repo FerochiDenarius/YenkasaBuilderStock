@@ -189,6 +189,7 @@ export function Dashboard() {
   const [ownerStatusLoaded, setOwnerStatusLoaded] = useState(false);
   const [installationStatus, setInstallationStatus] = useState<InstallationStatus>(initialInstallationStatus);
   const [initialSetupMode, setInitialSetupMode] = useState(false);
+  const [companyLogo, setCompanyLogo] = useState('');
   useEffect(() => {
     if (branchSession || ownerSession) return;
     let cancelled = false;
@@ -223,8 +224,13 @@ export function Dashboard() {
     if (ownerSession && active === 'Installation Welcome') setActive('Owner Account');
   }, [active, branchSession, ownerSession]);
   useEffect(() => {
-    companyApi.get().then((company) => {
+    const applyCompanyTheme = (company: Awaited<ReturnType<typeof companyApi.get>>) => {
       const root = document.documentElement;
+      setCompanyLogo(company?.logoRef ?? '');
+      root.dataset.theme = company?.uiTheme ?? 'light';
+      root.style.setProperty('--ui-font-scale', String(company?.uiFontScale ?? 1));
+      root.style.setProperty('--ui-icon-scale', String(company?.uiIconScale ?? 1));
+      root.style.setProperty('--ui-control-scale', String(company?.uiControlScale ?? 1));
       if (!company?.useBrandColours) {
         root.style.setProperty('--brand-primary', '#0b9438');
         root.style.setProperty('--brand-primary-dark', '#147536');
@@ -236,7 +242,11 @@ export function Dashboard() {
       root.style.setProperty('--brand-primary-dark', company?.brandColor || '#147536');
       root.style.setProperty('--brand-secondary', company?.secondaryColor || '#f7b500');
       root.style.setProperty('--brand-accent', company?.accentColor || '#d7263d');
-    }).catch(() => undefined);
+    };
+    const loadCompanyTheme = () => companyApi.get().then(applyCompanyTheme).catch(() => undefined);
+    void loadCompanyTheme();
+    window.addEventListener('yenkasa-branding-changed', loadCompanyTheme);
+    return () => window.removeEventListener('yenkasa-branding-changed', loadCompanyTheme);
   }, []);
   useEffect(() => {
     const sync = () => {
@@ -355,7 +365,7 @@ export function Dashboard() {
       <aside className={`dashboard-sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="dashboard-brand">
           <div className="dashboard-logo">
-            <Store size={32} />
+            {companyLogo ? <img src={companyLogo} alt="Company logo" /> : <Store size={32} />}
           </div>
           <div>
             <strong>YenkasaBuildersStock</strong>

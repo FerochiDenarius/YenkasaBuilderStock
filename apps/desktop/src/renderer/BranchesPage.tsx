@@ -12,15 +12,19 @@ import {
   Building2,
   Check,
   ChevronDown,
+  Edit3,
   LockKeyhole,
   MapPin,
   Monitor,
   Plus,
+  PlayCircle,
   Search,
   ShieldCheck,
+  Trash2,
   UserCircle,
   Users,
   X,
+  PauseCircle,
 } from 'lucide-react';
 import type { Branch } from '@yenkasa/contracts';
 import { branchApi } from './api';
@@ -81,6 +85,9 @@ export function BranchesPage() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [wizard, setWizard] = useState(false);
+  const [editing, setEditing] = useState<Branch | null>(null);
+  const [busyBranch, setBusyBranch] = useState('');
+  const [actionError, setActionError] = useState('');
   const load = () => {
     setLoading(true);
     branchApi
@@ -99,6 +106,56 @@ export function BranchesPage() {
       ),
     [branches, query],
   );
+  const replaceBranch = (updated: Branch) => {
+    setBranches((current) => current.map((branch) => branch.id === updated.id ? updated : branch));
+    setActionError('');
+  };
+  const updateStatus = async (branch: Branch) => {
+    setBusyBranch(branch.id);
+    setActionError('');
+    try {
+      const updated = await branchApi.update(branch.id, {
+        name: branch.name,
+        code: branch.code,
+        location: branch.location,
+        phone: branch.phone,
+        email: branch.email ?? '',
+        manager: branch.manager,
+        managerContact: branch.managerContact ?? '',
+        branchType: branch.branchType ?? 'Sales & Warehouse',
+        status: branch.status === 'Active' ? 'Suspended' : 'Active',
+      });
+      replaceBranch(updated);
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : 'Unable to update branch status.');
+    } finally {
+      setBusyBranch('');
+    }
+  };
+  const removeBranch = async (branch: Branch) => {
+    if (!window.confirm(`Delete ${branch.name}? This is only available when the branch has no transaction history.`)) return;
+    setBusyBranch(branch.id);
+    setActionError('');
+    try {
+      await branchApi.remove(branch.id);
+      setBranches((current) => current.filter((item) => item.id !== branch.id));
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : 'Unable to delete branch.');
+    } finally {
+      setBusyBranch('');
+    }
+  };
+  if (editing)
+    return (
+      <BranchEditDialog
+        branch={editing}
+        onCancel={() => setEditing(null)}
+        onSaved={(branch) => {
+          replaceBranch(branch);
+          setEditing(null);
+        }}
+      />
+    );
   if (wizard)
     return (
       <BranchCreationWizard
@@ -185,6 +242,7 @@ export function BranchesPage() {
             <span>Manager</span>
             <span>Users</span>
             <span>Status</span>
+            <span>Actions</span>
           </div>
           {loading ? (
             <div className="page-loading">Loading branches…</div>
@@ -202,12 +260,93 @@ export function BranchesPage() {
                 >
                   {branch.status}
                 </span>
+                <div className="branch-actions">
+                  <button type="button" title="Edit branch" aria-label={`Edit ${branch.name}`} onClick={() => setEditing(branch)} disabled={busyBranch === branch.id}>
+                    <Edit3 size={14} />
+                  </button>
+                  <button type="button" title={branch.status === 'Active' ? 'Suspend branch' : 'Reactivate branch'} aria-label={`${branch.status === 'Active' ? 'Suspend' : 'Reactivate'} ${branch.name}`} onClick={() => void updateStatus(branch)} disabled={busyBranch === branch.id}>
+                    {branch.status === 'Active' ? <PauseCircle size={14} /> : <PlayCircle size={14} />}
+                  </button>
+                  <button type="button" className="danger" title="Delete branch" aria-label={`Delete ${branch.name}`} onClick={() => void removeBranch(branch)} disabled={busyBranch === branch.id}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
             ))
           ) : (
             <div className="page-loading">No branches match this search.</div>
           )}
         </div>
+        {actionError && <div className="branch-action-error" role="alert">{actionError}</div>}
+      </section>
+    </div>
+  );
+}
+
+function BranchEditDialog({
+  branch,
+  onCancel,
+  onSaved,
+}: {
+  branch: Branch;
+  onCancel: () => void;
+  onSaved: (branch: Branch) => void;
+}) {
+  const [form, setForm] = useState({
+    name: branch.name,
+    code: branch.code,
+    location: branch.location,
+    phone: branch.phone,
+    email: branch.email ?? '',
+    manager: branch.manager,
+    managerContact: branch.managerContact ?? '',
+    branchType: branch.branchType ?? 'Sales & Warehouse',
+    status: branch.status,
+  });
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const update = (key: keyof typeof form, value: string) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    setError('');
+  };
+  const save = async () => {
+    if (![form.name, form.code, form.location, form.manager].every((value) => value.trim())) {
+      setError('Branch name, code, address and manager name are required.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await branchApi.update(branch.id, form);
+      onSaved(updated);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to save branch changes.');
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <div className="setup-page branch-edit-page">
+      <div className="setup-breadcrumb">
+        <button type="button" className="breadcrumb-link" onClick={onCancel}>Branches</button>{' '}&nbsp;›&nbsp; <strong>Edit Branch</strong>
+      </div>
+      <section className="setup-title">
+        <div className="setup-title-icon"><Edit3 size={27} /></div>
+        <div><h2>Edit Branch</h2><p>Update branch information or change its operational status.</p></div>
+      </section>
+      <section className="panel branch-edit-panel">
+        <div className="wizard-fields">
+          <Field name="edit-name" label="Branch Name" value={form.name} required onChange={(value) => update('name', value)} />
+          <Field name="edit-code" label="Branch Code" value={form.code} required onChange={(value) => update('code', value.toUpperCase())} />
+          <label>Branch Type<select value={form.branchType} onChange={(event) => update('branchType', event.target.value)}><option>Sales &amp; Warehouse</option><option>Warehouse Only</option><option>Sales Only</option></select></label>
+          <label>Status<select value={form.status} onChange={(event) => update('status', event.target.value)}><option>Active</option><option>Suspended</option></select></label>
+          <Field name="edit-location" label="Address" value={form.location} required onChange={(value) => update('location', value)} wide icon={<MapPin size={17} />} />
+          <Field name="edit-phone" label="Phone" value={form.phone} onChange={(value) => update('phone', value)} />
+          <Field name="edit-email" label="Email" value={form.email} type="email" onChange={(value) => update('email', value)} />
+          <Field name="edit-manager" label="Branch Manager (Full Name)" value={form.manager} required onChange={(value) => update('manager', value)} icon={<UserCircle size={17} />} />
+          <Field name="edit-manager-contact" label="Manager Contact" value={form.managerContact} onChange={(value) => update('managerContact', value)} />
+        </div>
+        {error && <div className="wizard-error" role="alert">{error}</div>}
+        <div className="wizard-footer"><button type="button" className="outline" onClick={onCancel}><X size={16} />Cancel</button><button type="button" className="primary-button" onClick={() => void save()} disabled={saving}><Check size={16} />{saving ? 'Saving…' : 'Save Changes'}</button></div>
       </section>
     </div>
   );

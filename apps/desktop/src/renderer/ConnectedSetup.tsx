@@ -35,6 +35,10 @@ const fallback: CompanyRegistration = {
   showLogoReceipts: true,
   showLogoInvoices: true,
   useBrandColours: true,
+  uiTheme: 'light',
+  uiFontScale: 1,
+  uiIconScale: 1,
+  uiControlScale: 1,
   documentTemplates: {
     selectedDocument: 'Invoice Template',
     layoutStyle: 'Classic',
@@ -288,12 +292,16 @@ export function ConnectedBranding() {
       root.style.setProperty('--brand-accent', '#d7263d');
       return;
     }
+    root.dataset.theme = value.uiTheme || 'light';
+    root.style.setProperty('--ui-font-scale', String(value.uiFontScale || 1));
+    root.style.setProperty('--ui-icon-scale', String(value.uiIconScale || 1));
+    root.style.setProperty('--ui-control-scale', String(value.uiControlScale || 1));
     root.style.setProperty('--brand-primary', value.brandColor);
     root.style.setProperty('--brand-primary-dark', value.brandColor);
     root.style.setProperty('--brand-secondary', value.secondaryColor);
     root.style.setProperty('--brand-accent', value.accentColor);
-  }, [value.brandColor, value.secondaryColor, value.accentColor, value.useBrandColours]);
-  const update = (key: keyof CompanyRegistration, next: string | boolean) => {
+  }, [value.brandColor, value.secondaryColor, value.accentColor, value.useBrandColours, value.uiTheme, value.uiFontScale, value.uiIconScale, value.uiControlScale]);
+  const update = (key: keyof CompanyRegistration, next: string | boolean | number) => {
     setValue((current) => ({ ...current, [key]: next }));
     setStatus('');
     setError('');
@@ -436,6 +444,7 @@ export function ConnectedBranding() {
         },
       });
       setStatus('Saved branding locally to SQLite');
+      window.dispatchEvent(new Event('yenkasa-branding-changed'));
     } catch (reason) {
       setStatus('');
       setError(
@@ -631,6 +640,21 @@ export function ConnectedBranding() {
                   update('useBrandColours', !value.useBrandColours)
                 }
               />
+              <h3>
+                <Settings size={20} />
+                Application Appearance
+              </h3>
+              <label className="appearance-field">
+                App Theme
+                <select value={value.uiTheme || 'light'} onChange={(event) => update('uiTheme', event.target.value)}>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                  <option value="system">Use system theme</option>
+                </select>
+              </label>
+              <ScaleControl label="Text size" value={value.uiFontScale || 1} onChange={(next) => update('uiFontScale', next)} />
+              <ScaleControl label="Icon size" value={value.uiIconScale || 1} onChange={(next) => update('uiIconScale', next)} />
+              <ScaleControl label="Button and control size" value={value.uiControlScale || 1} onChange={(next) => update('uiControlScale', next)} />
             </div>
           </section>
         ) : brandSection === 'Document Templates' ? (
@@ -1548,6 +1572,23 @@ function DocumentTemplatesPanel({
         </aside>
       </div>
     </section>
+  );
+}
+
+function ScaleControl({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="appearance-scale">
+      <span>{label}<strong>{Math.round(value * 100)}%</strong></span>
+      <input type="range" min="0.85" max="1.2" step="0.05" value={value} onChange={(event) => onChange(Number(event.target.value))} />
+    </label>
   );
 }
 

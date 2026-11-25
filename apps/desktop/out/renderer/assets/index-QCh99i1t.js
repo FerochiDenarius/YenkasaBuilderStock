@@ -7219,6 +7219,27 @@ const CircleHelp = createLucideIcon("CircleHelp", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
+const CirclePause = createLucideIcon("CirclePause", [
+  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+  ["line", { x1: "10", x2: "10", y1: "15", y2: "9", key: "c1nkhi" }],
+  ["line", { x1: "14", x2: "14", y1: "15", y2: "9", key: "h65svq" }]
+]);
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const CirclePlay = createLucideIcon("CirclePlay", [
+  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+  ["polygon", { points: "10 8 16 12 10 16 10 8", key: "1cimsy" }]
+]);
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
 const CircleUser = createLucideIcon("CircleUser", [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["circle", { cx: "12", cy: "10", r: "3", key: "ilqhr7" }],
@@ -8016,6 +8037,10 @@ const branchApi = {
     method: "PATCH",
     headers: ownerHeaders(),
     body: JSON.stringify(branch)
+  }),
+  remove: (id2) => request(`/api/branches/${id2}`, {
+    method: "DELETE",
+    headers: ownerHeaders()
   })
 };
 const deviceApi = {
@@ -8179,6 +8204,10 @@ const fallback$1 = {
   showLogoReceipts: true,
   showLogoInvoices: true,
   useBrandColours: true,
+  uiTheme: "light",
+  uiFontScale: 1,
+  uiIconScale: 1,
+  uiControlScale: 1,
   documentTemplates: {
     selectedDocument: "Invoice Template",
     layoutStyle: "Classic",
@@ -8285,11 +8314,15 @@ function ConnectedBranding() {
       root.style.setProperty("--brand-accent", "#d7263d");
       return;
     }
+    root.dataset.theme = value.uiTheme || "light";
+    root.style.setProperty("--ui-font-scale", String(value.uiFontScale || 1));
+    root.style.setProperty("--ui-icon-scale", String(value.uiIconScale || 1));
+    root.style.setProperty("--ui-control-scale", String(value.uiControlScale || 1));
     root.style.setProperty("--brand-primary", value.brandColor);
     root.style.setProperty("--brand-primary-dark", value.brandColor);
     root.style.setProperty("--brand-secondary", value.secondaryColor);
     root.style.setProperty("--brand-accent", value.accentColor);
-  }, [value.brandColor, value.secondaryColor, value.accentColor, value.useBrandColours]);
+  }, [value.brandColor, value.secondaryColor, value.accentColor, value.useBrandColours, value.uiTheme, value.uiFontScale, value.uiIconScale, value.uiControlScale]);
   const update = (key, next) => {
     setValue((current) => ({ ...current, [key]: next }));
     setStatus("");
@@ -8422,6 +8455,7 @@ function ConnectedBranding() {
         }
       });
       setStatus("Saved branding locally to SQLite");
+      window.dispatchEvent(new Event("yenkasa-branding-changed"));
     } catch (reason) {
       setStatus("");
       setError(
@@ -8628,7 +8662,22 @@ function ConnectedBranding() {
           checked: value.useBrandColours,
           onChange: () => update("useBrandColours", !value.useBrandColours)
         }
-      )
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Settings, { size: 20 }),
+        "Application Appearance"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "appearance-field", children: [
+        "App Theme",
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: value.uiTheme || "light", onChange: (event) => update("uiTheme", event.target.value), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "light", children: "Light" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "dark", children: "Dark" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "system", children: "Use system theme" })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(ScaleControl, { label: "Text size", value: value.uiFontScale || 1, onChange: (next) => update("uiFontScale", next) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(ScaleControl, { label: "Icon size", value: value.uiIconScale || 1, onChange: (next) => update("uiIconScale", next) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(ScaleControl, { label: "Button and control size", value: value.uiControlScale || 1, onChange: (next) => update("uiControlScale", next) })
     ] }) }) : brandSection === "Document Templates" ? /* @__PURE__ */ jsxRuntimeExports.jsx(
       DocumentTemplatesPanel,
       {
@@ -9553,6 +9602,22 @@ function DocumentTemplatesPanel({
     )
   ] });
 }
+function ScaleControl({
+  label,
+  value,
+  onChange
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "appearance-scale", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+      label,
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("strong", { children: [
+        Math.round(value * 100),
+        "%"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "range", min: "0.85", max: "1.2", step: "0.05", value, onChange: (event) => onChange(Number(event.target.value)) })
+  ] });
+}
 function ConnectedField({
   name,
   label,
@@ -9734,6 +9799,7 @@ function BusinessInfoPage$1() {
       setValue(saved);
       setSavedValue(saved);
       setMessage("Saved locally to SQLite");
+      window.dispatchEvent(new Event("yenkasa-branding-changed"));
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Unable to save company information."
@@ -11003,6 +11069,9 @@ function BranchesPage$1() {
   const [query, setQuery] = reactExports.useState("");
   const [loading, setLoading] = reactExports.useState(true);
   const [wizard, setWizard] = reactExports.useState(false);
+  const [editing, setEditing] = reactExports.useState(null);
+  const [busyBranch, setBusyBranch] = reactExports.useState("");
+  const [actionError, setActionError] = reactExports.useState("");
   const load = () => {
     setLoading(true);
     branchApi.list().then(setBranches).catch(() => void 0).finally(() => setLoading(false));
@@ -11014,6 +11083,57 @@ function BranchesPage$1() {
     ),
     [branches, query]
   );
+  const replaceBranch = (updated) => {
+    setBranches((current) => current.map((branch) => branch.id === updated.id ? updated : branch));
+    setActionError("");
+  };
+  const updateStatus = async (branch) => {
+    setBusyBranch(branch.id);
+    setActionError("");
+    try {
+      const updated = await branchApi.update(branch.id, {
+        name: branch.name,
+        code: branch.code,
+        location: branch.location,
+        phone: branch.phone,
+        email: branch.email ?? "",
+        manager: branch.manager,
+        managerContact: branch.managerContact ?? "",
+        branchType: branch.branchType ?? "Sales & Warehouse",
+        status: branch.status === "Active" ? "Suspended" : "Active"
+      });
+      replaceBranch(updated);
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : "Unable to update branch status.");
+    } finally {
+      setBusyBranch("");
+    }
+  };
+  const removeBranch = async (branch) => {
+    if (!window.confirm(`Delete ${branch.name}? This is only available when the branch has no transaction history.`)) return;
+    setBusyBranch(branch.id);
+    setActionError("");
+    try {
+      await branchApi.remove(branch.id);
+      setBranches((current) => current.filter((item) => item.id !== branch.id));
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : "Unable to delete branch.");
+    } finally {
+      setBusyBranch("");
+    }
+  };
+  if (editing)
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(
+      BranchEditDialog,
+      {
+        branch: editing,
+        onCancel: () => setEditing(null),
+        onSaved: (branch) => {
+          replaceBranch(branch);
+          setEditing(null);
+        }
+      }
+    );
   if (wizard)
     return /* @__PURE__ */ jsxRuntimeExports.jsx(
       BranchCreationWizard,
@@ -11105,7 +11225,8 @@ function BranchesPage$1() {
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Location" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Manager" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Users" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Status" })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Status" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Actions" })
         ] }),
         loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "page-loading", children: "Loading branches…" }) : filtered.length ? filtered.map((branch, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "branch-row", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: index + 1 }),
@@ -11123,8 +11244,104 @@ function BranchesPage$1() {
               className: `status ${branch.status === "Active" ? "in-stock" : "low-stock"}`,
               children: branch.status
             }
-          )
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "branch-actions", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", title: "Edit branch", "aria-label": `Edit ${branch.name}`, onClick: () => setEditing(branch), disabled: busyBranch === branch.id, children: /* @__PURE__ */ jsxRuntimeExports.jsx(PenLine, { size: 14 }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", title: branch.status === "Active" ? "Suspend branch" : "Reactivate branch", "aria-label": `${branch.status === "Active" ? "Suspend" : "Reactivate"} ${branch.name}`, onClick: () => void updateStatus(branch), disabled: busyBranch === branch.id, children: branch.status === "Active" ? /* @__PURE__ */ jsxRuntimeExports.jsx(CirclePause, { size: 14 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(CirclePlay, { size: 14 }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", className: "danger", title: "Delete branch", "aria-label": `Delete ${branch.name}`, onClick: () => void removeBranch(branch), disabled: busyBranch === branch.id, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
+          ] })
         ] }, branch.id)) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "page-loading", children: "No branches match this search." })
+      ] }),
+      actionError && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "branch-action-error", role: "alert", children: actionError })
+    ] })
+  ] });
+}
+function BranchEditDialog({
+  branch,
+  onCancel,
+  onSaved
+}) {
+  const [form, setForm] = reactExports.useState({
+    name: branch.name,
+    code: branch.code,
+    location: branch.location,
+    phone: branch.phone,
+    email: branch.email ?? "",
+    manager: branch.manager,
+    managerContact: branch.managerContact ?? "",
+    branchType: branch.branchType ?? "Sales & Warehouse",
+    status: branch.status
+  });
+  const [error, setError] = reactExports.useState("");
+  const [saving, setSaving] = reactExports.useState(false);
+  const update = (key, value) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    setError("");
+  };
+  const save = async () => {
+    if (![form.name, form.code, form.location, form.manager].every((value) => value.trim())) {
+      setError("Branch name, code, address and manager name are required.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await branchApi.update(branch.id, form);
+      onSaved(updated);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to save branch changes.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "setup-page branch-edit-page", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "setup-breadcrumb", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", className: "breadcrumb-link", onClick: onCancel, children: "Branches" }),
+      " ",
+      " ›  ",
+      /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Edit Branch" })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "setup-title", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "setup-title-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(PenLine, { size: 27 }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Edit Branch" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Update branch information or change its operational status." })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "panel branch-edit-panel", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "wizard-fields", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field$1, { name: "edit-name", label: "Branch Name", value: form.name, required: true, onChange: (value) => update("name", value) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field$1, { name: "edit-code", label: "Branch Code", value: form.code, required: true, onChange: (value) => update("code", value.toUpperCase()) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+          "Branch Type",
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: form.branchType, onChange: (event) => update("branchType", event.target.value), children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Sales & Warehouse" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Warehouse Only" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Sales Only" })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+          "Status",
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: form.status, onChange: (event) => update("status", event.target.value), children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Active" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Suspended" })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field$1, { name: "edit-location", label: "Address", value: form.location, required: true, onChange: (value) => update("location", value), wide: true, icon: /* @__PURE__ */ jsxRuntimeExports.jsx(MapPin, { size: 17 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field$1, { name: "edit-phone", label: "Phone", value: form.phone, onChange: (value) => update("phone", value) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field$1, { name: "edit-email", label: "Email", value: form.email, type: "email", onChange: (value) => update("email", value) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field$1, { name: "edit-manager", label: "Branch Manager (Full Name)", value: form.manager, required: true, onChange: (value) => update("manager", value), icon: /* @__PURE__ */ jsxRuntimeExports.jsx(CircleUser, { size: 17 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field$1, { name: "edit-manager-contact", label: "Manager Contact", value: form.managerContact, onChange: (value) => update("managerContact", value) })
+      ] }),
+      error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "wizard-error", role: "alert", children: error }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "wizard-footer", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { type: "button", className: "outline", onClick: onCancel, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 16 }),
+          "Cancel"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { type: "button", className: "primary-button", onClick: () => void save(), disabled: saving, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { size: 16 }),
+          saving ? "Saving…" : "Save Changes"
+        ] })
       ] })
     ] })
   ] });
@@ -15672,6 +15889,7 @@ function Dashboard() {
   const [ownerStatusLoaded, setOwnerStatusLoaded] = reactExports.useState(false);
   const [installationStatus, setInstallationStatus] = reactExports.useState(initialInstallationStatus);
   const [initialSetupMode, setInitialSetupMode] = reactExports.useState(false);
+  const [companyLogo, setCompanyLogo] = reactExports.useState("");
   reactExports.useEffect(() => {
     if (branchSession || ownerSession) return;
     let cancelled = false;
@@ -15708,8 +15926,13 @@ function Dashboard() {
     if (ownerSession && active === "Installation Welcome") setActive("Owner Account");
   }, [active, branchSession, ownerSession]);
   reactExports.useEffect(() => {
-    companyApi.get().then((company) => {
+    const applyCompanyTheme = (company) => {
       const root = document.documentElement;
+      setCompanyLogo(company?.logoRef ?? "");
+      root.dataset.theme = company?.uiTheme ?? "light";
+      root.style.setProperty("--ui-font-scale", String(company?.uiFontScale ?? 1));
+      root.style.setProperty("--ui-icon-scale", String(company?.uiIconScale ?? 1));
+      root.style.setProperty("--ui-control-scale", String(company?.uiControlScale ?? 1));
       if (!company?.useBrandColours) {
         root.style.setProperty("--brand-primary", "#0b9438");
         root.style.setProperty("--brand-primary-dark", "#147536");
@@ -15721,7 +15944,11 @@ function Dashboard() {
       root.style.setProperty("--brand-primary-dark", company?.brandColor || "#147536");
       root.style.setProperty("--brand-secondary", company?.secondaryColor || "#f7b500");
       root.style.setProperty("--brand-accent", company?.accentColor || "#d7263d");
-    }).catch(() => void 0);
+    };
+    const loadCompanyTheme = () => companyApi.get().then(applyCompanyTheme).catch(() => void 0);
+    void loadCompanyTheme();
+    window.addEventListener("yenkasa-branding-changed", loadCompanyTheme);
+    return () => window.removeEventListener("yenkasa-branding-changed", loadCompanyTheme);
   }, []);
   reactExports.useEffect(() => {
     const sync = () => {
@@ -15823,7 +16050,7 @@ function Dashboard() {
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("aside", { className: `dashboard-sidebar ${sidebarOpen ? "open" : ""}`, children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "dashboard-brand", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "dashboard-logo", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Store, { size: 32 }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "dashboard-logo", children: companyLogo ? /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: companyLogo, alt: "Company logo" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Store, { size: 32 }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "YenkasaBuildersStock" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: branchSession?.branchName?.toUpperCase() ?? "HEADQUARTERS" })

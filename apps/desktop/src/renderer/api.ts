@@ -130,6 +130,11 @@ export const branchApi = {
       headers: ownerHeaders(),
       body: JSON.stringify(branch),
     }),
+  remove: (id: string) =>
+    request<{ ok: boolean; id: string }>(`/api/branches/${id}`, {
+      method: 'DELETE',
+      headers: ownerHeaders(),
+    }),
 };
 
 export const deviceApi = {

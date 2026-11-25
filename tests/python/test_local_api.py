@@ -167,6 +167,49 @@ def test_branches_require_headquarters_role_and_persist():
     duplicate = client.post('/api/branches', json=payload, headers=owner_headers(client))
     assert duplicate.status_code == 409
 
+def test_owner_can_edit_suspend_reactivate_and_delete_unused_branch():
+    client = TestClient(app)
+    payload = {
+        'name': 'Branch Controls', 'code': 'BCTRL', 'location': 'Accra', 'manager': 'Controls Manager',
+        'managerUsername': 'controls.manager', 'managerPassword': 'ControlsPass123',
+    }
+    forbidden = client.patch('/api/branches/not-authorized', json={
+        'name': 'No Auth', 'code': 'NOAUTH', 'location': 'Accra', 'manager': 'No Auth', 'status': 'Active',
+    })
+    assert forbidden.status_code == 403
+    created = client.post('/api/branches', json=payload, headers=owner_headers(client))
+    assert created.status_code == 200
+    branch = created.json()
+    updated = client.patch(f"/api/branches/{branch['id']}", headers=owner_headers(client), json={
+        'name': 'Branch Controls Updated', 'code': 'BCTRL2', 'location': 'Tema', 'manager': 'Updated Manager',
+        'status': 'Suspended', 'branchType': 'Warehouse Only', 'phone': '+233 20 000 0000',
+        'email': 'controls@example.com', 'managerContact': '+233 24 000 0000',
+    })
+    assert updated.status_code == 200
+    assert updated.json()['status'] == 'Suspended'
+    blocked_login = client.post('/api/auth/login', json={'branchId': branch['id'], 'username': 'controls.manager', 'password': 'ControlsPass123', 'loginRole': 'BRANCH_MANAGER'})
+    assert blocked_login.status_code == 401
+    reactivated = client.patch(f"/api/branches/{branch['id']}", headers=owner_headers(client), json={
+        'name': 'Branch Controls Updated', 'code': 'BCTRL2', 'location': 'Tema', 'manager': 'Updated Manager',
+        'status': 'Active', 'branchType': 'Warehouse Only',
+    })
+    assert reactivated.status_code == 200
+    deleted = client.delete(f"/api/branches/{branch['id']}", headers=owner_headers(client))
+    assert deleted.status_code == 200
+    assert all(item['id'] != branch['id'] for item in client.get('/api/branches', headers=owner_headers(client)).json())
+
+def test_company_theme_and_scale_settings_persist():
+    client = TestClient(app)
+    company = client.get('/api/company').json()
+    company.update({'uiTheme': 'dark', 'uiFontScale': 1.1, 'uiIconScale': 0.9, 'uiControlScale': 1.15})
+    saved = client.put('/api/company', headers=owner_headers(client), json=company)
+    assert saved.status_code == 200
+    persisted = client.get('/api/company').json()
+    assert persisted['uiTheme'] == 'dark'
+    assert persisted['uiFontScale'] == 1.1
+    assert persisted['uiIconScale'] == 0.9
+    assert persisted['uiControlScale'] == 1.15
+
 def test_branch_authentication_enforces_role_and_branch_manager_staff_scope():
     client = TestClient(app)
     payload = {

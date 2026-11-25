@@ -134,6 +134,7 @@ export function BusinessInfoPage() {
       setValue(saved);
       setSavedValue(saved);
       setMessage('Saved locally to SQLite');
+      window.dispatchEvent(new Event('yenkasa-branding-changed'));
     } catch (reason) {
       setError(
         reason instanceof Error

@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import String, Text, create_engine, select, inspect, text
+from sqlalchemy import String, Text, create_engine, delete, select, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.pool import StaticPool
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -70,6 +70,10 @@ class Company(Base):
     show_logo_receipts: Mapped[bool] = mapped_column(default=True)
     show_logo_invoices: Mapped[bool] = mapped_column(default=True)
     use_brand_colours: Mapped[bool] = mapped_column(default=True)
+    ui_theme: Mapped[str] = mapped_column(String(20), default='light')
+    ui_font_scale: Mapped[float] = mapped_column(default=1.0)
+    ui_icon_scale: Mapped[float] = mapped_column(default=1.0)
+    ui_control_scale: Mapped[float] = mapped_column(default=1.0)
     document_templates_json: Mapped[str] = mapped_column(Text, default='{}')
 
 class Owner(Base):
@@ -312,6 +316,10 @@ class CompanyPayload(BaseModel):
     showLogoReceipts: bool = True
     showLogoInvoices: bool = True
     useBrandColours: bool = True
+    uiTheme: str = 'light'
+    uiFontScale: float = 1.0
+    uiIconScale: float = 1.0
+    uiControlScale: float = 1.0
     documentTemplates: dict = {}
 
 class OwnerPayload(BaseModel):
@@ -556,6 +564,15 @@ def ensure_company_columns() -> None:
         return
     columns = {column['name'] for column in inspect(engine).get_columns('companies')}
     with engine.begin() as connection:
+        additions = {
+            'ui_theme': "VARCHAR(20) DEFAULT 'light'",
+            'ui_font_scale': 'FLOAT DEFAULT 1.0',
+            'ui_icon_scale': 'FLOAT DEFAULT 1.0',
+            'ui_control_scale': 'FLOAT DEFAULT 1.0',
+        }
+        for name, definition in additions.items():
+            if name not in columns:
+                connection.execute(text(f'ALTER TABLE companies ADD COLUMN {name} {definition}'))
         if 'document_templates_json' not in columns:
             connection.execute(text("ALTER TABLE companies ADD COLUMN document_templates_json TEXT DEFAULT '{}'"))
 
@@ -628,11 +645,14 @@ def save_company(payload: CompanyPayload, request: Request) -> dict:
     if payload.logoRef:
         if len(payload.logoRef) > 3_000_000: raise HTTPException(422, 'Logo data is too large')
         if not payload.logoRef.startswith(('data:image/png;base64,', 'data:image/jpeg;base64,', 'data:image/webp;base64,')): raise HTTPException(422, 'Logo must be PNG, JPG or WebP image data')
+    if payload.uiTheme not in {'light', 'dark', 'system'}: raise HTTPException(422, 'UI theme must be light, dark or system')
+    if not 0.85 <= payload.uiFontScale <= 1.2 or not 0.85 <= payload.uiIconScale <= 1.2 or not 0.85 <= payload.uiControlScale <= 1.2:
+        raise HTTPException(422, 'UI scale values must be between 0.85 and 1.2')
     with Session(engine) as session:
         company = session.scalar(select(Company).order_by(Company.id))
         if company is None: company = Company(); session.add(company)
         company.registered_name = payload.registeredName.strip(); company.trading_name = payload.tradingName.strip(); company.category = payload.category; company.email = str(payload.email); company.phone = payload.phone; company.country = payload.country; company.address = payload.address; company.currency = payload.currency; company.timezone = payload.timezone; company.brand_color = payload.brandColor
-        company.tagline = payload.tagline; company.logo_ref = payload.logoRef; company.secondary_color = payload.secondaryColor; company.accent_color = payload.accentColor; company.show_logo_receipts = payload.showLogoReceipts; company.show_logo_invoices = payload.showLogoInvoices; company.use_brand_colours = payload.useBrandColours; company.document_templates_json = json.dumps(payload.documentTemplates)
+        company.tagline = payload.tagline; company.logo_ref = payload.logoRef; company.secondary_color = payload.secondaryColor; company.accent_color = payload.accentColor; company.show_logo_receipts = payload.showLogoReceipts; company.show_logo_invoices = payload.showLogoInvoices; company.use_brand_colours = payload.useBrandColours; company.ui_theme = payload.uiTheme; company.ui_font_scale = payload.uiFontScale; company.ui_icon_scale = payload.uiIconScale; company.ui_control_scale = payload.uiControlScale; company.document_templates_json = json.dumps(payload.documentTemplates)
         session.commit(); session.refresh(company); return to_payload(company)
 
 @app.get('/api/owner')
@@ -971,6 +991,30 @@ def update_branch(branch_id: str, payload: BranchUpdatePayload, request: Request
             if manager is not None: manager.full_name = branch.manager; manager.email = branch.email
         session.add(AuditLog(id=str(uuid4()), company_id=1, branch_id=branch.id, actor_user_id='HQ_OWNER', action='branch_updated', target_user_id=branch.id, created_at=now_iso()))
         session.commit(); session.refresh(branch); return to_branch_payload(branch)
+
+@app.delete('/api/branches/{branch_id}')
+def delete_branch(branch_id: str, request: Request) -> dict:
+    """Delete an unused branch; historical branches must be suspended instead."""
+    require_hq(request)
+    with Session(engine) as session:
+        branch = session.scalar(select(Branch).where(Branch.id == branch_id, Branch.company_id == 1))
+        if branch is None:
+            raise HTTPException(404, 'Branch not found')
+        historical_count = sum([
+            session.scalar(select(SaleRecordModel.id).where(SaleRecordModel.company_id == 1, SaleRecordModel.branch_id == branch_id).limit(1)) is not None,
+            session.scalar(select(PurchaseRecordModel.id).where(PurchaseRecordModel.company_id == 1, PurchaseRecordModel.branch_id == branch_id).limit(1)) is not None,
+            session.scalar(select(PaymentRecordModel.id).where(PaymentRecordModel.company_id == 1, PaymentRecordModel.branch_id == branch_id).limit(1)) is not None,
+            session.scalar(select(ReceiptRecordModel.id).where(ReceiptRecordModel.company_id == 1, ReceiptRecordModel.branch_id == branch_id).limit(1)) is not None,
+            session.scalar(select(MaterialReleaseModel.id).where(MaterialReleaseModel.company_id == 1, MaterialReleaseModel.branch_id == branch_id).limit(1)) is not None,
+        ])
+        if historical_count:
+            raise HTTPException(409, 'This branch has transaction history and cannot be deleted. Suspend it instead.')
+        session.add(AuditLog(id=str(uuid4()), company_id=1, branch_id=branch_id, actor_user_id='HQ_OWNER', action='branch_deleted', target_user_id=branch_id, created_at=now_iso()))
+        for model in (UserAccount, DeviceActivation, ProductCatalogItem, SyncStatusModel, SyncOutboxModel):
+            session.execute(delete(model).where(model.company_id == 1, model.branch_id == branch_id))
+        session.delete(branch)
+        session.commit()
+        return {'ok': True, 'id': branch_id}
 
 @app.post('/api/auth/login')
 def login(payload: LoginPayload, request: Request) -> dict:
@@ -1464,7 +1508,7 @@ def protected_branch_action(action: str, request: Request) -> dict:
 def to_payload(company: Company) -> dict:
     try: document_templates = json.loads(company.document_templates_json or '{}')
     except json.JSONDecodeError: document_templates = {}
-    return {'registeredName': company.registered_name, 'tradingName': company.trading_name, 'category': company.category, 'email': company.email, 'phone': company.phone, 'country': company.country, 'address': company.address, 'currency': company.currency, 'timezone': company.timezone, 'brandColor': company.brand_color, 'tagline': company.tagline, 'logoRef': company.logo_ref, 'secondaryColor': company.secondary_color, 'accentColor': company.accent_color, 'showLogoReceipts': company.show_logo_receipts, 'showLogoInvoices': company.show_logo_invoices, 'useBrandColours': company.use_brand_colours, 'documentTemplates': document_templates}
+    return {'registeredName': company.registered_name, 'tradingName': company.trading_name, 'category': company.category, 'email': company.email, 'phone': company.phone, 'country': company.country, 'address': company.address, 'currency': company.currency, 'timezone': company.timezone, 'brandColor': company.brand_color, 'tagline': company.tagline, 'logoRef': company.logo_ref, 'secondaryColor': company.secondary_color, 'accentColor': company.accent_color, 'showLogoReceipts': company.show_logo_receipts, 'showLogoInvoices': company.show_logo_invoices, 'useBrandColours': company.use_brand_colours, 'uiTheme': company.ui_theme, 'uiFontScale': company.ui_font_scale, 'uiIconScale': company.ui_icon_scale, 'uiControlScale': company.ui_control_scale, 'documentTemplates': document_templates}
 
 def to_owner_payload(owner: Owner) -> dict:
     return {'fullName': owner.full_name, 'role': owner.role, 'phone': owner.phone, 'email': owner.email, 'identificationType': owner.identification_type, 'idNumber': owner.id_number, 'dateOfBirth': owner.date_of_birth, 'gender': owner.gender, 'photoRef': owner.photo_ref}
