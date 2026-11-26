@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   CreditCard,
   Eye,
+  FileText,
   History,
   Landmark,
   Printer,
@@ -105,6 +106,41 @@ function ReceiptDocument({
   );
 }
 
+function InvoiceDocument({
+  sale,
+  company,
+  session,
+  template,
+  print = false,
+}: {
+  sale: SaleRecord;
+  company: CompanyRegistration | null;
+  session: AuthSession;
+  template: DocumentTemplateSettings | null;
+  print?: boolean;
+}) {
+  const content = template?.content;
+  const styles = template?.styles;
+  const balance = Math.max(0, sale.total - sale.amountPaid);
+  return (
+    <article className={`cashier-invoice-document ${print ? 'cashier-invoice-print' : ''}`}>
+      {template?.showCompanyLogo && company?.logoRef && <img className="cashier-invoice-logo" src={company.logoRef} alt="Company logo" />}
+      {template?.showCompanyDetails !== false && <header className="cashier-invoice-header">
+        <div>
+          <h1 style={{ fontFamily: styles?.headingFontFamily, color: styles?.headingColor, fontSize: `${styles?.headingFontSize || 20}px`, fontWeight: styles?.headingBold ? 800 : 400 }}>{content?.companyName || company?.tradingName || company?.registeredName || 'YenkasaBuildersStock'}</h1>
+          <p>{content?.companyEmail || company?.email} · {content?.companyPhone || company?.phone}</p>
+          {template?.showBranchInformation !== false && <p>{session.branchName} · {content?.branchName || ''}</p>}
+        </div>
+        <div className="cashier-invoice-number"><strong>INVOICE</strong><span>{sale.saleNumber}</span><span>{new Date(sale.createdAt).toLocaleString('en-GH')}</span></div>
+      </header>}
+      <div className="cashier-invoice-meta"><div><span>Bill To</span><b>{sale.customerName}</b></div><div><span>Issued By</span><b>{sale.actorUserName || sale.actorUserId || 'Sales Officer'}</b></div><div><span>Payment Status</span><b>{sale.paymentStatus.replaceAll('_', ' ')}</b></div></div>
+      <table className="cashier-invoice-items"><thead><tr><th>#</th><th>Item / Code</th><th>Qty</th><th>Unit</th><th>Unit Price</th><th>Amount</th></tr></thead><tbody>{sale.items.map((item, index) => <tr key={`${item.sku}-${index}`}><td>{index + 1}</td><td><b>{item.name}</b><small>{item.sku}</small></td><td>{item.quantity}</td><td>{item.unit}</td><td>{money(item.unitPrice)}</td><td>{money(item.amount)}</td></tr>)}</tbody></table>
+      <div className="cashier-invoice-totals"><div><span>Subtotal</span><b>{money(sale.subtotal)}</b></div><div><span>Discount</span><b>− {money(sale.discount)}</b></div><div><span>Tax</span><b>{money(sale.tax)}</b></div><div className="grand"><span>Total</span><b>{money(sale.total)}</b></div><div><span>Paid to date</span><b>{money(sale.amountPaid)}</b></div><div><span>Balance due</span><b>{money(balance)}</b></div></div>
+      <footer>{content?.paymentTerms || 'Payment is due according to the agreed terms.'}{template?.showFooterMessage !== false && <strong>{template?.footerMessage || 'Thank you for your business!'}</strong>}</footer>
+    </article>
+  );
+}
+
 export function CashierPage({ session }: { session: AuthSession }) {
   const [invoices, setInvoices] = useState<SaleRecord[]>([]);
   const [selected, setSelected] = useState<SaleRecord | null>(null);
@@ -115,6 +151,11 @@ export function CashierPage({ session }: { session: AuthSession }) {
   const [evidence, setEvidence] = useState('');
   const [history, setHistory] = useState<PaymentRecord[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyQuery, setHistoryQuery] = useState('');
+  const [historyMethod, setHistoryMethod] = useState('');
+  const [historyDate, setHistoryDate] = useState('');
+  const [invoicePreviewOpen, setInvoicePreviewOpen] = useState(false);
+  const [invoicePreview, setInvoicePreview] = useState<SaleRecord | null>(null);
   const [receiptPreviewOpen, setReceiptPreviewOpen] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptRecord | null>(null);
   const [pendingPayment, setPendingPayment] = useState<PaymentRecord | null>(
@@ -134,6 +175,7 @@ export function CashierPage({ session }: { session: AuthSession }) {
     company?.documentTemplates?.templates?.['Receipt Template'] ??
     company?.documentTemplates ??
     null;
+  const invoiceTemplate = invoicePreview?.templateSnapshot?.templates?.['Invoice Template'] ?? invoicePreview?.templateSnapshot ?? company?.documentTemplates?.templates?.['Invoice Template'] ?? company?.documentTemplates ?? null;
 
   const loadInvoices = async (search = query) => {
     setLoading(true);
@@ -290,6 +332,54 @@ export function CashierPage({ session }: { session: AuthSession }) {
     setStatus('Print dialog opened.');
   };
 
+  const printInvoice = async () => {
+    if (window.desktopBridge?.print) {
+      setStatus('Opening the system print dialog…');
+      const printed = await window.desktopBridge.print().catch(() => false);
+      if (!printed) window.print();
+      return;
+    }
+    window.print();
+  };
+
+  const openInvoicePreview = (invoice: SaleRecord) => {
+    setSelected(invoice);
+    setInvoicePreview(invoice);
+    setInvoicePreviewOpen(true);
+  };
+
+  const openReceiptFromHistory = (
+    payment: PaymentRecord,
+    invoice: SaleRecord | undefined,
+    shouldPrint = false,
+  ) => {
+    if (!invoice || !payment.receiptNumber) return;
+    const historyReceipt: ReceiptRecord = {
+      id: `history-${payment.id}`,
+      saleId: payment.saleId,
+      paymentId: payment.id,
+      receiptNumber: payment.receiptNumber,
+      amount: payment.amount,
+      createdAt: payment.createdAt,
+      branchId: payment.branchId,
+    };
+    setSelected(invoice);
+    setReceipt(historyReceipt);
+    setMethod(payment.method);
+    if (shouldPrint) {
+      window.setTimeout(() => void printReceipt(), 0);
+    } else {
+      setReceiptPreviewOpen(true);
+    }
+  };
+
+  const historyRows = useMemo(() => history.filter((payment) => {
+    const searchable = `${payment.receiptNumber} ${payment.invoiceNumber || ''} ${payment.customerName || ''}`.toLowerCase();
+    const methodMatches = !historyMethod || payment.method === historyMethod;
+    const dateMatches = !historyDate || (payment.createdAt || '').slice(0, 10) === historyDate;
+    return searchable.includes(historyQuery.toLowerCase()) && methodMatches && dateMatches;
+  }), [history, historyDate, historyMethod, historyQuery]);
+
   return (
     <div className="cashier-page">
       <div className="cashier-title-row">
@@ -338,18 +428,21 @@ export function CashierPage({ session }: { session: AuthSession }) {
                 <small>Loading invoices…</small>
               ) : filtered.length ? (
                 filtered.map((invoice) => (
-                  <button
+                  <div
                     className={`cashier-invoice-row ${selected?.id === invoice.id ? 'selected' : ''}`}
                     key={invoice.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelected(invoice)}
+                    onKeyDown={(event) => { if (event.key === 'Enter') setSelected(invoice); }}
                   >
                     <span>
                       <strong>{invoice.saleNumber}</strong>
                       <small>{invoice.customerName}</small>
                     </span>
                     <b>{money(invoice.total - invoice.amountPaid)}</b>
-                  </button>
+                    <button className="compact-outline" type="button" onClick={(event) => { event.stopPropagation(); openInvoicePreview(invoice); }}><Eye size={14} /> View Invoice</button>
+                  </div>
                 ))
               ) : (
                 <small>No unpaid invoices found.</small>
@@ -362,13 +455,14 @@ export function CashierPage({ session }: { session: AuthSession }) {
             </h3>
             {selected ? (
               <>
+                <div className="cashier-summary-actions"><button className="compact-outline" type="button" onClick={() => openInvoicePreview(selected)}><Eye size={14} /> View Invoice</button></div>
                 <dl className="cashier-summary-list">
                   <dt>Invoice No:</dt>
                   <dd>{selected.saleNumber}</dd>
                   <dt>Customer:</dt>
                   <dd>{selected.customerName}</dd>
                   <dt>Issued By:</dt>
-                  <dd>{selected.actorUserId || 'Sales Officer'}</dd>
+                  <dd>{selected.actorUserName || selected.actorUserId || 'Sales Officer'}</dd>
                   <dt>Payment Status:</dt>
                   <dd>
                     <span
@@ -545,6 +639,15 @@ export function CashierPage({ session }: { session: AuthSession }) {
           </section>
         </div>
       )}
+      {invoicePreviewOpen && invoicePreview && (
+        <div className="cashier-modal-backdrop" role="presentation">
+          <section className="cashier-invoice-preview-modal" role="dialog" aria-modal="true" aria-label="Invoice preview">
+            <div className="cashier-preview-header"><div><h3><FileText size={20} /> Invoice Preview</h3><small>Read-only owner template · {invoicePreview.templateName || 'Company invoice template'} · v{invoicePreview.templateVersion || 1}</small></div><button type="button" aria-label="Close invoice preview" onClick={() => setInvoicePreviewOpen(false)}><X size={20} /></button></div>
+            <InvoiceDocument sale={invoicePreview} company={company} session={session} template={invoiceTemplate} />
+            <div className="cashier-preview-actions"><button className="outline" type="button" onClick={() => setInvoicePreviewOpen(false)}>Close</button><button className="primary-button" type="button" onClick={() => void printInvoice()}><Printer size={17} /> Print Invoice</button></div>
+          </section>
+        </div>
+      )}
       {historyOpen && (
         <div className="cashier-modal-backdrop">
           <section className="cashier-history-modal">
@@ -556,24 +659,12 @@ export function CashierPage({ session }: { session: AuthSession }) {
                 ×
               </button>
             </div>
-            {history.length ? (
-              history.map((payment) => (
-                <p key={payment.id}>
-                  <strong>
-                    {payment.receiptNumber || 'Pending verification'}
-                  </strong>
-                  <span>
-                    {payment.method} · {money(payment.amount)} ·{' '}
-                    {payment.verificationStatus}
-                  </span>
-                </p>
-              ))
-            ) : (
-              <small>No payments recorded.</small>
-            )}
+            <div className="cashier-history-filters"><input value={historyQuery} onChange={(event) => setHistoryQuery(event.target.value)} placeholder="Search invoice, receipt or customer..." /><input type="date" value={historyDate} onChange={(event) => setHistoryDate(event.target.value)} /><select value={historyMethod} onChange={(event) => setHistoryMethod(event.target.value)}><option value="">All payment methods</option>{methodOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+            {historyRows.length ? <div className="cashier-history-table-wrap"><table className="cashier-history-table"><thead><tr><th>Receipt / Invoice</th><th>Customer</th><th>Cashier</th><th>Date</th><th>Method</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>{historyRows.map((payment) => { const linked = invoices.find((invoice) => invoice.id === payment.saleId); return <tr key={payment.id}><td><strong>{payment.receiptNumber || 'Pending verification'}</strong><small>{payment.invoiceNumber || 'Invoice unavailable'}</small></td><td>{payment.customerName || '—'}</td><td>{payment.cashierName || '—'}</td><td>{new Date(payment.createdAt).toLocaleString('en-GH')}</td><td>{payment.method.replaceAll('_', ' ')}</td><td>{money(payment.amount)}</td><td><span className={`cashier-status ${(payment.verificationStatus || '').toLowerCase()}`}>{payment.verificationStatus.replaceAll('_', ' ')}</span></td><td><div className="cashier-history-actions"><button className="compact-outline" type="button" disabled={!linked} onClick={() => linked && openInvoicePreview(linked)}><Eye size={13} /> Invoice</button><button className="compact-outline" type="button" disabled={!linked || !payment.receiptNumber} onClick={() => openReceiptFromHistory(payment, linked)}><Receipt size={13} /> Receipt</button><button className="compact-outline" type="button" disabled={!linked || !payment.receiptNumber} onClick={() => openReceiptFromHistory(payment, linked, true)}><Printer size={13} /> Reprint</button></div></td></tr>; })}</tbody></table></div> : <small>No payments recorded.</small>}
           </section>
         </div>
       )}
+      {invoicePreview && <InvoiceDocument sale={invoicePreview} company={company} session={session} template={invoiceTemplate} print />}
       {receipt && selected && (
         <ReceiptDocument
           receipt={receipt}

@@ -8144,6 +8144,24 @@ const staffApi = {
   companyUsers: () => request("/api/company-users", {
     headers: ownerHeaders()
   }),
+  companyCreate: (payload) => request("/api/company-users", {
+    method: "POST",
+    headers: ownerHeaders(),
+    body: JSON.stringify(payload)
+  }),
+  companyUpdate: (id2, payload) => request(`/api/company-users/${encodeURIComponent(id2)}`, {
+    method: "PATCH",
+    headers: ownerHeaders(),
+    body: JSON.stringify(payload)
+  }),
+  companyResetPassword: (id2, password) => request(`/api/company-users/${encodeURIComponent(id2)}/reset-password`, {
+    method: "POST",
+    headers: ownerHeaders(),
+    body: JSON.stringify({ password })
+  }),
+  roles: () => request("/api/roles", { headers: ownerHeaders() }),
+  createRole: (payload) => request("/api/roles", { method: "POST", headers: ownerHeaders(), body: JSON.stringify(payload) }),
+  updateRole: (id2, payload) => request(`/api/roles/${encodeURIComponent(id2)}`, { method: "PATCH", headers: ownerHeaders(), body: JSON.stringify(payload) }),
   list: (branchId, userId) => request(
     `/api/staff?branchId=${encodeURIComponent(branchId)}`,
     { headers: { "X-User-Id": userId, "X-Branch-Id": branchId } }
@@ -12240,6 +12258,7 @@ const permissionOptions = [
 ];
 const defaultPermissions = (role) => {
   const defaults = {
+    BRANCH_MANAGER: ["sales", "quotations", "invoices", "payments", "receipts", "customers", "suppliers", "inventory_view", "inventory", "stock_receipts", "purchases", "stock_adjustments", "material_release", "financial_reports", "system_settings", "staff_management", "edit_selling_prices"],
     STOCK_MANAGER: ["inventory_view", "inventory", "stock_receipts", "purchases", "suppliers", "stock_adjustments", "material_release", "stock_reports"],
     SALES_OFFICER: ["sales", "quotations", "invoices", "inventory_view", "customers", "limited_reports"],
     CASHIER: ["invoice_view", "payments", "receipts", "payment_reports"],
@@ -12253,19 +12272,42 @@ const blank$2 = {
   email: "",
   role: "STOCK_MANAGER",
   password: "",
-  permissions: defaultPermissions("STOCK_MANAGER")
+  permissions: defaultPermissions("STOCK_MANAGER"),
+  branchId: ""
 };
+const permissionMatrix = [
+  { module: "Dashboard", view: "inventory_view", manage: void 0, approve: void 0, print: void 0 },
+  { module: "Sales", view: "sales", manage: "sales", approve: void 0, print: "invoices" },
+  { module: "Invoices & Quotations", view: "invoice_view", manage: "invoices", approve: void 0, print: "invoices" },
+  { module: "Cashier & Payments", view: "invoice_view", manage: "payments", approve: "payments", print: "receipts" },
+  { module: "Inventory", view: "inventory_view", manage: "inventory", approve: void 0, print: "stock_reports" },
+  { module: "Stock Adjustments", view: "inventory_view", manage: void 0, approve: "stock_adjustments", print: "stock_reports" },
+  { module: "Purchasing", view: "purchases", manage: "purchases", approve: void 0, print: "stock_reports" },
+  { module: "Material Release", view: "material_release", manage: "material_release", approve: "material_release", print: "material_release" },
+  { module: "Customers", view: "customers", manage: "customers", approve: void 0, print: void 0 },
+  { module: "Reports", view: "limited_reports", manage: void 0, approve: void 0, print: "payment_reports" },
+  { module: "Staff Accounts", view: "staff_management", manage: "staff_management", approve: void 0, print: void 0 },
+  { module: "Branch Management", view: "branch_management", manage: "branch_management", approve: void 0, print: void 0 },
+  { module: "Company Setup", view: "company_setup", manage: "company_setup", approve: void 0, print: void 0 },
+  { module: "System Settings", view: "system_settings", manage: "system_settings", approve: void 0, print: void 0 }
+];
 function StaffAccountsPage() {
   const stored = readSession();
-  const ownerMode = !stored;
+  const ownerMode = !stored && Boolean(sessionStorage.getItem("yenkasa-owner-session"));
   const managerMode = stored?.role === "BRANCH_MANAGER";
   const [accounts, setAccounts] = reactExports.useState([]);
+  const [branches, setBranches] = reactExports.useState([]);
+  const [roles, setRoles] = reactExports.useState([]);
+  const [rolesOpen, setRolesOpen] = reactExports.useState(false);
+  const [selectedRoleId, setSelectedRoleId] = reactExports.useState("BRANCH_MANAGER");
+  const [roleDraft, setRoleDraft] = reactExports.useState({ name: "", description: "", permissions: [] });
   const [form, setForm] = reactExports.useState(blank$2);
   const [editForm, setEditForm] = reactExports.useState({
     fullName: "",
     email: "",
     role: "SALES_OFFICER",
-    permissions: []
+    permissions: [],
+    branchId: ""
   });
   const [open, setOpen] = reactExports.useState(false);
   const [editing, setEditing] = reactExports.useState(null);
@@ -12282,6 +12324,16 @@ function StaffAccountsPage() {
     try {
       const list = ownerMode ? await staffApi.companyUsers() : managerMode && stored ? await staffApi.list(stored.branchId, stored.userId) : [];
       setAccounts(list);
+      if (ownerMode) {
+        const [branchList, roleList] = await Promise.all([branchApi.list(), staffApi.roles()]);
+        setBranches(branchList);
+        setRoles(roleList);
+        const firstRole = roleList.find((role) => role.id === selectedRoleId) ?? roleList[0];
+        if (firstRole) {
+          setSelectedRoleId(firstRole.id);
+          setRoleDraft({ name: firstRole.name, description: firstRole.description, permissions: firstRole.permissions });
+        }
+      }
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Unable to load users."
@@ -12289,7 +12341,7 @@ function StaffAccountsPage() {
     }
   };
   reactExports.useEffect(() => {
-    load();
+    void load();
   }, []);
   const filtered = reactExports.useMemo(
     () => accounts.filter(
@@ -12327,15 +12379,32 @@ function StaffAccountsPage() {
       );
     }
   };
-  const saveEdit = async () => {
-    if (!editing || !stored || !managerMode) return;
+  const createOwnerUser = async () => {
+    if (!ownerMode || !form.branchId) {
+      setError("Select the branch for this user.");
+      return;
+    }
+    if (!form.fullName.trim() || !form.username.trim() || form.password.length < 8) {
+      setError("Full name, username and a password of at least 8 characters are required.");
+      return;
+    }
     try {
-      await staffApi.update(
-        editing.id,
-        stored.branchId,
-        stored.userId,
-        editForm
-      );
+      await staffApi.companyCreate({ ...form, branchId: form.branchId });
+      await load();
+      setForm({ ...blank$2 });
+      setOpen(false);
+      setStatus("User account created securely");
+      setError("");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to create user account.");
+    }
+  };
+  const saveEdit = async () => {
+    if (!editing) return;
+    try {
+      if (ownerMode) await staffApi.companyUpdate(editing.id, editForm);
+      else if (stored && managerMode) await staffApi.update(editing.id, stored.branchId, stored.userId, editForm);
+      else return;
       await load();
       setEditing(null);
       setStatus("Staff information updated");
@@ -12346,11 +12415,10 @@ function StaffAccountsPage() {
     }
   };
   const toggle = async (account) => {
-    if (!stored || !managerMode) return;
+    if (!ownerMode && (!stored || !managerMode)) return;
     try {
-      await staffApi.update(account.id, stored.branchId, stored.userId, {
-        active: !account.active
-      });
+      if (ownerMode) await staffApi.companyUpdate(account.id, { active: !account.active });
+      else if (stored) await staffApi.update(account.id, stored.branchId, stored.userId, { active: !account.active });
       await load();
       setStatus(account.active ? "Account deactivated" : "Account reactivated");
     } catch (reason) {
@@ -12360,17 +12428,13 @@ function StaffAccountsPage() {
     }
   };
   const resetPassword = async () => {
-    if (!resetting || !stored || !managerMode || newPassword.length < 8) {
+    if (!resetting || !ownerMode && (!stored || !managerMode) || newPassword.length < 8) {
       setError("Enter a new password with at least 8 characters.");
       return;
     }
     try {
-      await staffApi.resetPassword(
-        resetting.id,
-        stored.branchId,
-        stored.userId,
-        newPassword
-      );
+      if (ownerMode) await staffApi.companyResetPassword(resetting.id, newPassword);
+      else if (stored) await staffApi.resetPassword(resetting.id, stored.branchId, stored.userId, newPassword);
       setResetting(null);
       setNewPassword("");
       setStatus("Password reset securely");
@@ -12378,6 +12442,27 @@ function StaffAccountsPage() {
       setError(
         reason instanceof Error ? reason.message : "Unable to reset password."
       );
+    }
+  };
+  const selectRole = (role) => {
+    setSelectedRoleId(role.id);
+    setRoleDraft({ name: role.name, description: role.description, permissions: role.permissions });
+  };
+  const newRole = () => {
+    setSelectedRoleId("");
+    setRoleDraft({ name: "", description: "", permissions: [] });
+    setRolesOpen(true);
+  };
+  const toggleRolePermission = (permission) => setRoleDraft((current) => ({ ...current, permissions: current.permissions.includes(permission) ? current.permissions.filter((item) => item !== permission) : [...current.permissions, permission] }));
+  const saveRole = async () => {
+    try {
+      const saved = roles.find((role) => role.id === selectedRoleId)?.system ? await staffApi.updateRole(selectedRoleId, roleDraft) : selectedRoleId && roles.some((role) => role.id === selectedRoleId) ? await staffApi.updateRole(selectedRoleId, roleDraft) : await staffApi.createRole(roleDraft);
+      setRoles((current) => current.some((role) => role.id === saved.id) ? current.map((role) => role.id === saved.id ? saved : role) : [...current, saved]);
+      setSelectedRoleId(saved.id);
+      setRoleDraft({ name: saved.name, description: saved.description, permissions: saved.permissions });
+      setStatus("Role permissions saved");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to save role permissions.");
     }
   };
   const showAudit = async () => {
@@ -12413,6 +12498,28 @@ function StaffAccountsPage() {
         /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 16 }),
         " Add Staff"
       ] })
+    ] }) : ownerMode ? /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "staff-owner-hero", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-hero-title", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "setup-title-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Users, { size: 28 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Users & Roles" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Create and manage user accounts, assign roles and control access across headquarters and branches." })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-owner-actions", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "outline compact-button", type: "button", onClick: () => setRolesOpen(true), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, { size: 15 }),
+          " Manage Roles"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "primary-button compact-button", type: "button", onClick: () => {
+          setForm({ ...blank$2, branchId: branches[0]?.id ?? "" });
+          setOpen(true);
+          setError("");
+        }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 15 }),
+          " Add User"
+        ] })
+      ] })
     ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "setup-title", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "setup-title-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Users, { size: 31 }) }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
@@ -12423,15 +12530,8 @@ function StaffAccountsPage() {
     ownerMode && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-stats", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(Stat, { label: "Total users", value: String(accounts.length) }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(Stat, { label: "Active users", value: String(activeCount) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        Stat,
-        {
-          label: "Branch managers",
-          value: String(
-            accounts.filter((account) => account.role === "BRANCH_MANAGER").length
-          )
-        }
-      )
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Stat, { label: "Inactive users", value: String(accounts.length - activeCount) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Stat, { label: "Roles", value: String(roles.length) })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "panel staff-list", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-tabs", children: [
@@ -12459,6 +12559,10 @@ function StaffAccountsPage() {
             ]
           }
         ),
+        ownerMode && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: rolesOpen ? "active-tab" : "", type: "button", onClick: () => setRolesOpen((current) => !current), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, { size: 16 }),
+          " Roles & Permissions"
+        ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-filters", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             "input",
@@ -12500,7 +12604,7 @@ function StaffAccountsPage() {
           )
         ] })
       ] }),
-      auditOpen ? /* @__PURE__ */ jsxRuntimeExports.jsx(AuditRows, { rows: audit }) : /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: !ownerMode && !managerMode ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "staff-empty", children: "Sign in as a Branch Manager to manage branch staff." }) : filtered.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "staff-empty", children: "No matching user accounts." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-table", children: [
+      rolesOpen ? /* @__PURE__ */ jsxRuntimeExports.jsx(RolePermissionsPanel, { roles, selectedRoleId, roleDraft, onSelect: selectRole, onToggle: toggleRolePermission, onChange: setRoleDraft, onSave: () => void saveRole(), onNew: newRole }) : auditOpen ? /* @__PURE__ */ jsxRuntimeExports.jsx(AuditRows, { rows: audit }) : /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: !ownerMode && !managerMode ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "staff-empty", children: "Sign in as a Branch Manager to manage branch staff." }) : filtered.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "staff-empty", children: "No matching user accounts." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-table", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-grid-head", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "#" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Staff Name" }),
@@ -12514,14 +12618,14 @@ function StaffAccountsPage() {
           {
             account,
             index: index + 1,
-            ownerMode,
             onEdit: () => {
               setEditing(account);
               setEditForm({
                 fullName: account.fullName,
                 email: account.email,
-                role: account.role === "BRANCH_MANAGER" ? "SALES_OFFICER" : account.role,
-                permissions: account.permissions?.length ? account.permissions : defaultPermissions(account.role)
+                role: account.role,
+                permissions: account.permissions?.length ? account.permissions : defaultPermissions(account.role),
+                branchId: account.branchId
               });
             },
             onToggle: () => toggle(account),
@@ -12542,7 +12646,9 @@ function StaffAccountsPage() {
         form,
         setForm,
         onClose: () => setOpen(false),
-        onCreate: create
+        onCreate: ownerMode ? createOwnerUser : create,
+        ownerMode,
+        branches
       }
     ),
     editing && /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -12551,7 +12657,9 @@ function StaffAccountsPage() {
         form: editForm,
         setForm: setEditForm,
         onClose: () => setEditing(null),
-        onSave: saveEdit
+        onSave: saveEdit,
+        ownerMode,
+        branches
       }
     ),
     resetting && /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -12575,12 +12683,12 @@ function readSession() {
 function StaffRow({
   account,
   index,
-  ownerMode,
   onEdit,
   onToggle,
   onReset
 }) {
-  const roleLabel = account.role === "SALES_CASHIER" ? "Sales + Cashier" : account.role === "SALES_OFFICER" ? "Sales Officer" : account.role === "CASHIER" ? "Cashier" : account.role === "STOCK_MANAGER" ? "Stock Manager" : "Branch Manager";
+  const roleLabel = account.role === "OWNER" ? "Owner" : account.role === "SALES_CASHIER" ? "Sales + Cashier" : account.role === "SALES_OFFICER" ? "Sales Officer" : account.role === "CASHIER" ? "Cashier" : account.role === "STOCK_MANAGER" ? "Stock Manager" : account.role === "BRANCH_MANAGER" ? "Branch Manager" : account.role;
+  const protectedOwner = account.role === "OWNER";
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-row", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "staff-index", children: index }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-identity", children: [
@@ -12590,7 +12698,7 @@ function StaffRow({
     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "staff-username", children: account.username }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "staff-role-pill", children: roleLabel }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `status ${account.active ? "in-stock" : "out-of-stock"}`, children: account.active ? "Active" : "Inactive" }),
-    !ownerMode ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-actions", children: [
+    !protectedOwner ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-actions", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "outline small-button", type: "button", "data-testid": `staff-edit-${account.id}`, onClick: onEdit, children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(PenLine, { size: 13 }),
         " Edit"
@@ -12600,14 +12708,77 @@ function StaffRow({
         " Reset Password"
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "outline small-button danger-button", type: "button", onClick: onToggle, children: account.active ? "Deactivate" : "Reactivate" })
-    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", {})
+    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "staff-protected", children: "Protected" })
+  ] });
+}
+function RolePermissionsPanel({
+  roles,
+  selectedRoleId,
+  roleDraft,
+  onSelect,
+  onToggle,
+  onChange,
+  onSave,
+  onNew
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "role-permissions-panel", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "role-panel-toolbar", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Roles & Permissions" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Control the permissions available to each supported role. Changes are enforced by the backend." })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "outline compact-button", type: "button", onClick: onNew, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 14 }),
+        " New Custom Role"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "role-panel-layout", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "role-list", children: roles.map((role) => /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: role.id === selectedRoleId ? "role-list-item active" : "role-list-item", type: "button", onClick: () => onSelect(role), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: role.name }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: role.description }),
+        role.system && /* @__PURE__ */ jsxRuntimeExports.jsx("em", { children: "System role" })
+      ] }, role.id)) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "permission-editor", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "permission-editor-head", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+              "Role name",
+              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { value: roleDraft.name, disabled: roles.find((role) => role.id === selectedRoleId)?.system === true, onChange: (event) => onChange({ ...roleDraft, name: event.target.value }) })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+              "Description",
+              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { value: roleDraft.description, onChange: (event) => onChange({ ...roleDraft, description: event.target.value }) })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "permission-actions", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "outline compact-button", type: "button", onClick: () => onChange({ ...roleDraft, permissions: [] }), children: "Reset" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-button compact-button", type: "button", onClick: onSave, children: "Save Permissions" })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "permission-matrix", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "permission-matrix-head", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Module" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "View" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Manage" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Approve" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Print / Export" })
+          ] }),
+          permissionMatrix.map((row) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "permission-matrix-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: row.module }),
+            [row.view, row.manage, row.approve, row.print].map((permission, index) => /* @__PURE__ */ jsxRuntimeExports.jsx("label", { children: permission ? /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "checkbox", checked: roleDraft.permissions.includes(permission), onChange: () => onToggle(permission), "aria-label": `${row.module} ${["View", "Manage", "Approve", "Print or Export"][index]}` }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "permission-not-supported", children: "—" }) }, `${row.module}-${index}`))
+          ] }, row.module))
+        ] })
+      ] })
+    ] })
   ] });
 }
 function CreateModal({
   form,
   setForm,
   onClose,
-  onCreate
+  onCreate,
+  ownerMode,
+  branches
 }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "panel staff-create", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-heading", children: [
@@ -12650,6 +12821,7 @@ function CreateModal({
             value: form.role,
             onChange: (event) => setForm({ ...form, role: event.target.value, permissions: defaultPermissions(event.target.value) }),
             children: [
+              ownerMode && /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "BRANCH_MANAGER", children: "Branch Manager" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "STOCK_MANAGER", children: "Stock Manager / Storekeeper" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "SALES_OFFICER", children: "Sales Officer" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "CASHIER", children: "Cashier" }),
@@ -12657,6 +12829,18 @@ function CreateModal({
             ]
           }
         )
+      ] }),
+      ownerMode && /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+        "Branch",
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: form.branchId, onChange: (event) => setForm({ ...form, branchId: event.target.value }), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select branch" }),
+          branches.map((branch) => /* @__PURE__ */ jsxRuntimeExports.jsxs("option", { value: branch.id, children: [
+            branch.name,
+            " (",
+            branch.code,
+            ")"
+          ] }, branch.id))
+        ] })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         Field,
@@ -12704,7 +12888,9 @@ function EditModal({
   form,
   setForm,
   onClose,
-  onSave
+  onSave,
+  ownerMode,
+  branches
 }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "panel staff-create staff-modal", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-heading", children: [
@@ -12740,6 +12926,7 @@ function EditModal({
               permissions: defaultPermissions(event.target.value)
             }),
             children: [
+              ownerMode && /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "BRANCH_MANAGER", children: "Branch Manager" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "STOCK_MANAGER", children: "Stock Manager / Storekeeper" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "SALES_OFFICER", children: "Sales Officer" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "CASHIER", children: "Cashier" }),
@@ -12747,6 +12934,18 @@ function EditModal({
             ]
           }
         )
+      ] }),
+      ownerMode && /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+        "Branch",
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: form.branchId, onChange: (event) => setForm({ ...form, branchId: event.target.value }), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select branch" }),
+          branches.map((branch) => /* @__PURE__ */ jsxRuntimeExports.jsxs("option", { value: branch.id, children: [
+            branch.name,
+            " (",
+            branch.code,
+            ")"
+          ] }, branch.id))
+        ] })
       ] })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("fieldset", { className: "staff-permission-grid", children: [
@@ -13126,110 +13325,12 @@ function Summary$1({
     /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: value })
   ] });
 }
-const fallbackProducts = [
-  {
-    sku: "CEM-001",
-    barcode: "615110000003",
-    name: "Dangote Cement (50kg)",
-    category: "Cement",
-    brand: "Dangote",
-    productType: "Rapid Strength Cement",
-    variant: "42.5R · 50kg bag",
-    stock: 320,
-    unit: "Bag",
-    price: 90
-  },
-  {
-    sku: "IRO-012",
-    barcode: "615110000012",
-    name: "Iron Rod 12mm (12m)",
-    category: "Iron Rods",
-    brand: "TOR",
-    productType: "High Yield Reinforcement Bar",
-    variant: "12mm · 12m length",
-    stock: 150,
-    unit: "Piece",
-    price: 185
-  },
-  {
-    sku: "BLO-006",
-    barcode: "615110000021",
-    name: "Hollow Block (6 inch)",
-    category: "Blocks",
-    brand: "Local Manufacture",
-    productType: "Hollow Concrete Block",
-    variant: "6 inch · standard",
-    stock: 4200,
-    unit: "Piece",
-    price: 8.5
-  },
-  {
-    sku: "PAI-020",
-    barcode: "615110000031",
-    name: "Paint (Emulsion) 20L - White",
-    category: "Paints",
-    brand: "ABC Paints",
-    productType: "Emulsion Paint",
-    variant: "20L · White",
-    stock: 28,
-    unit: "Tin",
-    price: 460
-  },
-  {
-    sku: "PVC-002",
-    barcode: "615110000041",
-    name: 'PVC Pipe 2" (6m)',
-    category: "Plumbing",
-    brand: "WAVIN",
-    productType: "uPVC Pressure Pipe",
-    variant: "2 inch · 6m length",
-    stock: 85,
-    unit: "Piece",
-    price: 75
-  },
-  {
-    sku: "ROO-035",
-    barcode: "615110000051",
-    name: "Roofing Sheet 0.35mm",
-    category: "Roofing",
-    brand: "Aluzinc",
-    productType: "Corrugated Roofing Sheet",
-    variant: "0.35mm · 3m length",
-    stock: 120,
-    unit: "Sheet",
-    price: 230
-  },
-  {
-    sku: "BWI-025",
-    barcode: "615110000061",
-    name: "Binding Wire (25kg)",
-    category: "Hardware",
-    brand: "Local Manufacture",
-    productType: "Binding Wire",
-    variant: "25kg roll",
-    stock: 42,
-    unit: "Roll",
-    price: 320
-  },
-  {
-    sku: "TIL-060",
-    barcode: "615110000071",
-    name: "Ceramic Tile (60 × 60)",
-    category: "Tiles",
-    brand: "MaxTile",
-    productType: "Ceramic Floor Tile",
-    variant: "60 × 60cm · assorted",
-    stock: 310,
-    unit: "Box",
-    price: 95
-  }
-];
 const money$5 = (value) => `GH₵ ${value.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 function SalesPage({ session }) {
   const [mode, setMode] = reactExports.useState("INVOICE");
   const [view, setView] = reactExports.useState("CREATE");
-  const [products, setProducts] = reactExports.useState(fallbackProducts);
-  const [selectedProduct, setSelectedProduct] = reactExports.useState(fallbackProducts[0]);
+  const [products, setProducts] = reactExports.useState([]);
+  const [selectedProduct, setSelectedProduct] = reactExports.useState(null);
   const [query, setQuery] = reactExports.useState("");
   const [category, setCategory] = reactExports.useState("All");
   const [brand, setBrand] = reactExports.useState("All");
@@ -13237,38 +13338,7 @@ function SalesPage({ session }) {
   const [customer, setCustomer] = reactExports.useState("Walk-in Customer");
   const [notes, setNotes] = reactExports.useState("");
   const [vatEnabled, setVatEnabled] = reactExports.useState(true);
-  const [cart, setCart] = reactExports.useState([
-    {
-      product: fallbackProducts[0],
-      sku: fallbackProducts[0].sku,
-      name: fallbackProducts[0].name,
-      quantity: 10,
-      unit: fallbackProducts[0].unit,
-      unitPrice: fallbackProducts[0].price,
-      discountPercent: 0,
-      amount: fallbackProducts[0].price * 10
-    },
-    {
-      product: fallbackProducts[1],
-      sku: fallbackProducts[1].sku,
-      name: fallbackProducts[1].name,
-      quantity: 5,
-      unit: fallbackProducts[1].unit,
-      unitPrice: fallbackProducts[1].price,
-      discountPercent: 0,
-      amount: fallbackProducts[1].price * 5
-    },
-    {
-      product: fallbackProducts[2],
-      sku: fallbackProducts[2].sku,
-      name: fallbackProducts[2].name,
-      quantity: 50,
-      unit: fallbackProducts[2].unit,
-      unitPrice: fallbackProducts[2].price,
-      discountPercent: 0,
-      amount: fallbackProducts[2].price * 50
-    }
-  ]);
+  const [cart, setCart] = reactExports.useState([]);
   const [saving, setSaving] = reactExports.useState(false);
   const [status, setStatus] = reactExports.useState("");
   const [error, setError] = reactExports.useState("");
@@ -13312,10 +13382,19 @@ function SalesPage({ session }) {
           })
         );
         setCatalogStatus(`${items.length} structured products available`);
-      } else setCatalogStatus("No active products in this branch catalogue.");
+      } else {
+        setProducts([]);
+        setSelectedProduct(null);
+        setCart([]);
+        setCatalogStatus("No active products in this branch catalogue.");
+      }
     }).catch(() => {
-      if (active)
-        setCatalogStatus("Using the offline catalogue until sync returns.");
+      if (active) {
+        setProducts([]);
+        setSelectedProduct(null);
+        setCart([]);
+        setCatalogStatus("Branch catalogue unavailable. Register or sync products before creating a document.");
+      }
     });
     companyApi.get().then((company) => {
       const template = company?.documentTemplates;
@@ -13365,6 +13444,10 @@ function SalesPage({ session }) {
   const vat = vatEnabled ? subtotal * 0.15 : 0;
   const total = subtotal + vat;
   const addToCart = (product = selectedProduct, quantity = 1) => {
+    if (!product) {
+      setError("Select a product from the active branch catalogue first.");
+      return;
+    }
     setCart((current) => {
       const existing = current.find((item) => item.sku === product.sku);
       if (existing)
@@ -14178,6 +14261,108 @@ function ReceiptDocument({
     }
   );
 }
+function InvoiceDocument({
+  sale,
+  company,
+  session,
+  template,
+  print = false
+}) {
+  const content = template?.content;
+  const styles = template?.styles;
+  const balance = Math.max(0, sale.total - sale.amountPaid);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("article", { className: `cashier-invoice-document ${print ? "cashier-invoice-print" : ""}`, children: [
+    template?.showCompanyLogo && company?.logoRef && /* @__PURE__ */ jsxRuntimeExports.jsx("img", { className: "cashier-invoice-logo", src: company.logoRef, alt: "Company logo" }),
+    template?.showCompanyDetails !== false && /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "cashier-invoice-header", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { style: { fontFamily: styles?.headingFontFamily, color: styles?.headingColor, fontSize: `${styles?.headingFontSize || 20}px`, fontWeight: styles?.headingBold ? 800 : 400 }, children: content?.companyName || company?.tradingName || company?.registeredName || "YenkasaBuildersStock" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+          content?.companyEmail || company?.email,
+          " · ",
+          content?.companyPhone || company?.phone
+        ] }),
+        template?.showBranchInformation !== false && /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+          session.branchName,
+          " · ",
+          content?.branchName || ""
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-invoice-number", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "INVOICE" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: sale.saleNumber }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: new Date(sale.createdAt).toLocaleString("en-GH") })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-invoice-meta", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Bill To" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: sale.customerName })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Issued By" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: sale.actorUserName || sale.actorUserId || "Sales Officer" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Payment Status" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: sale.paymentStatus.replaceAll("_", " ") })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "cashier-invoice-items", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "#" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Item / Code" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Qty" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Unit" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Unit Price" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Amount" })
+      ] }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: sale.items.map((item, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: index + 1 }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: item.name }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: item.sku })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.quantity }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: item.unit }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: money$4(item.unitPrice) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: money$4(item.amount) })
+      ] }, `${item.sku}-${index}`)) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-invoice-totals", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Subtotal" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$4(sale.subtotal) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Discount" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("b", { children: [
+          "− ",
+          money$4(sale.discount)
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Tax" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$4(sale.tax) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grand", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Total" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$4(sale.total) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Paid to date" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$4(sale.amountPaid) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Balance due" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$4(balance) })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("footer", { children: [
+      content?.paymentTerms || "Payment is due according to the agreed terms.",
+      template?.showFooterMessage !== false && /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: template?.footerMessage || "Thank you for your business!" })
+    ] })
+  ] });
+}
 function CashierPage({ session }) {
   const [invoices, setInvoices] = reactExports.useState([]);
   const [selected, setSelected] = reactExports.useState(null);
@@ -14188,6 +14373,11 @@ function CashierPage({ session }) {
   const [evidence, setEvidence] = reactExports.useState("");
   const [history, setHistory] = reactExports.useState([]);
   const [historyOpen, setHistoryOpen] = reactExports.useState(false);
+  const [historyQuery, setHistoryQuery] = reactExports.useState("");
+  const [historyMethod, setHistoryMethod] = reactExports.useState("");
+  const [historyDate, setHistoryDate] = reactExports.useState("");
+  const [invoicePreviewOpen, setInvoicePreviewOpen] = reactExports.useState(false);
+  const [invoicePreview, setInvoicePreview] = reactExports.useState(null);
   const [receiptPreviewOpen, setReceiptPreviewOpen] = reactExports.useState(false);
   const [receipt, setReceipt] = reactExports.useState(null);
   const [pendingPayment, setPendingPayment] = reactExports.useState(
@@ -14202,6 +14392,7 @@ function CashierPage({ session }) {
     companyApi.get().then(setCompany).catch(() => setCompany(null));
   }, []);
   const receiptTemplate = company?.documentTemplates?.templates?.["Receipt Template"] ?? company?.documentTemplates ?? null;
+  const invoiceTemplate = invoicePreview?.templateSnapshot?.templates?.["Invoice Template"] ?? invoicePreview?.templateSnapshot ?? company?.documentTemplates?.templates?.["Invoice Template"] ?? company?.documentTemplates ?? null;
   const loadInvoices = async (search = query) => {
     setLoading(true);
     try {
@@ -14341,6 +14532,46 @@ function CashierPage({ session }) {
     window.print();
     setStatus("Print dialog opened.");
   };
+  const printInvoice = async () => {
+    if (window.desktopBridge?.print) {
+      setStatus("Opening the system print dialog…");
+      const printed = await window.desktopBridge.print().catch(() => false);
+      if (!printed) window.print();
+      return;
+    }
+    window.print();
+  };
+  const openInvoicePreview = (invoice) => {
+    setSelected(invoice);
+    setInvoicePreview(invoice);
+    setInvoicePreviewOpen(true);
+  };
+  const openReceiptFromHistory = (payment, invoice, shouldPrint = false) => {
+    if (!invoice || !payment.receiptNumber) return;
+    const historyReceipt = {
+      id: `history-${payment.id}`,
+      saleId: payment.saleId,
+      paymentId: payment.id,
+      receiptNumber: payment.receiptNumber,
+      amount: payment.amount,
+      createdAt: payment.createdAt,
+      branchId: payment.branchId
+    };
+    setSelected(invoice);
+    setReceipt(historyReceipt);
+    setMethod(payment.method);
+    if (shouldPrint) {
+      window.setTimeout(() => void printReceipt(), 0);
+    } else {
+      setReceiptPreviewOpen(true);
+    }
+  };
+  const historyRows = reactExports.useMemo(() => history.filter((payment) => {
+    const searchable = `${payment.receiptNumber} ${payment.invoiceNumber || ""} ${payment.customerName || ""}`.toLowerCase();
+    const methodMatches = !historyMethod || payment.method === historyMethod;
+    const dateMatches = !historyDate || (payment.createdAt || "").slice(0, 10) === historyDate;
+    return searchable.includes(historyQuery.toLowerCase()) && methodMatches && dateMatches;
+  }), [history, historyDate, historyMethod, historyQuery]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-page", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-title-row", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-title", children: [
@@ -14393,17 +14624,28 @@ function CashierPage({ session }) {
             )
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cashier-invoice-list", children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: "Loading invoices…" }) : filtered.length ? filtered.map((invoice) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "button",
+            "div",
             {
               className: `cashier-invoice-row ${selected?.id === invoice.id ? "selected" : ""}`,
-              type: "button",
+              role: "button",
+              tabIndex: 0,
               onClick: () => setSelected(invoice),
+              onKeyDown: (event) => {
+                if (event.key === "Enter") setSelected(invoice);
+              },
               children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: invoice.saleNumber }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: invoice.customerName })
                 ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$4(invoice.total - invoice.amountPaid) })
+                /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: money$4(invoice.total - invoice.amountPaid) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "compact-outline", type: "button", onClick: (event) => {
+                  event.stopPropagation();
+                  openInvoicePreview(invoice);
+                }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 14 }),
+                  " View Invoice"
+                ] })
               ]
             },
             invoice.id
@@ -14415,13 +14657,17 @@ function CashierPage({ session }) {
             " Invoice Summary"
           ] }),
           selected ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cashier-summary-actions", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "compact-outline", type: "button", onClick: () => openInvoicePreview(selected), children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 14 }),
+              " View Invoice"
+            ] }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("dl", { className: "cashier-summary-list", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("dt", { children: "Invoice No:" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("dd", { children: selected.saleNumber }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("dt", { children: "Customer:" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("dd", { children: selected.customerName }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("dt", { children: "Issued By:" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("dd", { children: selected.actorUserId || "Sales Officer" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("dd", { children: selected.actorUserName || selected.actorUserId || "Sales Officer" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("dt", { children: "Payment Status:" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("dd", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "span",
@@ -14583,6 +14829,31 @@ function CashierPage({ session }) {
         ] })
       ] })
     ] }) }),
+    invoicePreviewOpen && invoicePreview && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cashier-modal-backdrop", role: "presentation", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "cashier-invoice-preview-modal", role: "dialog", "aria-modal": "true", "aria-label": "Invoice preview", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-preview-header", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 20 }),
+            " Invoice Preview"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("small", { children: [
+            "Read-only owner template · ",
+            invoicePreview.templateName || "Company invoice template",
+            " · v",
+            invoicePreview.templateVersion || 1
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", "aria-label": "Close invoice preview", onClick: () => setInvoicePreviewOpen(false), children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(InvoiceDocument, { sale: invoicePreview, company, session, template: invoiceTemplate }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-preview-actions", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "outline", type: "button", onClick: () => setInvoicePreviewOpen(false), children: "Close" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "primary-button", type: "button", onClick: () => void printInvoice(), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Printer, { size: 17 }),
+          " Print Invoice"
+        ] })
+      ] })
+    ] }) }),
     historyOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cashier-modal-backdrop", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "cashier-history-modal", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { children: [
@@ -14591,18 +14862,57 @@ function CashierPage({ session }) {
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: () => setHistoryOpen(false), children: "×" })
       ] }),
-      history.length ? history.map((payment) => /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: payment.receiptNumber || "Pending verification" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-          payment.method,
-          " · ",
-          money$4(payment.amount),
-          " ·",
-          " ",
-          payment.verificationStatus
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-history-filters", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("input", { value: historyQuery, onChange: (event) => setHistoryQuery(event.target.value), placeholder: "Search invoice, receipt or customer..." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "date", value: historyDate, onChange: (event) => setHistoryDate(event.target.value) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: historyMethod, onChange: (event) => setHistoryMethod(event.target.value), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "All payment methods" }),
+          methodOptions.map(([value, label]) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value, children: label }, value))
         ] })
-      ] }, payment.id)) : /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: "No payments recorded." })
+      ] }),
+      historyRows.length ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cashier-history-table-wrap", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "cashier-history-table", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Receipt / Invoice" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Customer" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Cashier" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Date" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Method" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Amount" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Status" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Actions" })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: historyRows.map((payment) => {
+          const linked = invoices.find((invoice) => invoice.id === payment.saleId);
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: payment.receiptNumber || "Pending verification" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: payment.invoiceNumber || "Invoice unavailable" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: payment.customerName || "—" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: payment.cashierName || "—" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: new Date(payment.createdAt).toLocaleString("en-GH") }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: payment.method.replaceAll("_", " ") }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: money$4(payment.amount) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `cashier-status ${(payment.verificationStatus || "").toLowerCase()}`, children: payment.verificationStatus.replaceAll("_", " ") }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-history-actions", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "compact-outline", type: "button", disabled: !linked, onClick: () => linked && openInvoicePreview(linked), children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 13 }),
+                " Invoice"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "compact-outline", type: "button", disabled: !linked || !payment.receiptNumber, onClick: () => openReceiptFromHistory(payment, linked), children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Receipt, { size: 13 }),
+                " Receipt"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "compact-outline", type: "button", disabled: !linked || !payment.receiptNumber, onClick: () => openReceiptFromHistory(payment, linked, true), children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Printer, { size: 13 }),
+                " Reprint"
+              ] })
+            ] }) })
+          ] }, payment.id);
+        }) })
+      ] }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: "No payments recorded." })
     ] }) }),
+    invoicePreview && /* @__PURE__ */ jsxRuntimeExports.jsx(InvoiceDocument, { sale: invoicePreview, company, session, template: invoiceTemplate, print: true }),
     receipt && selected && /* @__PURE__ */ jsxRuntimeExports.jsx(
       ReceiptDocument,
       {
@@ -15984,7 +16294,7 @@ function CustomersPage({ session }) {
       setCustomers((current) => editing ? current.map((item) => item.id === saved.id ? saved : item) : [...current, saved].sort((a, b) => a.name.localeCompare(b.name)));
       setEditing(null);
       setForm(blank);
-      setOpen(false);
+      setOpen(true);
       setStatus(editing ? "Customer updated." : "Customer saved.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to save customer.");

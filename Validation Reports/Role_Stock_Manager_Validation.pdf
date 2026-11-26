@@ -1,0 +1,76 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Length 1087 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 16 Tf
+36 806 Td
+(Detailed Role Validation  Stock Manager) Tj
+/F1 9 Tf
+0 -18 Td
+(YenkasaBuildersStock | Role validation audit | 26 November 2026) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(Stock-manager authority: inventory, receiving, purchasing, adjustments and material release.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(STK-01 Independent login without owner or manager session: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(STK-02 Inventory, receiving, purchasing and stock-adjustment permissions are role protected:) Tj
+0 -13 Td
+(PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(STK-03 Material release requires a paid/eligible invoice and branch scope: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(STK-04 Payment collection and owner/staff management are denied by default: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(STK-05 Release operations preserve company_id and branch_id boundaries: PASS in backend) Tj
+0 -13 Td
+(regression tests.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(Limitation: a packaged live material-release print run was not repeated in this focused audit) Tj
+0 -13 Td
+(and remains a follow-up validation item.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+ET
+endstream
+endobj
+3 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 595 842] /Contents 2 0 R >>
+endobj
+5 0 obj
+<< /Type /Catalog /Pages 3 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000001257 00000 n 
+0000001314 00000 n 
+0000001401 00000 n 
+trailer
+<< /Size 6 /Root 5 0 R >>
+startxref
+1450
+%%EOF

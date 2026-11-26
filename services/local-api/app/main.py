@@ -29,6 +29,27 @@ ASSIGNABLE_PERMISSIONS = {
     'sales', 'quotations', 'invoices', 'customers', 'suppliers', 'inventory_view', 'inventory',
     'stock_receipts', 'purchases', 'stock_adjustments', 'material_release',
     'invoice_view', 'payments', 'receipts', 'payment_reports', 'stock_reports', 'limited_reports',
+    'financial_reports', 'system_settings', 'staff_management', 'edit_selling_prices',
+}
+BRANCH_MANAGER_ASSIGNABLE_PERMISSIONS = {
+    'sales', 'quotations', 'invoices', 'customers', 'suppliers', 'inventory_view', 'inventory',
+    'stock_receipts', 'purchases', 'stock_adjustments', 'material_release',
+    'invoice_view', 'payments', 'receipts', 'payment_reports', 'stock_reports', 'limited_reports',
+    'financial_reports', 'edit_selling_prices',
+}
+ROLE_DEFAULTS = {
+    'BRANCH_MANAGER': ['sales', 'quotations', 'invoices', 'payments', 'receipts', 'customers', 'suppliers', 'inventory_view', 'inventory', 'stock_receipts', 'purchases', 'stock_adjustments', 'material_release', 'financial_reports', 'system_settings', 'staff_management', 'edit_selling_prices'],
+    'SALES_OFFICER': ['sales', 'quotations', 'invoices', 'inventory_view', 'limited_reports'],
+    'CASHIER': ['invoice_view', 'payments', 'receipts', 'customers', 'payment_reports'],
+    'STOCK_MANAGER': ['inventory_view', 'inventory', 'stock_receipts', 'purchases', 'suppliers', 'stock_adjustments', 'material_release', 'stock_reports'],
+    'SALES_CASHIER': ['sales', 'quotations', 'invoices', 'payments', 'receipts', 'inventory_view', 'payment_reports'],
+}
+ROLE_LABELS = {
+    'BRANCH_MANAGER': ('Branch Manager', 'Branch operations and staff management'),
+    'SALES_OFFICER': ('Sales Officer', 'Invoices, quotations and sales preparation'),
+    'CASHIER': ('Cashier', 'Payment collection and receipts'),
+    'STOCK_MANAGER': ('Stock Manager', 'Inventory, purchasing and material release'),
+    'SALES_CASHIER': ('Sales + Cashier', 'Combined sales and payment duties'),
 }
 
 class Settings(BaseSettings):
@@ -129,6 +150,17 @@ class UserAccount(Base):
     last_login: Mapped[str] = mapped_column(String(40), default='')
     device_id: Mapped[str] = mapped_column(String(100), default='')
     permissions_json: Mapped[str] = mapped_column(Text, default='[]')
+
+class RoleDefinition(Base):
+    __tablename__ = 'role_definitions'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    company_id: Mapped[int] = mapped_column(default=1, index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    description: Mapped[str] = mapped_column(String(300), default='')
+    permissions_json: Mapped[str] = mapped_column(Text, default='[]')
+    system: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[str] = mapped_column(String(40), default='')
+    updated_at: Mapped[str] = mapped_column(String(40), default='')
 
 class Customer(Base):
     __tablename__ = 'customers'
@@ -413,6 +445,22 @@ class StaffUpdatePayload(BaseModel):
     role: Optional[str] = None
     active: Optional[bool] = None
     permissions: Optional[list[str]] = None
+
+class CompanyUserCreatePayload(StaffPayload):
+    pass
+
+class CompanyUserUpdatePayload(BaseModel):
+    fullName: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[str] = None
+    branchId: Optional[str] = None
+    active: Optional[bool] = None
+    permissions: Optional[list[str]] = None
+
+class RoleDefinitionPayload(BaseModel):
+    name: str
+    description: str = ''
+    permissions: list[str] = []
 
 class CustomerPayload(BaseModel):
     branchId: str
@@ -1311,20 +1359,27 @@ def cashier_invoices(branchId: str, request: Request, search: str = '') -> list[
         query = search.strip().lower()
         if query:
             rows = [row for row in rows if query in row.sale_number.lower() or query in row.customer_name.lower()]
-        return [to_sale_payload(row) for row in rows]
+        actor_ids = {row.actor_user_id for row in rows if row.actor_user_id}
+        names = {user.id: user.full_name for user in session.scalars(select(UserAccount).where(UserAccount.company_id == actor.company_id, UserAccount.id.in_(actor_ids))).all()}
+        return [to_sale_payload(row, names.get(row.actor_user_id, row.actor_user_id)) for row in rows]
 
 @app.get('/api/payments/history')
 def payment_history(branchId: str, request: Request) -> list[dict]:
     actor = require_actor(request, BRANCH_ROLES, branchId, 'payments')
     with Session(engine) as session:
-        return [to_payment_payload(row) for row in session.scalars(select(PaymentRecordModel).where(PaymentRecordModel.company_id == actor.company_id, PaymentRecordModel.branch_id == actor.branch_id).order_by(PaymentRecordModel.created_at.desc())).all()]
+        payments = session.scalars(select(PaymentRecordModel).where(PaymentRecordModel.company_id == actor.company_id, PaymentRecordModel.branch_id == actor.branch_id).order_by(PaymentRecordModel.created_at.desc())).all()
+        sale_ids = {row.sale_id for row in payments}
+        sales = {sale.id: sale for sale in session.scalars(select(SaleRecordModel).where(SaleRecordModel.company_id == actor.company_id, SaleRecordModel.branch_id == actor.branch_id, SaleRecordModel.id.in_(sale_ids))).all()}
+        cashier_ids = {row.cashier_user_id for row in payments}
+        cashiers = {user.id: user.full_name for user in session.scalars(select(UserAccount).where(UserAccount.company_id == actor.company_id, UserAccount.id.in_(cashier_ids))).all()}
+        return [dict(to_payment_payload(row), invoiceNumber=sales[row.sale_id].sale_number if row.sale_id in sales else '', customerName=sales[row.sale_id].customer_name if row.sale_id in sales else '', cashierName=cashiers.get(row.cashier_user_id, 'Unknown cashier'), paymentStatus=sales[row.sale_id].payment_status if row.sale_id in sales else '', invoiceCreatedAt=sales[row.sale_id].created_at if row.sale_id in sales else '') for row in payments]
 
 def report_actor(request: Request, branch_id: str) -> UserAccount:
     actor = require_any_permission(
         request,
         BRANCH_ROLES,
         branch_id,
-        {'financial_reports', 'payment_reports', 'sales', 'payments'},
+        {'financial_reports', 'payment_reports'},
     )
     # Cashiers may review their own payment report only. Branch managers retain
     # branch-wide reporting; the restriction is enforced here, not in the UI.
@@ -1504,7 +1559,9 @@ def record_payment(payload: PaymentPayload, request: Request) -> dict:
             raise HTTPException(404, 'Invoice not found in this branch')
         amount = Decimal(str(payload.amount)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         current_paid = Decimal(str(sale.amount_paid or 0))
-        if method == 'CASH' and current_paid + amount > Decimal(str(sale.total)):
+        if current_paid >= Decimal(str(sale.total)):
+            raise HTTPException(409, 'This invoice is already fully paid')
+        if current_paid + amount > Decimal(str(sale.total)):
             raise HTTPException(422, 'Payment amount cannot exceed the outstanding balance')
         verified = method == 'CASH'
         payment_id = str(uuid4())
@@ -1714,13 +1771,156 @@ def list_company_users(request: Request) -> list[dict]:
         branches = {branch.id: branch.name for branch in session.scalars(select(Branch).where(Branch.company_id == 1))}
         return [dict(to_staff_payload(user), branchName=branches.get(user.branch_id, 'Unassigned')) for user in session.scalars(select(UserAccount).where(UserAccount.company_id == 1).order_by(UserAccount.created_at.desc()))]
 
+@app.post('/api/company-users')
+def create_company_user(payload: CompanyUserCreatePayload, request: Request) -> dict:
+    require_hq(request)
+    if payload.role not in BRANCH_ROLES:
+        raise HTTPException(422, 'Select a supported branch role')
+    if len(payload.password) < 8:
+        raise HTTPException(422, 'Password must be at least 8 characters')
+    if payload.permissions is not None and any(permission not in ASSIGNABLE_PERMISSIONS for permission in payload.permissions):
+        raise HTTPException(422, 'One or more assigned permissions are not allowed')
+    with Session(engine) as session:
+        branch = session.scalar(select(Branch).where(Branch.id == payload.branchId, Branch.company_id == 1))
+        if branch is None:
+            raise HTTPException(422, 'A valid branch is required for this user')
+        username = payload.username.strip().lower()
+        if session.scalar(select(UserAccount).where(UserAccount.company_id == 1, UserAccount.username == username)) is not None:
+            raise HTTPException(409, 'Username already exists')
+        permissions = payload.permissions if payload.permissions is not None else ROLE_DEFAULTS.get(payload.role, [])
+        user = UserAccount(id=str(uuid4()), company_id=1, branch_id=branch.id, username=username, email=payload.email.strip().lower(), full_name=payload.fullName.strip(), role=payload.role, password_hash=hash_password(payload.password), active=True, permissions_json=json.dumps({'custom': True, 'permissions': sorted(set(permissions))}), created_at=now_iso())
+        branch.users_count += 1
+        session.add(user)
+        session.add(AuditLog(id=str(uuid4()), company_id=1, branch_id=branch.id, actor_user_id='HQ_OWNER', action='company_user_created', target_user_id=user.id, created_at=now_iso()))
+        session.commit(); session.refresh(user)
+        return dict(to_staff_payload(user), branchName=branch.name)
+
+@app.patch('/api/company-users/{user_id}')
+def update_company_user(user_id: str, payload: CompanyUserUpdatePayload, request: Request) -> dict:
+    require_hq(request)
+    if payload.role is not None and payload.role not in BRANCH_ROLES:
+        raise HTTPException(422, 'Select a supported branch role')
+    if payload.permissions is not None and any(permission not in ASSIGNABLE_PERMISSIONS for permission in payload.permissions):
+        raise HTTPException(422, 'One or more assigned permissions are not allowed')
+    with Session(engine) as session:
+        user = session.scalar(select(UserAccount).where(UserAccount.id == user_id, UserAccount.company_id == 1))
+        if user is None:
+            raise HTTPException(404, 'Company user not found')
+        previous = {'role': user.role, 'branchId': user.branch_id, 'active': user.active, 'permissions': permissions_for_user_record(user)}
+        old_branch_id = user.branch_id
+        if payload.fullName is not None:
+            user.full_name = payload.fullName.strip()
+        if payload.email is not None:
+            user.email = payload.email.strip().lower()
+        if payload.role is not None:
+            user.role = payload.role
+        if payload.active is not None:
+            user.active = payload.active
+        if payload.permissions is not None:
+            user.permissions_json = json.dumps({'custom': True, 'permissions': sorted(set(payload.permissions))})
+        if payload.branchId is not None:
+            branch = session.scalar(select(Branch).where(Branch.id == payload.branchId, Branch.company_id == 1))
+            if branch is None:
+                raise HTTPException(422, 'A valid branch is required for this user')
+            user.branch_id = branch.id
+        new_branch = session.scalar(select(Branch).where(Branch.id == user.branch_id, Branch.company_id == 1))
+        if new_branch is None:
+            raise HTTPException(422, 'User branch could not be resolved')
+        if old_branch_id != user.branch_id:
+            old_branch = session.scalar(select(Branch).where(Branch.id == old_branch_id, Branch.company_id == 1))
+            if old_branch is not None:
+                old_branch.users_count = max(0, old_branch.users_count - 1)
+            new_branch.users_count += 1
+        session.add(AuditLog(id=str(uuid4()), company_id=1, branch_id=user.branch_id, actor_user_id='HQ_OWNER', action='company_user_permissions_updated', target_user_id=user.id, created_at=now_iso()))
+        session.commit(); session.refresh(user)
+        return dict(to_staff_payload(user), branchName=new_branch.name, previous=previous)
+
+@app.post('/api/company-users/{user_id}/reset-password')
+def reset_company_user_password(user_id: str, payload: PasswordResetPayload, request: Request) -> dict:
+    require_hq(request)
+    if len(payload.password) < 8:
+        raise HTTPException(422, 'Password must be at least 8 characters')
+    with Session(engine) as session:
+        user = session.scalar(select(UserAccount).where(UserAccount.id == user_id, UserAccount.company_id == 1))
+        if user is None:
+            raise HTTPException(404, 'Company user not found')
+        user.password_hash = hash_password(payload.password)
+        session.add(AuditLog(id=str(uuid4()), company_id=1, branch_id=user.branch_id, actor_user_id='HQ_OWNER', action='company_user_password_reset', target_user_id=user.id, created_at=now_iso()))
+        session.commit(); session.refresh(user)
+        return to_staff_payload(user)
+
+@app.get('/api/roles')
+def list_roles(request: Request) -> list[dict]:
+    require_hq(request)
+    with Session(engine) as session:
+        custom = session.scalars(select(RoleDefinition).where(RoleDefinition.company_id == 1).order_by(RoleDefinition.name)).all()
+        stored = {role.id: role for role in custom}
+        result = []
+        for name, (label, description) in ROLE_LABELS.items():
+            override = stored.get(name)
+            result.append(to_role_payload(name, label, description, permissions_for_role(override) if override else ROLE_DEFAULTS[name], True))
+        result.extend(to_role_payload(role.id, role.name, role.description, permissions_for_role(role), role.system, role.created_at) for role in custom if role.id not in ROLE_LABELS)
+        return result
+
+@app.post('/api/roles')
+def create_role(payload: RoleDefinitionPayload, request: Request) -> dict:
+    require_hq(request)
+    name = payload.name.strip()
+    permissions = sorted(set(payload.permissions))
+    if not name:
+        raise HTTPException(422, 'Role name is required')
+    if any(permission not in ASSIGNABLE_PERMISSIONS for permission in permissions):
+        raise HTTPException(422, 'One or more role permissions are not supported')
+    if name.upper().replace(' ', '_') in ROLE_LABELS:
+        raise HTTPException(409, 'This is a protected system role')
+    with Session(engine) as session:
+        duplicate = session.scalar(select(RoleDefinition).where(RoleDefinition.company_id == 1, RoleDefinition.name == name))
+        if duplicate is not None:
+            raise HTTPException(409, 'A role with this name already exists')
+        role = RoleDefinition(id=str(uuid4()), company_id=1, name=name, description=payload.description.strip(), permissions_json=json.dumps(permissions), system=False, created_at=now_iso(), updated_at=now_iso())
+        session.add(role)
+        session.add(AuditLog(id=str(uuid4()), company_id=1, branch_id='', actor_user_id='HQ_OWNER', action='role_created', target_user_id=role.id, created_at=now_iso()))
+        session.commit(); session.refresh(role)
+        return to_role_payload(role.id, role.name, role.description, permissions_for_role(role), role.system, role.created_at)
+
+@app.patch('/api/roles/{role_id}')
+def update_role(role_id: str, payload: RoleDefinitionPayload, request: Request) -> dict:
+    require_hq(request)
+    permissions = sorted(set(payload.permissions))
+    if any(permission not in ASSIGNABLE_PERMISSIONS for permission in permissions):
+        raise HTTPException(422, 'One or more role permissions are not supported')
+    with Session(engine) as session:
+        role = session.scalar(select(RoleDefinition).where(RoleDefinition.id == role_id, RoleDefinition.company_id == 1))
+        if role is None and role_id in ROLE_LABELS:
+            label, description = ROLE_LABELS[role_id]
+            role = RoleDefinition(id=role_id, company_id=1, name=label, description=description, system=True, created_at=now_iso())
+            session.add(role)
+        if role is None:
+            raise HTTPException(404, 'Custom role not found')
+        role.name = payload.name.strip() or role.name
+        role.description = payload.description.strip()
+        role.permissions_json = json.dumps(permissions)
+        role.updated_at = now_iso()
+        session.add(AuditLog(id=str(uuid4()), company_id=1, branch_id='', actor_user_id='HQ_OWNER', action='role_permissions_updated', target_user_id=role.id, created_at=now_iso()))
+        session.commit(); session.refresh(role)
+        return to_role_payload(role.id, role.name, role.description, permissions_for_role(role), role.system, role.created_at)
+
 @app.post('/api/staff')
 def create_staff(payload: StaffPayload, request: Request) -> dict:
     actor = require_actor(request, {'BRANCH_MANAGER'}, payload.branchId)
     if payload.role not in {'STOCK_MANAGER', 'SALES_OFFICER', 'CASHIER', 'SALES_CASHIER'}: raise HTTPException(403, 'Branch Managers may only assign Stock Manager, Sales Officer or Cashier roles')
     if len(payload.password) < 8: raise HTTPException(422, 'Password must be at least 8 characters')
-    if payload.permissions is not None and any(permission not in ASSIGNABLE_PERMISSIONS for permission in payload.permissions): raise HTTPException(422, 'One or more assigned permissions are not allowed')
     with Session(engine) as session:
+        branch = session.scalar(select(Branch).where(Branch.id == actor.branch_id, Branch.company_id == actor.company_id))
+        if branch is None:
+            raise HTTPException(404, 'Branch not found')
+        if payload.permissions is not None:
+            requested = set(payload.permissions)
+            if not requested.issubset(BRANCH_MANAGER_ASSIGNABLE_PERMISSIONS):
+                raise HTTPException(422, 'One or more assigned permissions are not allowed')
+            delegated = set(permissions_for(actor, branch)) | set(ROLE_DEFAULTS.get(payload.role, []))
+            if not requested.issubset(delegated):
+                raise HTTPException(403, 'Branch Manager cannot delegate permissions they do not hold')
         username = payload.username.strip().lower()
         if session.scalar(select(UserAccount).where(UserAccount.company_id == actor.company_id, UserAccount.username == username)) is not None: raise HTTPException(409, 'Username already exists')
         permissions_json = json.dumps({'custom': True, 'permissions': sorted(set(payload.permissions))}) if payload.permissions is not None else '[]'
@@ -1732,8 +1932,18 @@ def create_staff(payload: StaffPayload, request: Request) -> dict:
 def update_staff(user_id: str, payload: StaffUpdatePayload, request: Request) -> dict:
     actor = require_actor(request, {'BRANCH_MANAGER'}, request.headers.get('x-branch-id', ''))
     with Session(engine) as session:
+        branch = session.scalar(select(Branch).where(Branch.id == actor.branch_id, Branch.company_id == actor.company_id))
+        if branch is None:
+            raise HTTPException(404, 'Branch not found')
         user = session.scalar(select(UserAccount).where(UserAccount.id == user_id, UserAccount.company_id == actor.company_id, UserAccount.branch_id == actor.branch_id, UserAccount.role.in_(['STOCK_MANAGER', 'SALES_OFFICER', 'CASHIER', 'SALES_CASHIER'])))
         if user is None: raise HTTPException(404, 'Staff account not found in this branch')
+        if payload.permissions is not None:
+            requested = set(payload.permissions)
+            if not requested.issubset(BRANCH_MANAGER_ASSIGNABLE_PERMISSIONS):
+                raise HTTPException(422, 'One or more assigned permissions are not allowed')
+            delegated = set(permissions_for(actor, branch)) | set(ROLE_DEFAULTS.get(payload.role or user.role, []))
+            if not requested.issubset(delegated):
+                raise HTTPException(403, 'Branch Manager cannot delegate permissions they do not hold')
         if payload.role is not None:
             if payload.role not in {'STOCK_MANAGER', 'SALES_OFFICER', 'CASHIER', 'SALES_CASHIER'}:
                 raise HTTPException(403, 'Branch Managers may only assign authorized staff roles')
@@ -1811,6 +2021,25 @@ def to_staff_payload(user: UserAccount) -> dict:
     if isinstance(permissions, dict): permissions = permissions.get('permissions', [])
     return {'id': user.id, 'username': user.username, 'email': user.email, 'fullName': user.full_name, 'role': user.role, 'branchId': user.branch_id, 'active': user.active, 'createdAt': user.created_at, 'lastLogin': user.last_login, 'permissions': permissions if isinstance(permissions, list) else []}
 
+def permissions_for_user_record(user: UserAccount) -> list[str]:
+    try:
+        configured = json.loads(user.permissions_json or '[]')
+    except json.JSONDecodeError:
+        configured = []
+    if isinstance(configured, dict):
+        configured = configured.get('permissions', [])
+    return sorted(set(configured)) if isinstance(configured, list) else []
+
+def permissions_for_role(role: RoleDefinition) -> list[str]:
+    try:
+        configured = json.loads(role.permissions_json or '[]')
+    except json.JSONDecodeError:
+        configured = []
+    return sorted(set(configured)) if isinstance(configured, list) else []
+
+def to_role_payload(role_id: str, name: str, description: str, permissions: list[str], system: bool, created_at: str = '') -> dict:
+    return {'id': role_id, 'name': name, 'description': description, 'permissions': sorted(set(permissions)), 'system': system, 'createdAt': created_at}
+
 def to_customer_payload(customer: Customer) -> dict:
     return {'id': customer.id, 'branchId': customer.branch_id, 'name': customer.name, 'phone': customer.phone, 'email': customer.email, 'address': customer.address, 'customerType': customer.customer_type, 'creditLimit': customer.credit_limit, 'active': customer.active, 'createdAt': customer.created_at, 'updatedAt': customer.updated_at}
 
@@ -1841,10 +2070,10 @@ def template_for_document(document_templates: dict, document_type: str) -> dict:
             return selected
     return document_templates
 
-def to_sale_payload(record: SaleRecordModel) -> dict:
+def to_sale_payload(record: SaleRecordModel, actor_name: str = '') -> dict:
     try: details = json.loads(record.payload_json or '{}')
     except json.JSONDecodeError: details = {}
-    return {'id': record.id, 'saleNumber': record.sale_number, 'documentType': record.document_type, 'branchId': record.branch_id, 'actorUserId': record.actor_user_id, 'customerName': record.customer_name, 'status': record.status, 'subtotal': record.subtotal, 'discount': record.discount, 'tax': record.tax, 'total': record.total, 'amountPaid': record.amount_paid or 0, 'paymentStatus': record.payment_status or 'UNPAID', 'fulfilmentStatus': record.fulfilment_status or 'AWAITING_PAYMENT', 'createdAt': record.created_at, 'items': details.get('items', []), 'vatPercent': details.get('vatPercent', 0), 'notes': details.get('notes', ''), 'templateId': details.get('templateId', ''), 'templateName': details.get('templateName', ''), 'templateVersion': details.get('templateVersion', 0), 'templateSnapshot': details.get('template', {})}
+    return {'id': record.id, 'saleNumber': record.sale_number, 'documentType': record.document_type, 'branchId': record.branch_id, 'actorUserId': record.actor_user_id, 'actorUserName': actor_name or record.actor_user_id, 'customerName': record.customer_name, 'status': record.status, 'subtotal': record.subtotal, 'discount': record.discount, 'tax': record.tax, 'total': record.total, 'amountPaid': record.amount_paid or 0, 'paymentStatus': record.payment_status or 'UNPAID', 'fulfilmentStatus': record.fulfilment_status or 'AWAITING_PAYMENT', 'createdAt': record.created_at, 'items': details.get('items', []), 'vatPercent': details.get('vatPercent', 0), 'notes': details.get('notes', ''), 'templateId': details.get('templateId', ''), 'templateName': details.get('templateName', ''), 'templateVersion': details.get('templateVersion', 0), 'templateSnapshot': details.get('template', {})}
 
 def to_device_payload(device: DeviceActivation, branch_name: str) -> dict:
     return {'id': device.id, 'branchId': device.branch_id, 'branchName': branch_name, 'deviceName': device.device_name, 'activationCode': device.activation_code, 'deviceType': device.device_type, 'validity': device.validity, 'active': device.active, 'createdAt': device.created_at}
@@ -1894,13 +2123,7 @@ def verify_password(password: str, encoded: str) -> bool:
         return False
 
 def permissions_for(user: UserAccount, branch: Branch) -> list[str]:
-    defaults = {
-        'BRANCH_MANAGER': ['sales', 'quotations', 'invoices', 'payments', 'receipts', 'customers', 'suppliers', 'inventory_view', 'inventory', 'stock_receipts', 'purchases', 'stock_adjustments', 'material_release', 'financial_reports', 'system_settings', 'staff_management', 'edit_selling_prices'],
-        'SALES_OFFICER': ['sales', 'quotations', 'invoices', 'inventory_view', 'limited_reports'],
-        'CASHIER': ['invoice_view', 'payments', 'receipts', 'customers', 'payment_reports'],
-        'STOCK_MANAGER': ['inventory_view', 'inventory', 'stock_receipts', 'purchases', 'suppliers', 'stock_adjustments', 'material_release', 'stock_reports'],
-        'SALES_CASHIER': ['sales', 'quotations', 'invoices', 'payments', 'receipts', 'inventory_view'],
-    }
+    defaults = ROLE_DEFAULTS
     if user.role != 'BRANCH_MANAGER' and user.permissions_json:
         try:
             configured_user = json.loads(user.permissions_json)
@@ -1912,6 +2135,10 @@ def permissions_for(user: UserAccount, branch: Branch) -> list[str]:
                     return sorted(set(configured_user))
         except json.JSONDecodeError:
             pass
+    with Session(engine) as role_session:
+        role_definition = role_session.scalar(select(RoleDefinition).where(RoleDefinition.company_id == user.company_id, RoleDefinition.id == user.role))
+        if role_definition is not None:
+            return permissions_for_role(role_definition)
     if user.role == 'BRANCH_MANAGER' and branch.permissions_json:
         try:
             configured = json.loads(branch.permissions_json)

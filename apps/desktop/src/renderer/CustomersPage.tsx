@@ -27,7 +27,7 @@ export function CustomersPage({ session }: { session: AuthSession }) {
       const payload = { branchId: session.branchId, name: form.name, phone: form.phone, email: form.email, address: form.address, customerType: form.customerType, creditLimit: Number(form.creditLimit), active: form.active };
       const saved = editing ? await customersApi.update(editing.id, session.branchId, session.userId, payload) : await customersApi.create(session.branchId, session.userId, payload);
       setCustomers((current) => editing ? current.map((item) => item.id === saved.id ? saved : item) : [...current, saved].sort((a, b) => a.name.localeCompare(b.name)));
-      setEditing(null); setForm(blank); setOpen(false); setStatus(editing ? 'Customer updated.' : 'Customer saved.');
+      setEditing(null); setForm(blank); setOpen(true); setStatus(editing ? 'Customer updated.' : 'Customer saved.');
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to save customer.'); }
   };
   const edit = (customer: CustomerRecord) => { setEditing(customer); setForm({ name: customer.name, phone: customer.phone, email: customer.email, address: customer.address, customerType: customer.customerType, creditLimit: String(customer.creditLimit), active: customer.active }); setOpen(true); setError(''); };

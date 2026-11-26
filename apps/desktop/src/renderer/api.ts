@@ -216,6 +216,31 @@ export const staffApi = {
     request<StaffAccount[]>('/api/company-users', {
       headers: ownerHeaders(),
     }),
+  companyCreate: (payload: {
+    branchId: string;
+    username: string;
+    email: string;
+    fullName: string;
+    role: string;
+    password: string;
+    permissions?: string[];
+  }) =>
+    request<StaffAccount>('/api/company-users', {
+      method: 'POST', headers: ownerHeaders(), body: JSON.stringify(payload),
+    }),
+  companyUpdate: (id: string, payload: { fullName?: string; email?: string; role?: string; branchId?: string; active?: boolean; permissions?: string[] }) =>
+    request<StaffAccount>(`/api/company-users/${encodeURIComponent(id)}`, {
+      method: 'PATCH', headers: ownerHeaders(), body: JSON.stringify(payload),
+    }),
+  companyResetPassword: (id: string, password: string) =>
+    request<StaffAccount>(`/api/company-users/${encodeURIComponent(id)}/reset-password`, {
+      method: 'POST', headers: ownerHeaders(), body: JSON.stringify({ password }),
+    }),
+  roles: () => request<RoleDefinition[]>('/api/roles', { headers: ownerHeaders() }),
+  createRole: (payload: { name: string; description: string; permissions: string[] }) =>
+    request<RoleDefinition>('/api/roles', { method: 'POST', headers: ownerHeaders(), body: JSON.stringify(payload) }),
+  updateRole: (id: string, payload: { name: string; description: string; permissions: string[] }) =>
+    request<RoleDefinition>(`/api/roles/${encodeURIComponent(id)}`, { method: 'PATCH', headers: ownerHeaders(), body: JSON.stringify(payload) }),
   list: (branchId: string, userId: string) =>
     request<StaffAccount[]>(
       `/api/staff?branchId=${encodeURIComponent(branchId)}`,
@@ -285,6 +310,15 @@ export const staffApi = {
           : ownerHeaders(),
       },
     ),
+};
+
+export type RoleDefinition = {
+  id: string;
+  name: string;
+  description: string;
+  permissions: string[];
+  system: boolean;
+  createdAt: string;
 };
 
 export type CustomerRecord = {

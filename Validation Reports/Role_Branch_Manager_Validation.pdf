@@ -1,0 +1,76 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Length 1089 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 16 Tf
+36 806 Td
+(Detailed Role Validation  Branch Manager) Tj
+/F1 9 Tf
+0 -18 Td
+(YenkasaBuildersStock | Role validation audit | 26 November 2026) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(Branch-manager authority: branch-scoped staff administration within owner-delegated limits.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(MGR-01 Independent branch-manager login without an owner session: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(MGR-02 Create, edit, reset and deactivate branch staff accounts: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(MGR-03 Combine Cashier and Sales permissions when delegated: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(MGR-04 Cross-company and cross-branch staff access is denied: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(MGR-05 Owner-only system settings and branch-management delegation is denied: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(MGR-06 Staff permission changes are persisted in local SQLite and audited: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(Limitation: configured cloud sync and stale-session revocation need a connected sync backend for) Tj
+0 -13 Td
+(final production validation.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+ET
+endstream
+endobj
+3 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 595 842] /Contents 2 0 R >>
+endobj
+5 0 obj
+<< /Type /Catalog /Pages 3 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000001259 00000 n 
+0000001316 00000 n 
+0000001403 00000 n 
+trailer
+<< /Size 6 /Root 5 0 R >>
+startxref
+1452
+%%EOF

@@ -19,105 +19,6 @@ import type {
 } from '@yenkasa/contracts';
 import { companyApi, salesApi } from './api';
 
-const fallbackProducts: SalesProduct[] = [
-  {
-    sku: 'CEM-001',
-    barcode: '615110000003',
-    name: 'Dangote Cement (50kg)',
-    category: 'Cement',
-    brand: 'Dangote',
-    productType: 'Rapid Strength Cement',
-    variant: '42.5R · 50kg bag',
-    stock: 320,
-    unit: 'Bag',
-    price: 90,
-  },
-  {
-    sku: 'IRO-012',
-    barcode: '615110000012',
-    name: 'Iron Rod 12mm (12m)',
-    category: 'Iron Rods',
-    brand: 'TOR',
-    productType: 'High Yield Reinforcement Bar',
-    variant: '12mm · 12m length',
-    stock: 150,
-    unit: 'Piece',
-    price: 185,
-  },
-  {
-    sku: 'BLO-006',
-    barcode: '615110000021',
-    name: 'Hollow Block (6 inch)',
-    category: 'Blocks',
-    brand: 'Local Manufacture',
-    productType: 'Hollow Concrete Block',
-    variant: '6 inch · standard',
-    stock: 4200,
-    unit: 'Piece',
-    price: 8.5,
-  },
-  {
-    sku: 'PAI-020',
-    barcode: '615110000031',
-    name: 'Paint (Emulsion) 20L - White',
-    category: 'Paints',
-    brand: 'ABC Paints',
-    productType: 'Emulsion Paint',
-    variant: '20L · White',
-    stock: 28,
-    unit: 'Tin',
-    price: 460,
-  },
-  {
-    sku: 'PVC-002',
-    barcode: '615110000041',
-    name: 'PVC Pipe 2" (6m)',
-    category: 'Plumbing',
-    brand: 'WAVIN',
-    productType: 'uPVC Pressure Pipe',
-    variant: '2 inch · 6m length',
-    stock: 85,
-    unit: 'Piece',
-    price: 75,
-  },
-  {
-    sku: 'ROO-035',
-    barcode: '615110000051',
-    name: 'Roofing Sheet 0.35mm',
-    category: 'Roofing',
-    brand: 'Aluzinc',
-    productType: 'Corrugated Roofing Sheet',
-    variant: '0.35mm · 3m length',
-    stock: 120,
-    unit: 'Sheet',
-    price: 230,
-  },
-  {
-    sku: 'BWI-025',
-    barcode: '615110000061',
-    name: 'Binding Wire (25kg)',
-    category: 'Hardware',
-    brand: 'Local Manufacture',
-    productType: 'Binding Wire',
-    variant: '25kg roll',
-    stock: 42,
-    unit: 'Roll',
-    price: 320,
-  },
-  {
-    sku: 'TIL-060',
-    barcode: '615110000071',
-    name: 'Ceramic Tile (60 × 60)',
-    category: 'Tiles',
-    brand: 'MaxTile',
-    productType: 'Ceramic Floor Tile',
-    variant: '60 × 60cm · assorted',
-    stock: 310,
-    unit: 'Box',
-    price: 95,
-  },
-];
-
 type Mode = 'QUOTATION' | 'INVOICE';
 type SalesView = 'CREATE' | 'HISTORY';
 type CartItem = SaleLineItem & { product: SalesProduct };
@@ -128,8 +29,8 @@ const money = (value: number) =>
 export function SalesPage({ session }: { session: AuthSession }) {
   const [mode, setMode] = useState<Mode>('INVOICE');
   const [view, setView] = useState<SalesView>('CREATE');
-  const [products, setProducts] = useState<SalesProduct[]>(fallbackProducts);
-  const [selectedProduct, setSelectedProduct] = useState(fallbackProducts[0]);
+  const [products, setProducts] = useState<SalesProduct[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<SalesProduct | null>(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
   const [brand, setBrand] = useState('All');
@@ -137,38 +38,7 @@ export function SalesPage({ session }: { session: AuthSession }) {
   const [customer, setCustomer] = useState('Walk-in Customer');
   const [notes, setNotes] = useState('');
   const [vatEnabled, setVatEnabled] = useState(true);
-  const [cart, setCart] = useState<CartItem[]>([
-    {
-      product: fallbackProducts[0],
-      sku: fallbackProducts[0].sku,
-      name: fallbackProducts[0].name,
-      quantity: 10,
-      unit: fallbackProducts[0].unit,
-      unitPrice: fallbackProducts[0].price,
-      discountPercent: 0,
-      amount: fallbackProducts[0].price * 10,
-    },
-    {
-      product: fallbackProducts[1],
-      sku: fallbackProducts[1].sku,
-      name: fallbackProducts[1].name,
-      quantity: 5,
-      unit: fallbackProducts[1].unit,
-      unitPrice: fallbackProducts[1].price,
-      discountPercent: 0,
-      amount: fallbackProducts[1].price * 5,
-    },
-    {
-      product: fallbackProducts[2],
-      sku: fallbackProducts[2].sku,
-      name: fallbackProducts[2].name,
-      quantity: 50,
-      unit: fallbackProducts[2].unit,
-      unitPrice: fallbackProducts[2].price,
-      discountPercent: 0,
-      amount: fallbackProducts[2].price * 50,
-    },
-  ]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
@@ -233,11 +103,20 @@ export function SalesPage({ session }: { session: AuthSession }) {
             }),
           );
           setCatalogStatus(`${items.length} structured products available`);
-        } else setCatalogStatus('No active products in this branch catalogue.');
+        } else {
+          setProducts([]);
+          setSelectedProduct(null);
+          setCart([]);
+          setCatalogStatus('No active products in this branch catalogue.');
+        }
       })
       .catch(() => {
-        if (active)
-          setCatalogStatus('Using the offline catalogue until sync returns.');
+        if (active) {
+          setProducts([]);
+          setSelectedProduct(null);
+          setCart([]);
+          setCatalogStatus('Branch catalogue unavailable. Register or sync products before creating a document.');
+        }
       });
     companyApi
       .get()
@@ -301,7 +180,11 @@ export function SalesPage({ session }: { session: AuthSession }) {
   const vat = vatEnabled ? subtotal * 0.15 : 0;
   const total = subtotal + vat;
 
-  const addToCart = (product: SalesProduct = selectedProduct, quantity = 1) => {
+  const addToCart = (product: SalesProduct | null = selectedProduct, quantity = 1) => {
+    if (!product) {
+      setError('Select a product from the active branch catalogue first.');
+      return;
+    }
     setCart((current) => {
       const existing = current.find((item) => item.sku === product.sku);
       if (existing)

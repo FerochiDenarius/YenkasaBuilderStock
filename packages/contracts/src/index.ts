@@ -164,7 +164,7 @@ export interface StaffAccount {
   username: string;
   email: string;
   fullName: string;
-  role: BranchRole;
+  role: BranchRole | 'OWNER' | 'HQ_ADMIN' | string;
   branchId: string;
   branchName?: string;
   active: boolean;
@@ -225,6 +225,7 @@ export interface SaleRecord {
   documentType: 'SALE' | 'QUOTATION' | 'INVOICE';
   branchId: string;
   actorUserId?: string;
+  actorUserName?: string;
   customerName: string;
   status: string;
   subtotal: number;
@@ -254,6 +255,11 @@ export interface PaymentRecord {
   evidenceNote: string;
   receiptNumber: string;
   createdAt: string;
+  invoiceNumber?: string;
+  customerName?: string;
+  cashierName?: string;
+  paymentStatus?: string;
+  invoiceCreatedAt?: string;
 }
 
 export interface ReceiptRecord {

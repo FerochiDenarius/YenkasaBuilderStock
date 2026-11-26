@@ -9,18 +9,19 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import type { StaffAccount } from '@yenkasa/contracts';
-import { staffApi } from './api';
+import type { Branch, StaffAccount } from '@yenkasa/contracts';
+import { branchApi, staffApi, type RoleDefinition } from './api';
 
 type Form = {
   fullName: string;
   username: string;
   email: string;
-  role: 'STOCK_MANAGER' | 'SALES_OFFICER' | 'CASHIER' | 'SALES_CASHIER';
+  role: string;
   password: string;
   permissions: string[];
+  branchId: string;
 };
-type EditForm = { fullName: string; email: string; role: Form['role']; permissions: string[] };
+type EditForm = { fullName: string; email: string; role: string; permissions: string[]; branchId: string };
 type SessionLike = { userId: string; branchId: string; role: string };
 const permissionOptions = [
   ['sales', 'Sales & Invoices'],
@@ -43,6 +44,7 @@ const permissionOptions = [
 ] as const;
 const defaultPermissions = (role: string) => {
   const defaults: Record<string, string[]> = {
+    BRANCH_MANAGER: ['sales', 'quotations', 'invoices', 'payments', 'receipts', 'customers', 'suppliers', 'inventory_view', 'inventory', 'stock_receipts', 'purchases', 'stock_adjustments', 'material_release', 'financial_reports', 'system_settings', 'staff_management', 'edit_selling_prices'],
     STOCK_MANAGER: ['inventory_view', 'inventory', 'stock_receipts', 'purchases', 'suppliers', 'stock_adjustments', 'material_release', 'stock_reports'],
     SALES_OFFICER: ['sales', 'quotations', 'invoices', 'inventory_view', 'customers', 'limited_reports'],
     CASHIER: ['invoice_view', 'payments', 'receipts', 'payment_reports'],
@@ -57,19 +59,43 @@ const blank: Form = {
   role: 'STOCK_MANAGER',
   password: '',
   permissions: defaultPermissions('STOCK_MANAGER'),
+  branchId: '',
 };
+
+const permissionMatrix = [
+  { module: 'Dashboard', view: 'inventory_view', manage: undefined, approve: undefined, print: undefined },
+  { module: 'Sales', view: 'sales', manage: 'sales', approve: undefined, print: 'invoices' },
+  { module: 'Invoices & Quotations', view: 'invoice_view', manage: 'invoices', approve: undefined, print: 'invoices' },
+  { module: 'Cashier & Payments', view: 'invoice_view', manage: 'payments', approve: 'payments', print: 'receipts' },
+  { module: 'Inventory', view: 'inventory_view', manage: 'inventory', approve: undefined, print: 'stock_reports' },
+  { module: 'Stock Adjustments', view: 'inventory_view', manage: undefined, approve: 'stock_adjustments', print: 'stock_reports' },
+  { module: 'Purchasing', view: 'purchases', manage: 'purchases', approve: undefined, print: 'stock_reports' },
+  { module: 'Material Release', view: 'material_release', manage: 'material_release', approve: 'material_release', print: 'material_release' },
+  { module: 'Customers', view: 'customers', manage: 'customers', approve: undefined, print: undefined },
+  { module: 'Reports', view: 'limited_reports', manage: undefined, approve: undefined, print: 'payment_reports' },
+  { module: 'Staff Accounts', view: 'staff_management', manage: 'staff_management', approve: undefined, print: undefined },
+  { module: 'Branch Management', view: 'branch_management', manage: 'branch_management', approve: undefined, print: undefined },
+  { module: 'Company Setup', view: 'company_setup', manage: 'company_setup', approve: undefined, print: undefined },
+  { module: 'System Settings', view: 'system_settings', manage: 'system_settings', approve: undefined, print: undefined },
+] as const;
 
 export function StaffAccountsPage() {
   const stored = readSession();
-  const ownerMode = !stored;
+  const ownerMode = !stored && Boolean(sessionStorage.getItem('yenkasa-owner-session'));
   const managerMode = stored?.role === 'BRANCH_MANAGER';
   const [accounts, setAccounts] = useState<StaffAccount[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [roles, setRoles] = useState<RoleDefinition[]>([]);
+  const [rolesOpen, setRolesOpen] = useState(false);
+  const [selectedRoleId, setSelectedRoleId] = useState('BRANCH_MANAGER');
+  const [roleDraft, setRoleDraft] = useState({ name: '', description: '', permissions: [] as string[] });
   const [form, setForm] = useState<Form>(blank);
   const [editForm, setEditForm] = useState<EditForm>({
     fullName: '',
     email: '',
     role: 'SALES_OFFICER',
     permissions: [],
+    branchId: '',
   });
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<StaffAccount | null>(null);
@@ -98,6 +124,16 @@ export function StaffAccountsPage() {
           ? await staffApi.list(stored.branchId, stored.userId)
           : [];
       setAccounts(list);
+      if (ownerMode) {
+        const [branchList, roleList] = await Promise.all([branchApi.list(), staffApi.roles()]);
+        setBranches(branchList);
+        setRoles(roleList);
+        const firstRole = roleList.find((role) => role.id === selectedRoleId) ?? roleList[0];
+        if (firstRole) {
+          setSelectedRoleId(firstRole.id);
+          setRoleDraft({ name: firstRole.name, description: firstRole.description, permissions: firstRole.permissions });
+        }
+      }
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : 'Unable to load users.',
@@ -105,7 +141,7 @@ export function StaffAccountsPage() {
     }
   };
   useEffect(() => {
-    load();
+    void load();
   }, []);
   const filtered = useMemo(
     () =>
@@ -157,15 +193,20 @@ export function StaffAccountsPage() {
       );
     }
   };
-  const saveEdit = async () => {
-    if (!editing || !stored || !managerMode) return;
+  const createOwnerUser = async () => {
+    if (!ownerMode || !form.branchId) { setError('Select the branch for this user.'); return; }
+    if (!form.fullName.trim() || !form.username.trim() || form.password.length < 8) { setError('Full name, username and a password of at least 8 characters are required.'); return; }
     try {
-      await staffApi.update(
-        editing.id,
-        stored.branchId,
-        stored.userId,
-        editForm,
-      );
+      await staffApi.companyCreate({ ...form, branchId: form.branchId });
+      await load(); setForm({ ...blank }); setOpen(false); setStatus('User account created securely'); setError('');
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to create user account.'); }
+  };
+  const saveEdit = async () => {
+    if (!editing) return;
+    try {
+      if (ownerMode) await staffApi.companyUpdate(editing.id, editForm);
+      else if (stored && managerMode) await staffApi.update(editing.id, stored.branchId, stored.userId, editForm);
+      else return;
       await load();
       setEditing(null);
       setStatus('Staff information updated');
@@ -178,11 +219,10 @@ export function StaffAccountsPage() {
     }
   };
   const toggle = async (account: StaffAccount) => {
-    if (!stored || !managerMode) return;
+    if (!ownerMode && (!stored || !managerMode)) return;
     try {
-      await staffApi.update(account.id, stored.branchId, stored.userId, {
-        active: !account.active,
-      });
+      if (ownerMode) await staffApi.companyUpdate(account.id, { active: !account.active });
+      else if (stored) await staffApi.update(account.id, stored.branchId, stored.userId, { active: !account.active });
       await load();
       setStatus(account.active ? 'Account deactivated' : 'Account reactivated');
     } catch (reason) {
@@ -194,17 +234,13 @@ export function StaffAccountsPage() {
     }
   };
   const resetPassword = async () => {
-    if (!resetting || !stored || !managerMode || newPassword.length < 8) {
+    if (!resetting || (!ownerMode && (!stored || !managerMode)) || newPassword.length < 8) {
       setError('Enter a new password with at least 8 characters.');
       return;
     }
     try {
-      await staffApi.resetPassword(
-        resetting.id,
-        stored.branchId,
-        stored.userId,
-        newPassword,
-      );
+      if (ownerMode) await staffApi.companyResetPassword(resetting.id, newPassword);
+      else if (stored) await staffApi.resetPassword(resetting.id, stored.branchId, stored.userId, newPassword);
       setResetting(null);
       setNewPassword('');
       setStatus('Password reset securely');
@@ -213,6 +249,27 @@ export function StaffAccountsPage() {
         reason instanceof Error ? reason.message : 'Unable to reset password.',
       );
     }
+  };
+  const selectRole = (role: RoleDefinition) => {
+    setSelectedRoleId(role.id);
+    setRoleDraft({ name: role.name, description: role.description, permissions: role.permissions });
+  };
+  const newRole = () => {
+    setSelectedRoleId('');
+    setRoleDraft({ name: '', description: '', permissions: [] });
+    setRolesOpen(true);
+  };
+  const toggleRolePermission = (permission: string) => setRoleDraft((current) => ({ ...current, permissions: current.permissions.includes(permission) ? current.permissions.filter((item) => item !== permission) : [...current.permissions, permission] }));
+  const saveRole = async () => {
+    try {
+      const saved = roles.find((role) => role.id === selectedRoleId)?.system
+        ? await staffApi.updateRole(selectedRoleId, roleDraft)
+        : selectedRoleId && roles.some((role) => role.id === selectedRoleId)
+          ? await staffApi.updateRole(selectedRoleId, roleDraft)
+          : await staffApi.createRole(roleDraft);
+      setRoles((current) => current.some((role) => role.id === saved.id) ? current.map((role) => role.id === saved.id ? saved : role) : [...current, saved]);
+      setSelectedRoleId(saved.id); setRoleDraft({ name: saved.name, description: saved.description, permissions: saved.permissions }); setStatus('Role permissions saved');
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to save role permissions.'); }
   };
   const showAudit = async () => {
     try {
@@ -239,6 +296,11 @@ export function StaffAccountsPage() {
           <div className="staff-hero-title"><div className="setup-title-icon"><Users size={28} /></div><div><h2>Staff Accounts</h2><p>Create and manage authorized staff for this branch.</p></div></div>
           <button className="primary-button" type="button" data-testid="staff-add" onClick={() => { setOpen(true); setError(''); }}><Plus size={16} /> Add Staff</button>
         </section>
+      ) : ownerMode ? (
+        <section className="staff-owner-hero">
+          <div className="staff-hero-title"><div className="setup-title-icon"><Users size={28} /></div><div><h2>Users &amp; Roles</h2><p>Create and manage user accounts, assign roles and control access across headquarters and branches.</p></div></div>
+          <div className="staff-owner-actions"><button className="outline compact-button" type="button" onClick={() => setRolesOpen(true)}><ShieldCheck size={15} /> Manage Roles</button><button className="primary-button compact-button" type="button" onClick={() => { setForm({ ...blank, branchId: branches[0]?.id ?? '' }); setOpen(true); setError(''); }}><Plus size={15} /> Add User</button></div>
+        </section>
       ) : (
         <section className="setup-title">
           <div className="setup-title-icon"><Users size={31} /></div>
@@ -249,13 +311,8 @@ export function StaffAccountsPage() {
         <div className="staff-stats">
           <Stat label="Total users" value={String(accounts.length)} />
           <Stat label="Active users" value={String(activeCount)} />
-          <Stat
-            label="Branch managers"
-            value={String(
-              accounts.filter((account) => account.role === 'BRANCH_MANAGER')
-                .length,
-            )}
-          />
+          <Stat label="Inactive users" value={String(accounts.length - activeCount)} />
+          <Stat label="Roles" value={String(roles.length)} />
         </div>
       )}
       <section className="panel staff-list">
@@ -276,6 +333,7 @@ export function StaffAccountsPage() {
             <ShieldCheck size={16} />
             Audit Log
           </button>
+          {ownerMode && <button className={rolesOpen ? 'active-tab' : ''} type="button" onClick={() => setRolesOpen((current) => !current)}><ShieldCheck size={16} /> Roles &amp; Permissions</button>}
           <div className="staff-filters">
             <input
               data-testid="staff-search"
@@ -306,7 +364,9 @@ export function StaffAccountsPage() {
             </select>
           </div>
         </div>
-        {auditOpen ? (
+        {rolesOpen ? (
+          <RolePermissionsPanel roles={roles} selectedRoleId={selectedRoleId} roleDraft={roleDraft} onSelect={selectRole} onToggle={toggleRolePermission} onChange={setRoleDraft} onSave={() => void saveRole()} onNew={newRole} />
+        ) : auditOpen ? (
           <AuditRows rows={audit} />
         ) : (
           <>
@@ -324,16 +384,16 @@ export function StaffAccountsPage() {
                     key={account.id}
                     account={account}
                     index={index + 1}
-                    ownerMode={ownerMode}
                     onEdit={() => {
                       setEditing(account);
                       setEditForm({
                         fullName: account.fullName,
                         email: account.email,
-                        role: account.role === 'BRANCH_MANAGER' ? 'SALES_OFFICER' : account.role,
+                        role: account.role,
                         permissions: account.permissions?.length
                           ? account.permissions
                           : defaultPermissions(account.role),
+                        branchId: account.branchId,
                       });
                     }}
                     onToggle={() => toggle(account)}
@@ -363,7 +423,9 @@ export function StaffAccountsPage() {
           form={form}
           setForm={setForm}
           onClose={() => setOpen(false)}
-          onCreate={create}
+          onCreate={ownerMode ? createOwnerUser : create}
+          ownerMode={ownerMode}
+          branches={branches}
         />
       )}
       {editing && (
@@ -372,6 +434,8 @@ export function StaffAccountsPage() {
           setForm={setEditForm}
           onClose={() => setEditing(null)}
           onSave={saveEdit}
+          ownerMode={ownerMode}
+          branches={branches}
         />
       )}
       {resetting && (
@@ -396,31 +460,66 @@ function readSession(): SessionLike | null {
 function StaffRow({
   account,
   index,
-  ownerMode,
   onEdit,
   onToggle,
   onReset,
 }: {
   account: StaffAccount;
   index: number;
-  ownerMode: boolean;
   onEdit: () => void;
   onToggle: () => void;
   onReset: () => void;
 }) {
-  const roleLabel = account.role === 'SALES_CASHIER' ? 'Sales + Cashier' : account.role === 'SALES_OFFICER' ? 'Sales Officer' : account.role === 'CASHIER' ? 'Cashier' : account.role === 'STOCK_MANAGER' ? 'Stock Manager' : 'Branch Manager';
-  return <div className="staff-row"><span className="staff-index">{index}</span><div className="staff-identity"><span className="staff-avatar">{account.fullName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</span><strong>{account.fullName}</strong></div><span className="staff-username">{account.username}</span><span className="staff-role-pill">{roleLabel}</span><span className={`status ${account.active ? 'in-stock' : 'out-of-stock'}`}>{account.active ? 'Active' : 'Inactive'}</span>{!ownerMode ? <div className="staff-actions"><button className="outline small-button" type="button" data-testid={`staff-edit-${account.id}`} onClick={onEdit}><Edit3 size={13} /> Edit</button><button className="outline small-button" type="button" data-testid={`staff-reset-${account.id}`} onClick={onReset}><KeyRound size={13} /> Reset Password</button><button className="outline small-button danger-button" type="button" onClick={onToggle}>{account.active ? 'Deactivate' : 'Reactivate'}</button></div> : <span />}</div>;
+  const roleLabel = account.role === 'OWNER' ? 'Owner' : account.role === 'SALES_CASHIER' ? 'Sales + Cashier' : account.role === 'SALES_OFFICER' ? 'Sales Officer' : account.role === 'CASHIER' ? 'Cashier' : account.role === 'STOCK_MANAGER' ? 'Stock Manager' : account.role === 'BRANCH_MANAGER' ? 'Branch Manager' : account.role;
+  const protectedOwner = account.role === 'OWNER';
+  return <div className="staff-row"><span className="staff-index">{index}</span><div className="staff-identity"><span className="staff-avatar">{account.fullName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</span><strong>{account.fullName}</strong></div><span className="staff-username">{account.username}</span><span className="staff-role-pill">{roleLabel}</span><span className={`status ${account.active ? 'in-stock' : 'out-of-stock'}`}>{account.active ? 'Active' : 'Inactive'}</span>{!protectedOwner ? <div className="staff-actions"><button className="outline small-button" type="button" data-testid={`staff-edit-${account.id}`} onClick={onEdit}><Edit3 size={13} /> Edit</button><button className="outline small-button" type="button" data-testid={`staff-reset-${account.id}`} onClick={onReset}><KeyRound size={13} /> Reset Password</button><button className="outline small-button danger-button" type="button" onClick={onToggle}>{account.active ? 'Deactivate' : 'Reactivate'}</button></div> : <span className="staff-protected">Protected</span>}</div>;
 }
+
+function RolePermissionsPanel({
+  roles,
+  selectedRoleId,
+  roleDraft,
+  onSelect,
+  onToggle,
+  onChange,
+  onSave,
+  onNew,
+}: {
+  roles: RoleDefinition[];
+  selectedRoleId: string;
+  roleDraft: { name: string; description: string; permissions: string[] };
+  onSelect: (role: RoleDefinition) => void;
+  onToggle: (permission: string) => void;
+  onChange: (draft: { name: string; description: string; permissions: string[] }) => void;
+  onSave: () => void;
+  onNew: () => void;
+}) {
+  return <div className="role-permissions-panel">
+    <div className="role-panel-toolbar"><div><h3>Roles &amp; Permissions</h3><p>Control the permissions available to each supported role. Changes are enforced by the backend.</p></div><button className="outline compact-button" type="button" onClick={onNew}><Plus size={14} /> New Custom Role</button></div>
+    <div className="role-panel-layout">
+      <div className="role-list">{roles.map((role) => <button key={role.id} className={role.id === selectedRoleId ? 'role-list-item active' : 'role-list-item'} type="button" onClick={() => onSelect(role)}><strong>{role.name}</strong><small>{role.description}</small>{role.system && <em>System role</em>}</button>)}</div>
+      <div className="permission-editor">
+        <div className="permission-editor-head"><div><label>Role name<input value={roleDraft.name} disabled={roles.find((role) => role.id === selectedRoleId)?.system === true} onChange={(event) => onChange({ ...roleDraft, name: event.target.value })} /></label><label>Description<input value={roleDraft.description} onChange={(event) => onChange({ ...roleDraft, description: event.target.value })} /></label></div><div className="permission-actions"><button className="outline compact-button" type="button" onClick={() => onChange({ ...roleDraft, permissions: [] })}>Reset</button><button className="primary-button compact-button" type="button" onClick={onSave}>Save Permissions</button></div></div>
+        <div className="permission-matrix"><div className="permission-matrix-head"><span>Module</span><span>View</span><span>Manage</span><span>Approve</span><span>Print / Export</span></div>{permissionMatrix.map((row) => <div className="permission-matrix-row" key={row.module}><strong>{row.module}</strong>{([row.view, row.manage, row.approve, row.print] as Array<string | undefined>).map((permission, index) => <label key={`${row.module}-${index}`}>{permission ? <input type="checkbox" checked={roleDraft.permissions.includes(permission)} onChange={() => onToggle(permission)} aria-label={`${row.module} ${['View', 'Manage', 'Approve', 'Print or Export'][index]}`} /> : <span className="permission-not-supported">—</span>}</label>)}</div>)}</div>
+      </div>
+    </div>
+  </div>;
+}
+
 function CreateModal({
   form,
   setForm,
   onClose,
   onCreate,
+  ownerMode,
+  branches,
 }: {
   form: Form;
   setForm: (form: Form) => void;
   onClose: () => void;
   onCreate: () => void;
+  ownerMode: boolean;
+  branches: Branch[];
 }) {
   return (
     <section className="panel staff-create">
@@ -460,12 +559,14 @@ function CreateModal({
               setForm({ ...form, role: event.target.value as Form['role'], permissions: defaultPermissions(event.target.value) })
             }
           >
+            {ownerMode && <option value="BRANCH_MANAGER">Branch Manager</option>}
             <option value="STOCK_MANAGER">Stock Manager / Storekeeper</option>
             <option value="SALES_OFFICER">Sales Officer</option>
             <option value="CASHIER">Cashier</option>
             <option value="SALES_CASHIER">Sales + Cashier (Combined)</option>
           </select>
         </label>
+        {ownerMode && <label>Branch<select value={form.branchId} onChange={(event) => setForm({ ...form, branchId: event.target.value })}><option value="">Select branch</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name} ({branch.code})</option>)}</select></label>}
         <Field
           label="Initial Password"
           type="password"
@@ -508,11 +609,15 @@ function EditModal({
   setForm,
   onClose,
   onSave,
+  ownerMode,
+  branches,
 }: {
   form: EditForm;
   setForm: (form: EditForm) => void;
   onClose: () => void;
   onSave: () => void;
+  ownerMode: boolean;
+  branches: Branch[];
 }) {
   return (
     <section className="panel staff-create staff-modal">
@@ -545,12 +650,14 @@ function EditModal({
               })
             }
           >
+            {ownerMode && <option value="BRANCH_MANAGER">Branch Manager</option>}
             <option value="STOCK_MANAGER">Stock Manager / Storekeeper</option>
             <option value="SALES_OFFICER">Sales Officer</option>
             <option value="CASHIER">Cashier</option>
             <option value="SALES_CASHIER">Sales + Cashier (Combined)</option>
           </select>
         </label>
+        {ownerMode && <label>Branch<select value={form.branchId} onChange={(event) => setForm({ ...form, branchId: event.target.value })}><option value="">Select branch</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name} ({branch.code})</option>)}</select></label>}
       </div>
       <fieldset className="staff-permission-grid">
         <legend>Branch permissions</legend>

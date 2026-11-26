@@ -1,0 +1,78 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Length 1121 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 16 Tf
+36 806 Td
+(Detailed Role Validation  Sales Officer) Tj
+/F1 9 Tf
+0 -18 Td
+(YenkasaBuildersStock | Role validation audit | 26 November 2026) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(Sales-officer authority: catalogue lookup, quotations, invoices and invoice printing/preview.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(SAL-01 Independent login without owner or manager session: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(SAL-02 Real branch catalogue item generates an unpaid invoice: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(SAL-03 Sales officer cannot collect or verify payments by default: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(SAL-04 Customer master and cashier reports are denied by default: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(SAL-05 Legacy BLO-006 fallback is no longer submitted; real BLO-HOL-006 catalogue SKU succeeds:) Tj
+0 -13 Td
+(PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(Root cause fixed: the former Sales UI fallback SKU did not exist in the branch catalogue.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(Limitation: report export/physical printer confirmation requires an operator with the target OS) Tj
+0 -13 Td
+(printer installed.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+ET
+endstream
+endobj
+3 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 595 842] /Contents 2 0 R >>
+endobj
+5 0 obj
+<< /Type /Catalog /Pages 3 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000001291 00000 n 
+0000001348 00000 n 
+0000001435 00000 n 
+trailer
+<< /Size 6 /Root 5 0 R >>
+startxref
+1484
+%%EOF

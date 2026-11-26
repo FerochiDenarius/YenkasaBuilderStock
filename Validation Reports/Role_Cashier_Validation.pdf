@@ -1,0 +1,82 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Length 1262 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 16 Tf
+36 806 Td
+(Detailed Role Validation  Cashier) Tj
+/F1 9 Tf
+0 -18 Td
+(YenkasaBuildersStock | Role validation audit | 26 November 2026) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(Cashier authority: invoice lookup/preview, payment collection, receipts and payment history.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(CASH-01 Independent login without owner or manager session: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(CASH-02 Search result opens a read-only invoice preview using the saved owner template: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(CASH-03 Payment history includes receipt, invoice, customer, cashier, timestamp, method, amount) Tj
+0 -13 Td
+(and status: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(CASH-04 Full cash payment changes invoice to PAID and fulfilment to AWAITING_RELEASE: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(CASH-05 Duplicate payment against a fully paid invoice returns 409: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(CASH-06 View Invoice, View Receipt and Reprint actions are record-linked: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(Evidence: Cashier_Invoice_Preview_Live.png and Cashier_Payment_History_Live.png.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(Limitation: electronic-provider verification remains manual until a provider integration is) Tj
+0 -13 Td
+(configured.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+ET
+endstream
+endobj
+3 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 595 842] /Contents 2 0 R >>
+endobj
+5 0 obj
+<< /Type /Catalog /Pages 3 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000001432 00000 n 
+0000001489 00000 n 
+0000001576 00000 n 
+trailer
+<< /Size 6 /Root 5 0 R >>
+startxref
+1625
+%%EOF

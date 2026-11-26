@@ -306,6 +306,36 @@ def test_sales_uses_branch_catalogue_prices_and_company_invoice_template_snapsho
     assert invoice.json()['templateVersion'] == 7
     assert client.post('/api/sales', json={'branchId': branch_id, 'documentType': 'INVOICE', 'customerName': 'No Auth', 'items': []}).status_code == 401
 
+def test_sales_rejects_legacy_fallback_sku_and_accepts_real_branch_catalogue_sku():
+    client = TestClient(app)
+    branch = client.post('/api/branches', headers=owner_headers(client), json={
+        'name': 'Catalogue Identifier Branch', 'code': 'CATID', 'location': 'Accra',
+        'manager': 'Catalogue Manager', 'managerUsername': 'catalogue.manager',
+        'managerPassword': 'CatalogueManager123',
+    }).json()
+    branch_id = branch['id']
+    manager = client.post('/api/auth/login', json={
+        'branchId': branch_id, 'username': 'catalogue.manager',
+        'password': 'CatalogueManager123', 'loginRole': 'BRANCH_MANAGER',
+    }).json()
+    headers = {'X-User-Id': manager['userId'], 'X-Branch-Id': branch_id}
+    catalogue = client.get(f'/api/products?branchId={branch_id}', headers=headers)
+    assert catalogue.status_code == 200
+    skus = {item['sku'] for item in catalogue.json()}
+    assert 'BLO-HOL-006' in skus
+    assert 'BLO-006' not in skus
+    valid = client.post('/api/sales', headers=headers, json={
+        'branchId': branch_id, 'documentType': 'INVOICE', 'customerName': 'Block Customer',
+        'vatPercent': 0, 'items': [{'sku': 'BLO-HOL-006', 'name': 'Hollow Block', 'quantity': 1, 'unit': 'Piece', 'unitPrice': 1, 'discountPercent': 0}],
+    })
+    assert valid.status_code == 200
+    legacy = client.post('/api/sales', headers=headers, json={
+        'branchId': branch_id, 'documentType': 'INVOICE', 'customerName': 'Legacy SKU Customer',
+        'vatPercent': 0, 'items': [{'sku': 'BLO-006', 'name': 'Hollow Block', 'quantity': 1, 'unit': 'Piece', 'unitPrice': 1, 'discountPercent': 0}],
+    })
+    assert legacy.status_code == 422
+    assert 'not available in this branch catalogue' in legacy.text
+
 def test_separate_branch_roles_receive_only_authorized_permissions():
     client = TestClient(app)
     branch = client.post('/api/branches', json={'name': 'Role Separation Branch', 'code': 'ROLESEP', 'location': 'Accra', 'manager': 'Role Manager', 'managerUsername': 'role.manager', 'managerPassword': 'RoleManagerPass123'}, headers=owner_headers(client)).json()
@@ -355,6 +385,12 @@ def test_branch_manager_can_assign_cashier_and_report_permissions_with_audit_saf
     }).json()
     assert 'sales' in cashier_login['permissions']
     assert client.post('/api/branch-actions/sales', headers={'X-User-Id': cashier_id, 'X-Branch-Id': branch_id}).status_code == 200
+    sales_only = client.post('/api/staff', headers=manager_headers, json={
+        'branchId': branch_id, 'username': 'reports.sales.only', 'fullName': 'Reports Sales Only',
+        'role': 'SALES_OFFICER', 'password': 'ReportsSalesOnly123',
+    })
+    assert sales_only.status_code == 200
+    assert client.get(f'/api/reports/cashier-summary?branchId={branch_id}&startDate=2000-01-01&endDate=2999-12-31', headers={'X-User-Id': sales_only.json()['id'], 'X-Branch-Id': branch_id}).status_code == 403
 
     product = client.get(f'/api/products?branchId={branch_id}', headers=manager_headers).json()[0]
     invoice = client.post('/api/sales', headers=manager_headers, json={
@@ -412,7 +448,91 @@ def test_customers_are_branch_scoped_and_available_to_cashier_not_sales_officer(
     assert client.get(f'/api/customers?branchId={branch_id}', headers=sales_headers).status_code == 403
     deactivated = client.delete(f"/api/customers/{customer.json()['id']}?branchId={branch_id}", headers=cashier_headers)
     assert deactivated.status_code == 200
+
+def test_owner_can_manage_individual_permissions_and_custom_roles():
+    client = TestClient(app)
+    owner = owner_headers(client)
+    branch = client.post('/api/branches', headers=owner, json={
+        'name': 'Owner Permissions Branch', 'code': 'OPERM', 'location': 'Accra',
+        'manager': 'Owner Permissions Manager', 'managerUsername': 'owner.permissions.manager',
+        'managerPassword': 'OwnerPermissions123',
+    }).json()
+    created = client.post('/api/company-users', headers=owner, json={
+        'branchId': branch['id'], 'username': 'owner.permissions.cashier', 'fullName': 'Owner Permissions Cashier',
+        'email': 'permissions.cashier@example.com', 'role': 'CASHIER', 'password': 'CashierPermissions123',
+        'permissions': ['invoice_view', 'payments', 'receipts'],
+    })
+    assert created.status_code == 200
+    user = created.json()
+    assert user['branchName'] == 'Owner Permissions Branch'
+    changed = client.patch(f"/api/company-users/{user['id']}", headers=owner, json={
+        'permissions': ['invoice_view'], 'active': True,
+    })
+    assert changed.status_code == 200
+    assert changed.json()['permissions'] == ['invoice_view']
+    login = client.post('/api/auth/login', json={
+        'branchId': branch['id'], 'username': 'owner.permissions.cashier',
+        'password': 'CashierPermissions123', 'loginRole': 'CASHIER',
+    })
+    assert login.status_code == 200
+    assert login.json()['permissions'] == ['invoice_view']
+    assert client.post('/api/branch-actions/payments', headers={'X-User-Id': user['id'], 'X-Branch-Id': branch['id']}).status_code == 403
+    custom = client.post('/api/roles', headers=owner, json={
+        'name': 'Read Only Cashier', 'description': 'Can view invoices without collecting payments',
+        'permissions': ['invoice_view'],
+    })
+    assert custom.status_code == 200
+    assert custom.json()['name'] == 'Read Only Cashier'
+    assert any(role['name'] == 'Read Only Cashier' for role in client.get('/api/roles', headers=owner).json())
+    deactivated = client.patch(f"/api/company-users/{user['id']}", headers=owner, json={'active': False})
+    assert deactivated.status_code == 200
+    assert client.post('/api/auth/login', json={
+        'branchId': branch['id'], 'username': 'owner.permissions.cashier',
+        'password': 'CashierPermissions123', 'loginRole': 'CASHIER',
+    }).status_code == 401
+    assert client.get('/api/company-audit-log', headers=owner).json()
     assert deactivated.json()['active'] is False
+
+def test_permission_registry_grant_and_revoke_matrix_and_manager_delegation_boundary():
+    from app.main import ASSIGNABLE_PERMISSIONS
+
+    client = TestClient(app)
+    owner = owner_headers(client)
+    branch = client.post('/api/branches', headers=owner, json={
+        'name': 'Permission Matrix Branch', 'code': 'PMAT', 'location': 'Accra',
+        'manager': 'Permission Matrix Manager', 'managerUsername': 'permission.matrix.manager',
+        'managerPassword': 'PermissionMatrixManager123',
+    }).json()
+    manager = client.post('/api/auth/login', json={
+        'branchId': branch['id'], 'username': 'permission.matrix.manager',
+        'password': 'PermissionMatrixManager123', 'loginRole': 'BRANCH_MANAGER',
+    }).json()
+    manager_headers = {'X-User-Id': manager['userId'], 'X-Branch-Id': branch['id']}
+    restricted = client.post('/api/staff', headers=manager_headers, json={
+        'branchId': branch['id'], 'username': 'permission.matrix.cashier', 'fullName': 'Permission Matrix Cashier',
+        'role': 'CASHIER', 'password': 'PermissionMatrixCashier123', 'permissions': ['system_settings'],
+    })
+    assert restricted.status_code == 422
+    user = client.post('/api/company-users', headers=owner, json={
+        'branchId': branch['id'], 'username': 'permission.matrix.user', 'fullName': 'Permission Matrix User',
+        'role': 'SALES_CASHIER', 'password': 'PermissionMatrixUser123', 'permissions': sorted(ASSIGNABLE_PERMISSIONS),
+    }).json()
+    login = client.post('/api/auth/login', json={
+        'branchId': branch['id'], 'username': 'permission.matrix.user',
+        'password': 'PermissionMatrixUser123', 'loginRole': 'SALES_CASHIER',
+    }).json()
+    assert set(login['permissions']) == ASSIGNABLE_PERMISSIONS
+    for permission in sorted(ASSIGNABLE_PERMISSIONS):
+        assert client.post(f'/api/branch-actions/{permission}', headers={'X-User-Id': user['id'], 'X-Branch-Id': branch['id']}).status_code == 200
+    revoked = client.patch(f"/api/company-users/{user['id']}", headers=owner, json={'permissions': []})
+    assert revoked.status_code == 200
+    relogin = client.post('/api/auth/login', json={
+        'branchId': branch['id'], 'username': 'permission.matrix.user',
+        'password': 'PermissionMatrixUser123', 'loginRole': 'SALES_CASHIER',
+    }).json()
+    assert relogin['permissions'] == []
+    for permission in sorted(ASSIGNABLE_PERMISSIONS):
+        assert client.post(f'/api/branch-actions/{permission}', headers={'X-User-Id': user['id'], 'X-Branch-Id': branch['id']}).status_code == 403
 
 def test_branch_manager_controls_sync_settings_and_owner_sees_branch_status(monkeypatch):
     monkeypatch.delenv('DATABASE_URL', raising=False)
@@ -551,9 +671,21 @@ def test_cashier_payment_workflow_is_branch_scoped_and_idempotent():
     }, json=payment_payload)
     assert duplicate.status_code == 200
     assert duplicate.json()['payment']['id'] == payment_data['payment']['id']
+    already_paid = client.post('/api/payments', headers={
+        'X-User-Id': cashier_login['userId'], 'X-Branch-Id': branch_id,
+    }, json={**payment_payload, 'idempotencyKey': 'cash-workflow-paid-again'})
+    assert already_paid.status_code == 409
+    payment_history = client.get(f'/api/payments/history?branchId={branch_id}', headers={
+        'X-User-Id': cashier_login['userId'], 'X-Branch-Id': branch_id,
+    })
+    assert payment_history.status_code == 200
+    history_row = next(row for row in payment_history.json() if row['id'] == payment_data['payment']['id'])
+    assert history_row['invoiceNumber'] == invoice_data['saleNumber']
+    assert history_row['customerName'] == 'Cash Workflow Customer'
+    assert history_row['cashierName'] == 'Cash Workflow Cashier'
     assert client.post('/api/payments', headers={
         'X-User-Id': cashier_login['userId'], 'X-Branch-Id': branch_id,
-    }, json={**payment_payload, 'idempotencyKey': 'cash-workflow-overpay', 'amount': 1}).status_code == 422
+    }, json={**payment_payload, 'idempotencyKey': 'cash-workflow-overpay', 'amount': 1}).status_code == 409
 
     sales_officer = client.post('/api/staff', headers={
         'X-User-Id': manager['userId'], 'X-Branch-Id': branch_id,

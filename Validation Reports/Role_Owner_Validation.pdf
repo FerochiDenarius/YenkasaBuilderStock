@@ -1,0 +1,84 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Length 1291 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 16 Tf
+36 806 Td
+(Detailed Role Validation  Owner) Tj
+/F1 9 Tf
+0 -18 Td
+(YenkasaBuildersStock | Role validation audit | 26 November 2026) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(Owner authority: company-wide users, roles, permissions, branches, branding and protected setup.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(OWN-01 Users & Roles page loads from persisted records: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(OWN-02 Role definitions and supported permission matrix load: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(OWN-03 Create/edit staff account, assign branch and reset password: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(OWN-04 Individual permission override persists and is applied on next login: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(OWN-05 Custom role creation and role permission save: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(OWN-06 Account activation/deactivation and audit logging: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(OWN-07 Primary owner remains protected from ordinary staff-row deletion: PASS.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(Evidence: Users_Roles_Owner_Permissions_Live.png and Users_Roles_Owner_Edit_User_Live.png.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+(Limitation: central PostgreSQL synchronization requires a configured synchronization service and) Tj
+0 -13 Td
+(was not claimed as passed in this run.) Tj
+0 -13 Td
+() Tj
+0 -13 Td
+ET
+endstream
+endobj
+3 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 595 842] /Contents 2 0 R >>
+endobj
+5 0 obj
+<< /Type /Catalog /Pages 3 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000001461 00000 n 
+0000001518 00000 n 
+0000001605 00000 n 
+trailer
+<< /Size 6 /Root 5 0 R >>
+startxref
+1654
+%%EOF
