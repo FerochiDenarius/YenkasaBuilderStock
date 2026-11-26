@@ -28,10 +28,23 @@ jobs:
           node-version: 22
           cache: npm
       - uses: actions/setup-python@v5
+        if: runner.os != 'Windows'
         with:
           python-version: '3.12'
       - run: npm ci
       - run: python -m venv services/local-api/.venv
+        if: runner.os != 'Windows'
+      - name: Create Windows Python environment
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $python = Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python*\python.exe" -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $python) {
+            $python = (Get-Command python -ErrorAction Stop).Source
+          }
+          & $python -m venv services/local-api/.venv
       - run: services/local-api/.venv/bin/python -m pip install -r services/local-api/requirements.txt -r services/local-api/requirements-build.txt
         if: runner.os != 'Windows'
       - run: services/local-api/.venv/Scripts/python.exe -m pip install -r services/local-api/requirements.txt -r services/local-api/requirements-build.txt
