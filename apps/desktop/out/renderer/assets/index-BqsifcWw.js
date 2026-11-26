@@ -7800,6 +7800,16 @@ const RefreshCw = createLucideIcon("RefreshCw", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
+const RotateCcw = createLucideIcon("RotateCcw", [
+  ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
+  ["path", { d: "M3 3v5h5", key: "1xhq8a" }]
+]);
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
 const Save = createLucideIcon("Save", [
   [
     "path",
@@ -8299,7 +8309,15 @@ const materialReleaseApi = {
     method: "POST",
     headers: { "X-User-Id": userId, "X-Branch-Id": branchId },
     body: JSON.stringify({ branchId, saleId, items })
-  })
+  }),
+  history: (branchId, userId, startDate = "", endDate = "") => {
+    const params = new URLSearchParams({ branchId });
+    if (startDate) params.set("startDate", startDate);
+    if (endDate) params.set("endDate", endDate);
+    return request(`/api/material-releases?${params.toString()}`, {
+      headers: { "X-User-Id": userId, "X-Branch-Id": branchId }
+    });
+  }
 };
 const fallback$1 = {
   registeredName: "Yenkasa Builders Supplies Ltd",
@@ -12070,11 +12088,12 @@ function BranchLoginPage({
         branchId,
         username,
         password,
-        loginRole: role
+        loginRole: role,
+        deviceId: branch?.deviceId
       });
       sessionStorage.setItem("yenkasa-session", JSON.stringify(result));
       if (remember) localStorage.setItem("yenkasa-remembered-user", username);
-      setStatus("Signed in securely");
+      setStatus(result.deviceActivationWarning || "Signed in securely");
       onAuthenticated(result);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to sign in.");
@@ -14928,6 +14947,7 @@ function CashierPage({ session }) {
   ] });
 }
 function MaterialReleasePage({ session }) {
+  const [screen, setScreen] = reactExports.useState("pending");
   const [invoices, setInvoices] = reactExports.useState([]);
   const [selected, setSelected] = reactExports.useState(null);
   const [quantities, setQuantities] = reactExports.useState({});
@@ -15022,6 +15042,9 @@ function MaterialReleasePage({ session }) {
     window.print();
     setStatus("Print dialog opened.");
   };
+  if (screen === "history") {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(MaterialReleaseHistory, { session, onPending: () => setScreen("pending") });
+  }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "release-page", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "release-title-row", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "release-title", children: [
@@ -15031,17 +15054,18 @@ function MaterialReleasePage({ session }) {
           /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Verify payment and release purchased materials from the branch store." })
         ] })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "release-branch-badge", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "release-title-actions", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "release-branch-badge", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(Truck, { size: 17 }),
         " ",
         session.branchName
-      ] })
+      ] }) })
     ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(MaterialReleaseTabs, { active: "pending", pendingCount: invoices.length, onPending: () => setScreen("pending"), onHistory: () => setScreen("history") }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "release-grid", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "panel release-search-panel", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(Search, { size: 21 }),
-          " Find paid invoice"
+          " Pending materials to release"
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "release-search-row", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -15057,7 +15081,7 @@ function MaterialReleasePage({ session }) {
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "primary-button", type: "button", onClick: () => void load(), children: "Search" })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("small", { className: "release-help", children: "Only fully paid invoices awaiting collection are shown." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("small", { className: "release-help", children: "All fully paid invoices awaiting collection are listed automatically. Search only filters this list." }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "release-invoice-list", children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: "Loading paid invoices…" }) : invoices.length ? invoices.map((invoice) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "button",
           {
@@ -15176,19 +15200,14 @@ function MaterialReleasePage({ session }) {
           /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: releasedInvoice.customerName })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("hr", {}),
-        releasedInvoice.releaseableItems.map((item) => {
-          const releasedQuantity = release.items.find((releasedItem) => releasedItem.sku === item.sku)?.quantity ?? 0;
-          return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: item.name }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("b", { children: [
-              releasedQuantity,
-              " of ",
-              item.quantity,
-              " ",
-              item.unit
-            ] })
-          ] }, item.sku);
-        }),
+        release.items.map((item) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: item.name }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("b", { children: [
+            item.quantity,
+            " ",
+            item.unit
+          ] })
+        ] }, item.sku)),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Payment verified" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: releasedInvoice.paymentStatus })
@@ -15226,18 +15245,13 @@ function MaterialReleasePage({ session }) {
         releasedInvoice.customerName
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("hr", {}),
-      releasedInvoice.releaseableItems.map((item) => {
-        const releasedQuantity = release.items.find((releasedItem) => releasedItem.sku === item.sku)?.quantity ?? 0;
-        return /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
-          item.name,
-          " — ",
-          releasedQuantity,
-          " of ",
-          item.quantity,
-          " ",
-          item.unit
-        ] }, item.sku);
-      }),
+      release.items.map((item) => /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+        item.name,
+        " — ",
+        item.quantity,
+        " ",
+        item.unit
+      ] }, item.sku)),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
         "Payment verified: ",
         releasedInvoice.paymentStatus
@@ -15252,6 +15266,225 @@ function MaterialReleasePage({ session }) {
         " · ",
         new Date(release.createdAt).toLocaleString("en-GH")
       ] })
+    ] })
+  ] });
+}
+function MaterialReleaseHistory({ session, onPending }) {
+  const [rows, setRows] = reactExports.useState([]);
+  const [query, setQuery] = reactExports.useState("");
+  const [statusFilter, setStatusFilter] = reactExports.useState("");
+  const [startDate, setStartDate] = reactExports.useState("");
+  const [endDate, setEndDate] = reactExports.useState("");
+  const [selected, setSelected] = reactExports.useState(null);
+  const [error, setError] = reactExports.useState("");
+  const [loading, setLoading] = reactExports.useState(true);
+  const loadHistory = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      setRows(await materialReleaseApi.history(session.branchId, session.userId, startDate, endDate));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to load material release history.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  reactExports.useEffect(() => {
+    void loadHistory();
+  }, [session.branchId, session.userId]);
+  const filtered = reactExports.useMemo(() => {
+    const term = query.trim().toLowerCase();
+    return rows.filter((row) => (!statusFilter || row.status === statusFilter) && (!term || [row.releaseNumber, row.invoiceNumber, row.receiptNumber, row.customerName].some((value) => value.toLowerCase().includes(term))));
+  }, [rows, query, statusFilter]);
+  const released = rows.filter((row) => row.status === "RELEASED").length;
+  const partial = rows.filter((row) => row.status === "PARTIALLY_RELEASED").length;
+  const print = async () => {
+    if (window.desktopBridge?.print) await window.desktopBridge.print();
+    else window.print();
+  };
+  const download = async () => {
+    await window.desktopBridge?.exportPdf?.(`Material-Release-${selected?.releaseNumber ?? "History"}.pdf`, "A4");
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "release-page release-history-page", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "release-title-row", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "release-title", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "release-title-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(PackageCheck, { size: 30 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Material Release History" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "View and manage material releases against their exact invoices and customer orders." })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "primary-button release-new-button", type: "button", onClick: onPending, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 20 }),
+        " Pending Materials"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(MaterialReleaseTabs, { active: "history", onPending, onHistory: () => void 0 }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "release-history-filters panel", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "release-history-search", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Search, { size: 18 }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("input", { "aria-label": "Search material releases", placeholder: "Search release no., invoice no. or customer...", value: query, onChange: (event) => setQuery(event.target.value) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "From" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(CalendarDays, { size: 16 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "date", value: startDate, onChange: (event) => setStartDate(event.target.value) })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "To" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(CalendarDays, { size: 16 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "date", value: endDate, onChange: (event) => setEndDate(event.target.value) })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Status" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: statusFilter, onChange: (event) => setStatusFilter(event.target.value), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "All Statuses" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "RELEASED", children: "Released" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "PARTIALLY_RELEASED", children: "Partially Released" })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "outline", type: "button", onClick: () => {
+        setQuery("");
+        setStatusFilter("");
+        setStartDate("");
+        setEndDate("");
+      }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCcw, { size: 16 }),
+        " Reset"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "primary-button", type: "button", onClick: () => void loadHistory(), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Search, { size: 16 }),
+        " Search"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "release-history-stats", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Total Releases" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: rows.length })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "green", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Released" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: released })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "amber", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Partially Released" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: partial })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("section", { className: "panel release-history-table-wrap", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "release-history-table", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "#" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Release Slip Number" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Invoice Number" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Customer" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Released By" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Release Date & Time" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Items" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Status" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Actions" })
+      ] }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: filtered.length ? filtered.map((row, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: index + 1 }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: row.releaseNumber }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.invoiceNumber }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.customerName }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.releasedBy }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: new Date(row.createdAt).toLocaleString("en-GH") }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.items.length }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `release-history-status ${row.status === "RELEASED" ? "released" : "partial"}`, children: row.status.replaceAll("_", " ") }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "release-history-actions", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { "aria-label": "View release slip", onClick: () => setSelected(row), children: /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 16 }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { "aria-label": "Print release slip", onClick: () => {
+            setSelected(row);
+            setTimeout(() => void print(), 0);
+          }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Printer, { size: 16 }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { "aria-label": "Download release slip", onClick: () => {
+            setSelected(row);
+            setTimeout(() => void download(), 0);
+          }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 16 }) })
+        ] }) })
+      ] }, row.id)) : /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 9, className: "reports-no-data", children: loading ? "Loading material releases..." : "No material releases match these filters." }) }) })
+    ] }) }),
+    error && /* @__PURE__ */ jsxRuntimeExports.jsx("small", { className: "release-error", role: "alert", children: error }),
+    selected && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cashier-modal-backdrop", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "release-slip-preview", role: "dialog", "aria-modal": "true", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-preview-header", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(PackageCheck, { size: 20 }),
+            " Release Slip Preview"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("small", { children: [
+            selected.invoiceNumber,
+            " · ",
+            selected.customerName
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { "aria-label": "Close release preview", onClick: () => setSelected(null), children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "release-slip-card", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "YenkasaBuildersStock" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "MATERIAL RELEASE SLIP" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("hr", {}),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Release No." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: selected.releaseNumber })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Receipt No." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: selected.receiptNumber || "—" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Invoice No." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: selected.invoiceNumber })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Customer" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: selected.customerName })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("hr", {}),
+        selected.items.map((item) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: item.name }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("b", { children: [
+            item.quantity,
+            " ",
+            item.unit
+          ] })
+        ] }, `${selected.id}-${item.sku}`)),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+          "Released by ",
+          selected.releasedBy,
+          " · ",
+          new Date(selected.createdAt).toLocaleString("en-GH")
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "cashier-preview-actions", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "outline", onClick: () => setSelected(null), children: "Close" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "outline", onClick: () => void download(), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 17 }),
+          " Download PDF"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "primary-button", onClick: () => void print(), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Printer, { size: 17 }),
+          " Print Slip"
+        ] })
+      ] })
+    ] }) })
+  ] });
+}
+function MaterialReleaseTabs({ active, pendingCount, onPending, onHistory }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "release-tabs", role: "tablist", "aria-label": "Material release views", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { type: "button", role: "tab", "aria-selected": active === "pending", className: active === "pending" ? "active" : "", onClick: onPending, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(ClipboardCheck, { size: 18 }),
+      " Pending Materials",
+      pendingCount !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: pendingCount })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { type: "button", role: "tab", "aria-selected": active === "history", className: active === "history" ? "active" : "", onClick: onHistory, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(PackageCheck, { size: 18 }),
+      " Release History"
     ] })
   ] });
 }
@@ -16646,7 +16879,8 @@ function InstallationWelcomePage({
   onOwnerLogin,
   onStaffLogin,
   onNewCompany,
-  onDatabase
+  onDatabase,
+  onHelp
 }) {
   const existingCompany = status.companyFound;
   const databaseReady = status.cloudConnected;
@@ -16691,13 +16925,13 @@ function InstallationWelcomePage({
       /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: databaseReady ? "Select how you would like to continue." : "Click Database Configuration below to get started." })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-access-grid", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(AccessCard, { icon: /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, {}), title: "Owner Login", description: "Access company setup, branding, branches, users and full system management.", action: "Login as Owner", onClick: onOwnerLogin, primary: false, disabled: !databaseReady }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(AccessCard, { icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Users, {}), title: "Branch / Staff Login", description: "Login as a branch manager, cashier, sales staff or stock manager to perform daily operations.", action: "Login as Staff", onClick: onStaffLogin, primary: true, disabled: !databaseReady }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(AccessCard, { icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Building2, {}), title: "Set Up New Company", description: existingCompany ? "A company already exists in this database. Connect to a different database to register another company." : "Register a new company, create an owner account and configure the first branch.", action: "Set Up New Company", onClick: onNewCompany, disabled: !databaseReady || existingCompany })
+      /* @__PURE__ */ jsxRuntimeExports.jsx(AccessCard, { icon: /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, {}), title: "Owner Login", description: "Access company setup, branding, branches, users and full system management.", action: "Login as Owner", onClick: onOwnerLogin, primary: false }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(AccessCard, { icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Users, {}), title: "Branch / Staff Login", description: "Login as a branch manager, cashier, sales staff or stock manager to perform daily operations.", action: "Login as Staff", onClick: onStaffLogin, primary: true }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(AccessCard, { icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Building2, {}), title: "Set Up New Company", description: existingCompany ? "A company already exists in this database. Connect to a different database to register another company." : "Register a new company locally, create an owner account and configure the first branch. Cloud sync can be connected later.", action: "Set Up New Company", onClick: onNewCompany, disabled: existingCompany })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-notice", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(Info, { size: 22 }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: !databaseReady ? "Database configuration is required before owner, staff or company setup access becomes available." : existingCompany ? "A company is already registered on this database. Use Owner Login or Branch / Staff Login to continue. To set up a different company, connect to a different database." : "Initial company setup becomes protected after the owner account is created." })
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: !databaseReady ? "Cloud sync is not configured. You can still use local setup and local accounts, then connect the cloud database later." : existingCompany ? "A company is already registered on this database. Use Owner Login or Branch / Staff Login to continue. To set up a different company, connect to a different database." : "Initial company setup becomes protected after the owner account is created." })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "installation-footer-actions", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { type: "button", onClick: onDatabase, children: [
@@ -16709,7 +16943,7 @@ function InstallationWelcomePage({
         /* @__PURE__ */ jsxRuntimeExports.jsx(Cloud, { size: 18 }),
         " Change Database"
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { type: "button", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { type: "button", onClick: onHelp, children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(CircleHelp, { size: 18 }),
         " Help"
       ] })
@@ -16983,7 +17217,7 @@ function Dashboard() {
     sessionStorage.removeItem("yenkasa-owner-session-data");
     setBranchSession(null);
     setOwnerSession(null);
-    setActive("Branch Login");
+    setActive("Installation Welcome");
     if (userId)
       fetch(
         `${window.desktopBridge?.apiBaseUrl ?? void 0 ?? "http://127.0.0.1:8765"}/api/auth/logout`,
@@ -17002,7 +17236,7 @@ function Dashboard() {
     sessionStorage.removeItem("yenkasa-owner-session");
     sessionStorage.removeItem("yenkasa-owner-session-data");
     setOwnerSession(null);
-    setActive("Branch Login");
+    setActive("Installation Welcome");
   };
   const navigate = (page) => {
     if (page === "Installation Welcome") {
@@ -17011,8 +17245,9 @@ function Dashboard() {
       return;
     }
     if (page === "Owner Login" && branchSession) {
-      sessionStorage.removeItem("yenkasa-session");
-      setBranchSession(null);
+      setActive("Dashboard");
+      setSidebarOpen(false);
+      return;
     }
     if (setupItems.some(([, label]) => label === page) && (!setupUnlocked || !!branchSession)) {
       setActive(installationStatus ? "Installation Welcome" : "Owner Login");
@@ -17091,19 +17326,7 @@ function Dashboard() {
                   ]
                 },
                 label
-              )) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "nav-section-label", children: "OWNER ACCOUNT" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "setup-subnav", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                "button",
-                {
-                  className: active === "Owner Login" ? "selected" : "",
-                  onClick: () => navigate("Owner Login"),
-                  children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(Crown, { size: 16 }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Owner Login" })
-                  ]
-                }
-              ) })
+              )) })
             ] }) : !setupUnlocked ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "nav-section-label", children: "OWNER ACCOUNT" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "setup-subnav", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -17179,6 +17402,7 @@ function Dashboard() {
           ] })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "dashboard-main", children: [
+          branchSession?.deviceActivationWarning && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "installation-notice", role: "status", children: branchSession.deviceActivationWarning }),
           !["Installation Welcome", "Reports", "Users & Roles", "Staff Accounts", "Business Information", "Business Branding", "Branches", "Owner Account", "Device Activation", "Cloud Database"].includes(active) && /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "dashboard-header", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               "button",
@@ -17214,7 +17438,8 @@ function Dashboard() {
                 setInitialSetupMode(true);
                 setActive("Business Information");
               },
-              onDatabase: () => setActive("Cloud Database")
+              onDatabase: () => setActive("Cloud Database"),
+              onHelp: () => window.alert("Choose Set Up New Company to work locally, or Configure Database to enable cloud synchronization. Existing users can use Owner Login or Branch / Staff Login without configuring cloud sync first.")
             }
           ) : active === "Branch Login" && !branchSession ? /* @__PURE__ */ jsxRuntimeExports.jsx(
             BranchLoginPage,

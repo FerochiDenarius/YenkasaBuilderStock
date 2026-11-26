@@ -41,7 +41,7 @@ jobs:
       - name: Create Windows Python environment
         if: runner.os == 'Windows'
         shell: cmd
-        run: '"C:\Users\Optimus Prime\AppData\Local\Programs\Python\Python313\python.exe" -m venv services\local-api\.venv'
+        run: python -m venv services\local-api\.venv
       - run: services/local-api/.venv/bin/python -m pip install -r services/local-api/requirements.txt -r services/local-api/requirements-build.txt
         if: runner.os != 'Windows'
       - run: services/local-api/.venv/Scripts/python.exe -m pip install -r services/local-api/requirements.txt -r services/local-api/requirements-build.txt
