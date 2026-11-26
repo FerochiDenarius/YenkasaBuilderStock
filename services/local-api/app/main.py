@@ -1790,6 +1790,46 @@ def create_material_release(payload: MaterialReleasePayload, request: Request) -
         session.commit(); session.refresh(record); session.refresh(sale)
         return {'release': to_release_payload(record), 'invoice': to_sale_payload(sale), 'remainingItems': releaseable_items(session, sale, actor.company_id, actor.branch_id)}
 
+@app.get('/api/material-releases')
+def material_release_history(branchId: str, request: Request, startDate: str = '', endDate: str = '') -> list[dict]:
+    actor = require_any_permission(request, BRANCH_ROLES, branchId, {'material_release', 'stock_reports', 'financial_reports'})
+    start, end = report_date_bounds(startDate, endDate) if startDate or endDate else ('', '')
+    with Session(engine) as session:
+        query = select(MaterialReleaseModel).where(
+            MaterialReleaseModel.company_id == actor.company_id,
+            MaterialReleaseModel.branch_id == actor.branch_id,
+        )
+        if start:
+            query = query.where(MaterialReleaseModel.created_at >= start, MaterialReleaseModel.created_at <= end)
+        releases = session.scalars(query.order_by(MaterialReleaseModel.created_at.desc())).all()
+        sale_ids = {row.sale_id for row in releases}
+        user_ids = {row.storekeeper_user_id for row in releases}
+        sales = {row.id: row for row in session.scalars(select(SaleRecordModel).where(
+            SaleRecordModel.company_id == actor.company_id,
+            SaleRecordModel.branch_id == actor.branch_id,
+            SaleRecordModel.id.in_(sale_ids),
+        )).all()} if sale_ids else {}
+        users = {row.id: row.full_name for row in session.scalars(select(UserAccount).where(
+            UserAccount.company_id == actor.company_id,
+            UserAccount.branch_id == actor.branch_id,
+            UserAccount.id.in_(user_ids),
+        )).all()} if user_ids else {}
+        receipts = session.scalars(select(ReceiptRecordModel).where(
+            ReceiptRecordModel.company_id == actor.company_id,
+            ReceiptRecordModel.branch_id == actor.branch_id,
+            ReceiptRecordModel.sale_id.in_(sale_ids),
+        ).order_by(ReceiptRecordModel.created_at.desc())).all() if sale_ids else []
+        receipt_by_sale: dict[str, str] = {}
+        for receipt in receipts:
+            receipt_by_sale.setdefault(receipt.sale_id, receipt.receipt_number)
+        return [dict(
+            to_release_payload(row),
+            invoiceNumber=sales[row.sale_id].sale_number if row.sale_id in sales else '',
+            receiptNumber=receipt_by_sale.get(row.sale_id, ''),
+            customerName=sales[row.sale_id].customer_name if row.sale_id in sales else '',
+            releasedBy=users.get(row.storekeeper_user_id, 'Unknown user'),
+        ) for row in releases]
+
 @app.get('/api/staff')
 def list_staff(branchId: str, request: Request) -> list[dict]:
     actor = require_actor(request, {'BRANCH_MANAGER'}, branchId)

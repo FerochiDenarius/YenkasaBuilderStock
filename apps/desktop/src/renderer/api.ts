@@ -9,6 +9,7 @@ import type {
   PaymentRecord,
   PurchaseRecord,
   ReceiptRecord,
+  MaterialReleaseHistoryRecord,
   MaterialReleaseRecord,
   SaleRecord,
   SalesProduct,
@@ -611,4 +612,12 @@ export const materialReleaseApi = {
       headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
       body: JSON.stringify({ branchId, saleId, items }),
     }),
+  history: (branchId: string, userId: string, startDate = '', endDate = '') => {
+    const params = new URLSearchParams({ branchId });
+    if (startDate) params.set('startDate', startDate);
+    if (endDate) params.set('endDate', endDate);
+    return request<MaterialReleaseHistoryRecord[]>(`/api/material-releases?${params.toString()}`, {
+      headers: { 'X-User-Id': userId, 'X-Branch-Id': branchId },
+    });
+  },
 };

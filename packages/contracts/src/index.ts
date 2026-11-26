@@ -294,3 +294,10 @@ export interface MaterialReleaseRecord {
   items: MaterialReleaseItem[];
   createdAt: string;
 }
+
+export interface MaterialReleaseHistoryRecord extends MaterialReleaseRecord {
+  invoiceNumber: string;
+  receiptNumber: string;
+  customerName: string;
+  releasedBy: string;
+}
