@@ -42,9 +42,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          $python = Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python*\python.exe" -ErrorAction SilentlyContinue |
-            Sort-Object FullName -Descending |
-            Select-Object -First 1 -ExpandProperty FullName
+          $python = Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python*\python.exe" -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
           if (-not $python) {
             $python = (Get-Command python -ErrorAction Stop).Source
           }
