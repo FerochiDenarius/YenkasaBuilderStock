@@ -55,8 +55,18 @@ ROLE_LABELS = {
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', extra='ignore')
     local_database_url: str = 'sqlite:///./data/yenkasa-local.db'
+    app_env: str = 'production'
+    device_activation_required: bool = True
 
 settings = Settings()
+
+def device_activation_enforced() -> bool:
+    """Fail closed outside an explicitly configured development/test process."""
+    environment = settings.app_env.strip().lower()
+    return environment not in {'development', 'dev', 'test', 'testing'} or settings.device_activation_required
+
+def device_activation_bypass_enabled() -> bool:
+    return not device_activation_enforced()
 packaged_data_dir = os.getenv('YENKASA_DATA_DIR', '').strip()
 if packaged_data_dir:
     packaged_path = Path(packaged_data_dir)
@@ -833,6 +843,7 @@ def owner_activity(request: Request) -> list[dict]:
         'owner_security_updated': 'Security', 'branch_manager_created': 'Branch',
         'staff_created': 'User Management', 'staff_updated': 'User Management',
         'staff_password_reset': 'User Management', 'device_created': 'Device Activation',
+        'device_activation_bypassed': 'Device Activation',
     }
     with Session(engine) as session:
         rows = session.scalars(select(AuditLog).where(AuditLog.company_id == 1).order_by(AuditLog.created_at.desc())).all()
@@ -992,8 +1003,18 @@ def list_branches(request: Request) -> list[dict]:
 @app.get('/api/activated-branches')
 def list_activated_branches() -> list[dict]:
     with Session(engine) as session:
-        activated_ids = select(DeviceActivation.branch_id).where(DeviceActivation.company_id == 1, DeviceActivation.active == True)
-        return [to_branch_payload(branch) for branch in session.scalars(select(Branch).where(Branch.company_id == 1, Branch.status == 'Active', Branch.id.in_(activated_ids)).order_by(Branch.name))]
+        devices = session.scalars(select(DeviceActivation).where(DeviceActivation.company_id == 1, DeviceActivation.active == True).order_by(DeviceActivation.created_at.desc())).all()
+        device_by_branch = {device.branch_id: device.id for device in devices}
+        query = select(Branch).where(Branch.company_id == 1, Branch.status == 'Active')
+        if device_activation_enforced():
+            query = query.where(Branch.id.in_(device_by_branch))
+        branches = []
+        for branch in session.scalars(query.order_by(Branch.name)):
+            item = to_branch_payload(branch)
+            item['deviceId'] = device_by_branch.get(branch.id, '')
+            item['deviceActivationRequired'] = device_activation_enforced()
+            branches.append(item)
+        return branches
 
 @app.get('/api/devices')
 def list_devices(request: Request) -> list[dict]:
@@ -1128,13 +1149,24 @@ def login(payload: LoginPayload, request: Request) -> dict:
         user = session.scalar(select(UserAccount).where(UserAccount.company_id == 1, UserAccount.branch_id == payload.branchId, (UserAccount.username == payload.username.strip().lower()) | (UserAccount.email == payload.username.strip().lower())))
         if user is None or not user.active or not verify_password(payload.password, user.password_hash): raise HTTPException(401, 'Incorrect username or password')
         if payload.loginRole not in BRANCH_ROLES or payload.loginRole != user.role: raise HTTPException(403, 'Selected login type does not match this account')
+        device = None
         if payload.deviceId:
             device = session.scalar(select(DeviceActivation).where(DeviceActivation.company_id == 1, DeviceActivation.branch_id == payload.branchId, DeviceActivation.id == payload.deviceId, DeviceActivation.active == True))
-            if device is None: raise HTTPException(403, 'This device is not activated for the selected branch')
+        activation_bypassed = device is None and device_activation_bypass_enabled()
+        if device is None and not activation_bypassed:
+            raise HTTPException(403, 'This device is not activated for the selected branch')
         user.last_login = now_iso()
         session.add(AuditLog(id=str(uuid4()), company_id=1, branch_id=payload.branchId, actor_user_id=user.id, action='login_success', target_user_id=user.id, created_at=now_iso()))
+        if activation_bypassed:
+            session.add(AuditLog(id=str(uuid4()), company_id=1, branch_id=payload.branchId, actor_user_id=user.id, action='device_activation_bypassed', target_user_id=payload.deviceId or 'unregistered-device', created_at=now_iso()))
         session.commit()
-        return {'userId': user.id, 'companyId': user.company_id, 'branchId': branch.id, 'branchName': branch.name, 'username': user.username, 'fullName': user.full_name, 'role': user.role, 'permissions': permissions_for(user, branch)}
+        return {
+            'userId': user.id, 'companyId': user.company_id, 'branchId': branch.id,
+            'branchName': branch.name, 'username': user.username, 'fullName': user.full_name,
+            'role': user.role, 'permissions': permissions_for(user, branch),
+            'deviceActivationBypassed': activation_bypassed,
+            'deviceActivationWarning': 'Development mode: this device is not activated. Authentication and permissions remain enforced.' if activation_bypassed else '',
+        }
 
 @app.post('/api/auth/logout')
 def logout(payload: dict) -> dict:

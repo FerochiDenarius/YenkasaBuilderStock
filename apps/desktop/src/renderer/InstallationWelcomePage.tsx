@@ -8,12 +8,14 @@ export function InstallationWelcomePage({
   onStaffLogin,
   onNewCompany,
   onDatabase,
+  onHelp,
 }: {
   status: InstallationStatus;
   onOwnerLogin: () => void;
   onStaffLogin: () => void;
   onNewCompany: () => void;
   onDatabase: () => void;
+  onHelp: () => void;
 }) {
   const existingCompany = status.companyFound;
   const databaseReady = status.cloudConnected;
@@ -37,12 +39,12 @@ export function InstallationWelcomePage({
         <p>{databaseReady ? 'Select how you would like to continue.' : 'Click Database Configuration below to get started.'}</p>
       </div>
       <div className="installation-access-grid">
-        <AccessCard icon={<ShieldCheck />} title="Owner Login" description="Access company setup, branding, branches, users and full system management." action="Login as Owner" onClick={onOwnerLogin} primary={false} disabled={!databaseReady} />
-        <AccessCard icon={<Users />} title="Branch / Staff Login" description="Login as a branch manager, cashier, sales staff or stock manager to perform daily operations." action="Login as Staff" onClick={onStaffLogin} primary disabled={!databaseReady} />
-        <AccessCard icon={<Building2 />} title="Set Up New Company" description={existingCompany ? 'A company already exists in this database. Connect to a different database to register another company.' : 'Register a new company, create an owner account and configure the first branch.'} action="Set Up New Company" onClick={onNewCompany} disabled={!databaseReady || existingCompany} />
+        <AccessCard icon={<ShieldCheck />} title="Owner Login" description="Access company setup, branding, branches, users and full system management." action="Login as Owner" onClick={onOwnerLogin} primary={false} />
+        <AccessCard icon={<Users />} title="Branch / Staff Login" description="Login as a branch manager, cashier, sales staff or stock manager to perform daily operations." action="Login as Staff" onClick={onStaffLogin} primary />
+        <AccessCard icon={<Building2 />} title="Set Up New Company" description={existingCompany ? 'A company already exists in this database. Connect to a different database to register another company.' : 'Register a new company locally, create an owner account and configure the first branch. Cloud sync can be connected later.'} action="Set Up New Company" onClick={onNewCompany} disabled={existingCompany} />
       </div>
-      <div className="installation-notice"><Info size={22} /><span>{!databaseReady ? 'Database configuration is required before owner, staff or company setup access becomes available.' : existingCompany ? 'A company is already registered on this database. Use Owner Login or Branch / Staff Login to continue. To set up a different company, connect to a different database.' : 'Initial company setup becomes protected after the owner account is created.'}</span></div>
-      <div className="installation-footer-actions"><button type="button" onClick={onDatabase}><Database size={18} /> {databaseReady ? 'Database Configuration' : 'Configure Database'}</button><button type="button" onClick={onDatabase}><Cloud size={18} /> Change Database</button><button type="button"><CircleHelp size={18} /> Help</button></div>
+      <div className="installation-notice"><Info size={22} /><span>{!databaseReady ? 'Cloud sync is not configured. You can still use local setup and local accounts, then connect the cloud database later.' : existingCompany ? 'A company is already registered on this database. Use Owner Login or Branch / Staff Login to continue. To set up a different company, connect to a different database.' : 'Initial company setup becomes protected after the owner account is created.'}</span></div>
+      <div className="installation-footer-actions"><button type="button" onClick={onDatabase}><Database size={18} /> {databaseReady ? 'Database Configuration' : 'Configure Database'}</button><button type="button" onClick={onDatabase}><Cloud size={18} /> Change Database</button><button type="button" onClick={onHelp}><CircleHelp size={18} /> Help</button></div>
     </section>
   );
 }

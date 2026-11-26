@@ -17,7 +17,7 @@ jobs:
           - os: macos-14
             command: dist:mac
             artifact: macos-arm64
-          - os: windows-latest
+          - os: [self-hosted, Windows, X64]
             command: dist:win
             artifact: windows-x64
     runs-on: ${{ matrix.os }}

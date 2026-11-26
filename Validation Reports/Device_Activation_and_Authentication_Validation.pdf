@@ -1,0 +1,364 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Length 2693 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 15 Tf
+36 806 Td
+(Device Activation and Authentication Validation) Tj
+0 -11 Td
+/F1 8 Tf
+0 -18 Td
+(YenkasaBuildersStock | Validation date: 26 November 2026) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(A. Root cause) Tj
+0 -11 Td
+/F1 8 Tf
+(--------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(The desktop stores owner, branch, staff and device activation records in a local SQLite file) Tj
+0 -11 Td
+/F1 8 Tf
+(under the operating-system-specific Electron userData directory. macOS and Windows therefore) Tj
+0 -11 Td
+/F1 8 Tf
+(use different local databases even on the same physical laptop.) Tj
+0 -11 Td
+/F1 8 Tf
+(The cloud database Configure/Test flow validates PostgreSQL connectivity but does not) Tj
+0 -11 Td
+/F1 8 Tf
+(synchronize authentication or device records. A successful database connection therefore did) Tj
+0 -11 Td
+/F1 8 Tf
+(not make the macOS owner account available in Windows.) Tj
+0 -11 Td
+/F1 8 Tf
+(Branch login listed only locally activated branches. The renderer did not send a device) Tj
+0 -11 Td
+/F1 8 Tf
+(identifier, while the backend checked activation only when a device identifier happened to be) Tj
+0 -11 Td
+/F1 8 Tf
+(supplied. This blocked a new Windows installation in the UI but did not provide complete) Tj
+0 -11 Td
+/F1 8 Tf
+(production enforcement at the API boundary.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(B. Implementation) Tj
+0 -11 Td
+/F1 8 Tf
+(--------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(Added backend settings APP_ENV and DEVICE_ACTIVATION_REQUIRED. The bypass exists only when) Tj
+0 -11 Td
+/F1 8 Tf
+(APP_ENV is development/dev/test/testing and DEVICE_ACTIVATION_REQUIRED is explicitly false.) Tj
+0 -11 Td
+/F1 8 Tf
+(Production is fail-closed: every packaged desktop forces APP_ENV=production and) Tj
+0 -11 Td
+/F1 8 Tf
+(DEVICE_ACTIVATION_REQUIRED=true. The backend also enforces activation in production even if a) Tj
+0 -11 Td
+/F1 8 Tf
+(false value is injected.) Tj
+0 -11 Td
+/F1 8 Tf
+(Development mode exposes active branches without activating them. Valid credentials remain) Tj
+0 -11 Td
+/F1 8 Tf
+(mandatory. Failed passwords and role mismatches are rejected before activation bypass is) Tj
+0 -11 Td
+/F1 8 Tf
+(considered.) Tj
+0 -11 Td
+/F1 8 Tf
+(Each development bypass creates a device_activation_bypassed AuditLog record and returns a) Tj
+0 -11 Td
+/F1 8 Tf
+(warning rendered non-blockingly in the authenticated dashboard. No DeviceActivation row is) Tj
+0 -11 Td
+/F1 8 Tf
+(created.) Tj
+0 -11 Td
+/F1 8 Tf
+(Activated branch responses now carry the matching device ID and the login request submits it,) Tj
+0 -11 Td
+/F1 8 Tf
+(so production verifies an active device belonging to the selected branch.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+ET
+endstream
+endobj
+3 0 obj
+<< /Length 2718 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 15 Tf
+36 806 Td
+(Device Activation and Authentication Validation) Tj
+0 -11 Td
+/F1 8 Tf
+0 -18 Td
+(YenkasaBuildersStock | Validation date: 26 November 2026) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(C. Modified files) Tj
+0 -11 Td
+/F1 8 Tf
+(--------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(services/local-api/app/main.py - settings, fail-closed enforcement, branch visibility, login) Tj
+0 -11 Td
+/F1 8 Tf
+(validation, warning and audit event.) Tj
+0 -11 Td
+/F1 8 Tf
+(apps/desktop/src/main/index.ts - packaged production environment lock and explicit development) Tj
+0 -11 Td
+/F1 8 Tf
+(configuration forwarding.) Tj
+0 -11 Td
+/F1 8 Tf
+(apps/desktop/src/renderer/BranchLoginPage.tsx - submits selected device ID and receives the) Tj
+0 -11 Td
+/F1 8 Tf
+(bypass warning.) Tj
+0 -11 Td
+/F1 8 Tf
+(apps/desktop/src/renderer/Dashboard.tsx - displays the non-blocking development-device) Tj
+0 -11 Td
+/F1 8 Tf
+(warning.) Tj
+0 -11 Td
+/F1 8 Tf
+(packages/contracts/src/index.ts - typed device and authentication warning fields.) Tj
+0 -11 Td
+/F1 8 Tf
+(.env.example - documents the explicit development switch.) Tj
+0 -11 Td
+/F1 8 Tf
+(tests/python/test_local_api.py - development/production, credentials, audit, no) Tj
+0 -11 Td
+/F1 8 Tf
+(auto-registration and online-configured/offline validation.) Tj
+0 -11 Td
+/F1 8 Tf
+(.github/workflows/release.yml - Windows installer target uses the self-hosted Windows x64) Tj
+0 -11 Td
+/F1 8 Tf
+(runner.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(D. Automated results) Tj
+0 -11 Td
+/F1 8 Tf
+(--------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(Backend: 28 passed. Includes owner authentication, wrong password, account status, branch) Tj
+0 -11 Td
+/F1 8 Tf
+(manager, stock manager, sales officer, cashier, combined sales/cashier role, RBAC, permission) Tj
+0 -11 Td
+/F1 8 Tf
+(denial and cross-branch isolation.) Tj
+0 -11 Td
+/F1 8 Tf
+(Development unactivated device: correct credentials PASS; warning PASS; activity audit PASS;) Tj
+0 -11 Td
+/F1 8 Tf
+(no automatic device activation PASS.) Tj
+0 -11 Td
+/F1 8 Tf
+(Development invalid credentials: rejected with HTTP 401 PASS.) Tj
+0 -11 Td
+/F1 8 Tf
+(Production unactivated device: rejected with HTTP 403 even with the flag false PASS.) Tj
+0 -11 Td
+/F1 8 Tf
+(Production activated device: matching active device accepted PASS; missing/wrong device) Tj
+0 -11 Td
+/F1 8 Tf
+(rejected PASS.) Tj
+0 -11 Td
+/F1 8 Tf
+(Offline and cloud-configured modes: identical local credential and activation policy results) Tj
+0 -11 Td
+/F1 8 Tf
+(PASS. Cloud URL presence does not change local auth state or create synchronization writes.) Tj
+0 -11 Td
+/F1 8 Tf
+(Desktop Vitest: 1 passed. Electron Vite production build: PASS.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+ET
+endstream
+endobj
+4 0 obj
+<< /Length 2500 /Resources << /Font << /F1 1 0 R >> >> >>
+stream
+BT
+/F1 15 Tf
+36 806 Td
+(Device Activation and Authentication Validation) Tj
+0 -11 Td
+/F1 8 Tf
+0 -18 Td
+(YenkasaBuildersStock | Validation date: 26 November 2026) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(E. Security preservation) Tj
+0 -11 Td
+/F1 8 Tf
+(------------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(Branch, owner and staff password verification remains unchanged. Role matching and) Tj
+0 -11 Td
+/F1 8 Tf
+(account-active checks occur before bypass evaluation.) Tj
+0 -11 Td
+/F1 8 Tf
+(Existing permission middleware, branch scope checks, owner-session requirements, company) Tj
+0 -11 Td
+/F1 8 Tf
+(isolation and activity logging remain active and covered by regression tests.) Tj
+0 -11 Td
+/F1 8 Tf
+(Device Activation UI, tables, APIs, activation codes, registration and revocation remain) Tj
+0 -11 Td
+/F1 8 Tf
+(present. Development bypass never mutates device registration.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(F. Owner login finding) Tj
+0 -11 Td
+/F1 8 Tf
+(----------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(The Windows owner login failure is expected with the current local-first architecture when) Tj
+0 -11 Td
+/F1 8 Tf
+(credentials were created only in the macOS SQLite database. Recreating/restoring the local) Tj
+0 -11 Td
+/F1 8 Tf
+(owner state is required on Windows.) Tj
+0 -11 Td
+/F1 8 Tf
+(No owner bypass was introduced because that would weaken owner authentication. Cross-device) Tj
+0 -11 Td
+/F1 8 Tf
+(owner identity synchronization is not implemented by the current cloud configuration feature.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+0 -8 Td
+/F1 10 Tf
+(G. Outstanding issues and release status) Tj
+0 -11 Td
+/F1 8 Tf
+(----------------------------------------) Tj
+0 -11 Td
+/F1 8 Tf
+(True online authentication and cross-OS credential/device synchronization remain an) Tj
+0 -11 Td
+/F1 8 Tf
+(architectural gap. Current online-configured validation confirms policy consistency, not a) Tj
+0 -11 Td
+/F1 8 Tf
+(remote identity provider.) Tj
+0 -11 Td
+/F1 8 Tf
+(The GitHub Actions workflow is configured for [self-hosted, Windows, X64]. The Windows) Tj
+0 -11 Td
+/F1 8 Tf
+(artifact must be downloaded from the completed Build Installers workflow and clean-machine) Tj
+0 -11 Td
+/F1 8 Tf
+(tested before production distribution.) Tj
+0 -11 Td
+/F1 8 Tf
+(This development bypass is intentionally unavailable in packaged Windows production) Tj
+0 -11 Td
+/F1 8 Tf
+(installers. A development build must explicitly set DEVICE_ACTIVATION_REQUIRED=false.) Tj
+0 -11 Td
+/F1 8 Tf
+() Tj
+0 -11 Td
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Pages /Kids [6 0 R 7 0 R 8 0 R] /Count 3 >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595 842] /Contents 2 0 R >>
+endobj
+7 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595 842] /Contents 3 0 R >>
+endobj
+8 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595 842] /Contents 4 0 R >>
+endobj
+9 0 obj
+<< /Type /Catalog /Pages 5 0 R >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000002863 00000 n 
+0000005672 00000 n 
+0000008263 00000 n 
+0000008332 00000 n 
+0000008419 00000 n 
+0000008506 00000 n 
+0000008593 00000 n 
+trailer
+<< /Size 10 /Root 9 0 R >>
+startxref
+8642
+%%EOF

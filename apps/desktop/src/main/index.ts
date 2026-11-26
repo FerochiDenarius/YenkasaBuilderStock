@@ -230,6 +230,10 @@ async function startLocalApi(): Promise<void> {
     cwd: servicePath,
     env: {
       ...process.env,
+      APP_ENV: isPackaged ? 'production' : (process.env.APP_ENV ?? 'development'),
+      DEVICE_ACTIVATION_REQUIRED: isPackaged
+        ? 'true'
+        : (process.env.DEVICE_ACTIVATION_REQUIRED ?? 'true'),
       LOCAL_API_HOST: '127.0.0.1',
       LOCAL_API_PORT: String(localApiPort),
       ...cloudEnvironment(),
@@ -303,6 +307,25 @@ async function stopLocalApi(): Promise<void> {
 async function restartLocalApi(): Promise<void> {
   await stopLocalApi();
   await startLocalApi();
+  await waitForLocalApiReady();
+}
+
+async function waitForLocalApiReady(timeoutMs = 15_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let lastError: unknown;
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(`http://127.0.0.1:${localApiPort}/health`);
+      if (response.ok) return;
+      lastError = new Error(`Local API health check returned ${response.status}.`);
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('The local API did not restart after saving the database configuration.');
 }
 
 async function createWindow(): Promise<void> {
@@ -332,6 +355,7 @@ async function createWindow(): Promise<void> {
 
 app.whenReady().then(async () => {
   await startLocalApi();
+  await waitForLocalApiReady();
   process.env.LOCAL_API_PORT = String(localApiPort);
   await createWindow();
   app.on('activate', () => {

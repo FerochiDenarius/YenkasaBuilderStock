@@ -142,6 +142,8 @@ export interface Branch {
   email?: string;
   managerContact?: string;
   managerUsername?: string;
+  deviceId?: string;
+  deviceActivationRequired?: boolean;
 }
 export type BranchRole =
   | 'BRANCH_MANAGER'
@@ -158,6 +160,8 @@ export interface AuthSession {
   fullName: string;
   role: BranchRole;
   permissions: string[];
+  deviceActivationBypassed?: boolean;
+  deviceActivationWarning?: string;
 }
 export interface StaffAccount {
   id: string;

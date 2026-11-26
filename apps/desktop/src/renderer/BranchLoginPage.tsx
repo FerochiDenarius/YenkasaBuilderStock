@@ -59,10 +59,11 @@ export function BranchLoginPage({
         username,
         password,
         loginRole: role,
+        deviceId: branch?.deviceId,
       });
       sessionStorage.setItem('yenkasa-session', JSON.stringify(result));
       if (remember) localStorage.setItem('yenkasa-remembered-user', username);
-      setStatus('Signed in securely');
+      setStatus(result.deviceActivationWarning || 'Signed in securely');
       onAuthenticated(result);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to sign in.');

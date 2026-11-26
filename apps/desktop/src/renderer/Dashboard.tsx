@@ -531,6 +531,11 @@ export function Dashboard() {
         )}
       </aside>
       <main className="dashboard-main">
+        {branchSession?.deviceActivationWarning && (
+          <div className="installation-notice" role="status">
+            {branchSession.deviceActivationWarning}
+          </div>
+        )}
         {!['Installation Welcome', 'Reports', 'Users & Roles', 'Staff Accounts', 'Business Information', 'Business Branding', 'Branches', 'Owner Account', 'Device Activation', 'Cloud Database'].includes(active) && <header className="dashboard-header">
           <button
             className="mobile-menu"
@@ -564,6 +569,7 @@ export function Dashboard() {
               setActive('Business Information');
             }}
             onDatabase={() => setActive('Cloud Database')}
+            onHelp={() => window.alert('Choose Set Up New Company to work locally, or Configure Database to enable cloud synchronization. Existing users can use Owner Login or Branch / Staff Login without configuring cloud sync first.')}
           />
         ) : active === 'Branch Login' && !branchSession ? (
           <BranchLoginPage

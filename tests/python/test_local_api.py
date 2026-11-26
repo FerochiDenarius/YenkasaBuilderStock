@@ -2,9 +2,11 @@ import os
 import sys
 from pathlib import Path
 os.environ['LOCAL_DATABASE_URL'] = 'sqlite://'
+os.environ['APP_ENV'] = 'testing'
+os.environ['DEVICE_ACTIVATION_REQUIRED'] = 'false'
 from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).parents[2] / 'services' / 'local-api'))
-from app.main import app
+from app.main import app, settings
 
 OWNER_SETUP = {
     'username': 'secure.owner', 'email': 'secure@example.com', 'password': 'SecurePass123',
@@ -276,6 +278,81 @@ def test_device_activation_requires_hq_and_persists_status():
     revoked = client.patch(f"/api/devices/{created.json()['id']}", json={'active': False}, headers=owner_headers(client))
     assert revoked.status_code == 200
     assert revoked.json()['active'] is False
+
+def test_unactivated_device_bypass_is_development_only_and_audited(monkeypatch):
+    client = TestClient(app)
+    monkeypatch.setattr(settings, 'app_env', 'development')
+    monkeypatch.setattr(settings, 'device_activation_required', False)
+    branch = client.post('/api/branches', json={
+        'name': 'Development Bypass Branch', 'code': 'DEVBYP', 'location': 'Accra',
+        'manager': 'Development Manager', 'managerUsername': 'development.manager',
+        'managerPassword': 'DevelopmentPass123',
+    }, headers=owner_headers(client)).json()
+
+    selectable = client.get('/api/activated-branches')
+    assert selectable.status_code == 200
+    selected = next(item for item in selectable.json() if item['id'] == branch['id'])
+    assert not selected['deviceId']
+    assert selected['deviceActivationRequired'] is False
+
+    bad_login = client.post('/api/auth/login', json={
+        'branchId': branch['id'], 'username': 'development.manager',
+        'password': 'incorrect', 'loginRole': 'BRANCH_MANAGER',
+    })
+    assert bad_login.status_code == 401
+
+    for cloud_url in (None, 'postgresql://configured-online-mode'):
+        if cloud_url:
+            monkeypatch.setenv('CLOUD_DATABASE_URL', cloud_url)
+        else:
+            monkeypatch.delenv('CLOUD_DATABASE_URL', raising=False)
+        login = client.post('/api/auth/login', json={
+            'branchId': branch['id'], 'username': 'development.manager',
+            'password': 'DevelopmentPass123', 'loginRole': 'BRANCH_MANAGER',
+        })
+        assert login.status_code == 200
+        assert login.json()['deviceActivationBypassed'] is True
+        assert 'Development mode' in login.json()['deviceActivationWarning']
+
+    devices = client.get('/api/devices', headers=owner_headers(client)).json()
+    assert all(item['branchId'] != branch['id'] for item in devices)
+    activity = client.get('/api/owner/activity', headers=owner_headers(client)).json()
+    assert any(item['action'] == 'device_activation_bypassed' for item in activity)
+
+def test_production_always_enforces_device_activation_even_if_flag_is_false(monkeypatch):
+    client = TestClient(app)
+    monkeypatch.setattr(settings, 'app_env', 'production')
+    monkeypatch.setattr(settings, 'device_activation_required', False)
+    branch = client.post('/api/branches', json={
+        'name': 'Production Activation Branch', 'code': 'PRODACT', 'location': 'Accra',
+        'manager': 'Production Manager', 'managerUsername': 'production.manager',
+        'managerPassword': 'ProductionPass123',
+    }, headers=owner_headers(client)).json()
+
+    assert all(item['id'] != branch['id'] for item in client.get('/api/activated-branches').json())
+    blocked = client.post('/api/auth/login', json={
+        'branchId': branch['id'], 'username': 'production.manager',
+        'password': 'ProductionPass123', 'loginRole': 'BRANCH_MANAGER',
+    })
+    assert blocked.status_code == 403
+
+    device = client.post('/api/devices', json={
+        'branchId': branch['id'], 'deviceName': 'PROD-PC-01',
+        'deviceType': 'Windows', 'validity': 'Permanent',
+    }, headers=owner_headers(client)).json()
+    wrong_device = client.post('/api/auth/login', json={
+        'branchId': branch['id'], 'username': 'production.manager',
+        'password': 'ProductionPass123', 'loginRole': 'BRANCH_MANAGER',
+        'deviceId': 'not-an-activated-device',
+    })
+    assert wrong_device.status_code == 403
+    allowed = client.post('/api/auth/login', json={
+        'branchId': branch['id'], 'username': 'production.manager',
+        'password': 'ProductionPass123', 'loginRole': 'BRANCH_MANAGER',
+        'deviceId': device['id'],
+    })
+    assert allowed.status_code == 200
+    assert allowed.json()['deviceActivationBypassed'] is False
 
 def test_sales_uses_branch_catalogue_prices_and_company_invoice_template_snapshot():
     client = TestClient(app)
