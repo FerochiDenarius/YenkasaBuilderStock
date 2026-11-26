@@ -16556,7 +16556,6 @@ function Dashboard() {
       return null;
     }
   });
-  const [ownerStatusLoaded, setOwnerStatusLoaded] = reactExports.useState(false);
   const [installationStatus, setInstallationStatus] = reactExports.useState(initialInstallationStatus);
   const [initialSetupMode, setInitialSetupMode] = reactExports.useState(false);
   const [companyLogo, setCompanyLogo] = reactExports.useState("");
@@ -16640,7 +16639,7 @@ function Dashboard() {
       }
     };
     ownerSync();
-    fetch(`${window.desktopBridge?.apiBaseUrl ?? void 0 ?? "http://127.0.0.1:8765"}/api/owner/status`).then((response) => response.ok ? response.json() : Promise.reject(new Error("Unable to read owner setup status"))).then(() => void 0).catch(() => void 0).finally(() => setOwnerStatusLoaded(true));
+    fetch(`${window.desktopBridge?.apiBaseUrl ?? void 0 ?? "http://127.0.0.1:8765"}/api/owner/status`).then((response) => response.ok ? response.json() : Promise.reject(new Error("Unable to read owner setup status"))).then(() => void 0).catch(() => void 0);
     window.addEventListener("yenkasa-session-changed", sync);
     window.addEventListener("yenkasa-owner-session-changed", ownerSync);
     return () => {
