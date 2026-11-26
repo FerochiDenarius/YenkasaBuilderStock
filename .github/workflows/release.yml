@@ -32,6 +32,9 @@ jobs:
         with:
           python-version: '3.12'
       - run: npm ci
+        if: runner.os != 'Windows'
+      - run: npm.cmd ci
+        if: runner.os == 'Windows'
       - run: python -m venv services/local-api/.venv
         if: runner.os != 'Windows'
       - name: Create Windows Python environment
@@ -50,6 +53,9 @@ jobs:
       - run: services/local-api/.venv/Scripts/python.exe -m pip install -r services/local-api/requirements.txt -r services/local-api/requirements-build.txt
         if: runner.os == 'Windows'
       - run: npm --workspace apps/desktop run ${{ matrix.command }}
+        if: runner.os != 'Windows'
+      - run: npm.cmd --workspace apps/desktop run ${{ matrix.command }}
+        if: runner.os == 'Windows'
       - uses: actions/upload-artifact@v4
         with:
           name: YenkasaBuildersStock-${{ matrix.artifact }}
