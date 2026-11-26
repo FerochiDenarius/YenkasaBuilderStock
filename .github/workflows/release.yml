@@ -42,10 +42,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          $python = Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python*\python.exe" -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
-          if (-not $python) {
-            $python = (Get-Command python -ErrorAction Stop).Source
-          }
+          $python = 'C:\Users\Optimus Prime\AppData\Local\Programs\Python\Python313\python.exe'
+          if (-not (Test-Path -LiteralPath $python)) { throw "Python is not installed at $python on the self-hosted runner." }
           & $python -m venv services/local-api/.venv
       - run: services/local-api/.venv/bin/python -m pip install -r services/local-api/requirements.txt -r services/local-api/requirements-build.txt
         if: runner.os != 'Windows'
