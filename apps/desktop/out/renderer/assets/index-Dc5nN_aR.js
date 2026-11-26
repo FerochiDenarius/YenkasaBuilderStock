@@ -12398,32 +12398,27 @@ function StaffAccountsPage() {
       " ",
       /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Users & Roles" })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "setup-title", children: [
+    managerMode ? /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "staff-hero", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-hero-title", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "setup-title-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Users, { size: 28 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Staff Accounts" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Create and manage authorized staff for this branch." })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "primary-button", type: "button", "data-testid": "staff-add", onClick: () => {
+        setOpen(true);
+        setError("");
+      }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 16 }),
+        " Add Staff"
+      ] })
+    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "setup-title", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "setup-title-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Users, { size: 31 }) }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: ownerMode ? "Users & Roles" : "Staff Accounts" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: ownerMode ? "Review company users, branch assignments and access status from headquarters." : "Create and manage Sales Officer, Cashier and Stock Manager accounts for the authenticated branch." })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Users & Roles" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Review company users, branch assignments and access status from headquarters." })
       ] })
-    ] }),
-    managerMode && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "staff-action-row", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "button",
-      {
-        className: "primary-button",
-        type: "button",
-        "data-testid": "staff-add",
-        onClick: () => {
-          setOpen(true);
-          setError("");
-        },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 17 }),
-          "Add Staff Account"
-        ]
-      }
-    ) }),
-    managerMode && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-policy", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, { size: 20 }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Branch Managers can assign only Sales Officer, Cashier and Stock Manager roles. Staff accounts cannot create users or elevate their own privileges." })
     ] }),
     ownerMode && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-stats", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(Stat, { label: "Total users", value: String(accounts.length) }),
@@ -12505,28 +12500,39 @@ function StaffAccountsPage() {
           )
         ] })
       ] }),
-      auditOpen ? /* @__PURE__ */ jsxRuntimeExports.jsx(AuditRows, { rows: audit }) : /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: !ownerMode && !managerMode ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "staff-empty", children: "Sign in as a Branch Manager to manage branch staff." }) : filtered.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "staff-empty", children: "No matching user accounts." }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "staff-table", children: filtered.map((account) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-        StaffRow,
-        {
-          account,
-          ownerMode,
-          onEdit: () => {
-            setEditing(account);
-            setEditForm({
-              fullName: account.fullName,
-              email: account.email,
-              role: account.role === "BRANCH_MANAGER" ? "SALES_OFFICER" : account.role,
-              permissions: account.permissions?.length ? account.permissions : defaultPermissions(account.role)
-            });
+      auditOpen ? /* @__PURE__ */ jsxRuntimeExports.jsx(AuditRows, { rows: audit }) : /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: !ownerMode && !managerMode ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "staff-empty", children: "Sign in as a Branch Manager to manage branch staff." }) : filtered.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "staff-empty", children: "No matching user accounts." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-table", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-grid-head", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "#" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Staff Name" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Username" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Role" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Status" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Actions" })
+        ] }),
+        filtered.map((account, index) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          StaffRow,
+          {
+            account,
+            index: index + 1,
+            ownerMode,
+            onEdit: () => {
+              setEditing(account);
+              setEditForm({
+                fullName: account.fullName,
+                email: account.email,
+                role: account.role === "BRANCH_MANAGER" ? "SALES_OFFICER" : account.role,
+                permissions: account.permissions?.length ? account.permissions : defaultPermissions(account.role)
+              });
+            },
+            onToggle: () => toggle(account),
+            onReset: () => {
+              setResetting(account);
+              setNewPassword("");
+            }
           },
-          onToggle: () => toggle(account),
-          onReset: () => {
-            setResetting(account);
-            setNewPassword("");
-          }
-        },
-        account.id
-      )) }) })
+          account.id
+        ))
+      ] }) })
     ] }),
     status && /* @__PURE__ */ jsxRuntimeExports.jsx("small", { className: "save-status", role: "status", children: status }),
     error && /* @__PURE__ */ jsxRuntimeExports.jsx("small", { className: "save-error", role: "alert", children: error }),
@@ -12568,76 +12574,33 @@ function readSession() {
 }
 function StaffRow({
   account,
+  index,
   ownerMode,
   onEdit,
   onToggle,
   onReset
 }) {
+  const roleLabel = account.role === "SALES_CASHIER" ? "Sales + Cashier" : account.role === "SALES_OFFICER" ? "Sales Officer" : account.role === "CASHIER" ? "Cashier" : account.role === "STOCK_MANAGER" ? "Stock Manager" : "Branch Manager";
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-row", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(CircleUser, { size: 22 }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: account.fullName }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("small", { children: [
-        account.username,
-        " ·",
-        " ",
-        account.role === "SALES_CASHIER" ? "Sales + Cashier (Combined)" : account.role === "SALES_OFFICER" ? "Sales Officer" : account.role === "CASHIER" ? "Cashier" : account.role === "STOCK_MANAGER" ? "Stock Manager / Storekeeper" : "Branch Manager",
-        ownerMode && ` · ${account.branchName ?? "Unassigned"}`,
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-permission-summary", children: [
-          (account.permissions?.length ? account.permissions : defaultPermissions(account.role)).slice(0, 5).map((permission) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: permission.replaceAll("_", " ") }, permission)),
-          (account.permissions?.length ?? 0) > 5 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-            "+",
-            account.permissions.length - 5,
-            " more"
-          ] })
-        ] })
-      ] })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "staff-index", children: index }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-identity", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "staff-avatar", children: account.fullName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase() }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: account.fullName })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "span",
-      {
-        className: account.active ? "status in-stock" : "status out-of-stock",
-        children: account.active ? "Active" : "Inactive"
-      }
-    ),
-    !ownerMode && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        "button",
-        {
-          className: "outline small-button",
-          type: "button",
-          "data-testid": `staff-edit-${account.id}`,
-          onClick: onEdit,
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(PenLine, { size: 13 }),
-            "Edit"
-          ]
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        "button",
-        {
-          className: "outline small-button",
-          type: "button",
-          "data-testid": `staff-reset-${account.id}`,
-          onClick: onReset,
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(KeyRound, { size: 13 }),
-            "Reset"
-          ]
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "button",
-        {
-          className: "outline small-button",
-          type: "button",
-          onClick: onToggle,
-          children: account.active ? "Deactivate" : "Reactivate"
-        }
-      )
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: account.active ? /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { size: 17 }) : "—" })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "staff-username", children: account.username }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "staff-role-pill", children: roleLabel }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `status ${account.active ? "in-stock" : "out-of-stock"}`, children: account.active ? "Active" : "Inactive" }),
+    !ownerMode ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "staff-actions", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "outline small-button", type: "button", "data-testid": `staff-edit-${account.id}`, onClick: onEdit, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(PenLine, { size: 13 }),
+        " Edit"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "outline small-button", type: "button", "data-testid": `staff-reset-${account.id}`, onClick: onReset, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(KeyRound, { size: 13 }),
+        " Reset Password"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "outline small-button danger-button", type: "button", onClick: onToggle, children: account.active ? "Deactivate" : "Reactivate" })
+    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", {})
   ] });
 }
 function CreateModal({
@@ -16733,7 +16696,6 @@ function Dashboard() {
     setActive("Branch Login");
   };
   const navigate = (page) => {
-    if (!ownerStatusLoaded) return;
     if (page === "Installation Welcome") {
       setActive(page);
       setSidebarOpen(false);

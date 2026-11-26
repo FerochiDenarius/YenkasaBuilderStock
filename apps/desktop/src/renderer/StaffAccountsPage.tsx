@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Check,
   Edit3,
   Eye,
   EyeOff,
   KeyRound,
   Plus,
   ShieldCheck,
-  UserCircle,
   Users,
   X,
 } from 'lucide-react';
@@ -236,44 +234,16 @@ export function StaffAccountsPage() {
         ⌂ &nbsp;›&nbsp; Company Setup &nbsp;›&nbsp;{' '}
         <strong>Users & Roles</strong>
       </div>
-      <section className="setup-title">
-        <div className="setup-title-icon">
-          <Users size={31} />
-        </div>
-        <div>
-          <h2>{ownerMode ? 'Users & Roles' : 'Staff Accounts'}</h2>
-          <p>
-            {ownerMode
-              ? 'Review company users, branch assignments and access status from headquarters.'
-              : 'Create and manage Sales Officer, Cashier and Stock Manager accounts for the authenticated branch.'}
-          </p>
-        </div>
-      </section>
-      {managerMode && (
-        <div className="staff-action-row">
-          <button
-            className="primary-button"
-            type="button"
-            data-testid="staff-add"
-            onClick={() => {
-              setOpen(true);
-              setError('');
-            }}
-          >
-            <Plus size={17} />
-            Add Staff Account
-          </button>
-        </div>
-      )}
-      {managerMode && (
-        <div className="staff-policy">
-          <ShieldCheck size={20} />
-          <span>
-            Branch Managers can assign only Sales Officer, Cashier and Stock
-            Manager roles. Staff accounts cannot create users or elevate their
-            own privileges.
-          </span>
-        </div>
+      {managerMode ? (
+        <section className="staff-hero">
+          <div className="staff-hero-title"><div className="setup-title-icon"><Users size={28} /></div><div><h2>Staff Accounts</h2><p>Create and manage authorized staff for this branch.</p></div></div>
+          <button className="primary-button" type="button" data-testid="staff-add" onClick={() => { setOpen(true); setError(''); }}><Plus size={16} /> Add Staff</button>
+        </section>
+      ) : (
+        <section className="setup-title">
+          <div className="setup-title-icon"><Users size={31} /></div>
+          <div><h2>Users &amp; Roles</h2><p>Review company users, branch assignments and access status from headquarters.</p></div>
+        </section>
       )}
       {ownerMode && (
         <div className="staff-stats">
@@ -348,10 +318,12 @@ export function StaffAccountsPage() {
               <div className="staff-empty">No matching user accounts.</div>
             ) : (
               <div className="staff-table">
-                {filtered.map((account) => (
+                <div className="staff-grid-head"><span>#</span><span>Staff Name</span><span>Username</span><span>Role</span><span>Status</span><span>Actions</span></div>
+                {filtered.map((account, index) => (
                   <StaffRow
                     key={account.id}
                     account={account}
+                    index={index + 1}
                     ownerMode={ownerMode}
                     onEdit={() => {
                       setEditing(account);
@@ -423,79 +395,21 @@ function readSession(): SessionLike | null {
 }
 function StaffRow({
   account,
+  index,
   ownerMode,
   onEdit,
   onToggle,
   onReset,
 }: {
   account: StaffAccount;
+  index: number;
   ownerMode: boolean;
   onEdit: () => void;
   onToggle: () => void;
   onReset: () => void;
 }) {
-  return (
-    <div className="staff-row">
-      <UserCircle size={22} />
-      <div>
-        <strong>{account.fullName}</strong>
-        <small>
-          {account.username} ·{' '}
-          {account.role === 'SALES_CASHIER'
-            ? 'Sales + Cashier (Combined)'
-            : account.role === 'SALES_OFFICER'
-              ? 'Sales Officer'
-              : account.role === 'CASHIER'
-                ? 'Cashier'
-                : account.role === 'STOCK_MANAGER'
-                  ? 'Stock Manager / Storekeeper'
-                  : 'Branch Manager'}
-          {ownerMode && ` · ${account.branchName ?? 'Unassigned'}`}
-          <div className="staff-permission-summary">
-            {(account.permissions?.length ? account.permissions : defaultPermissions(account.role)).slice(0, 5).map((permission) => (
-              <span key={permission}>{permission.replaceAll('_', ' ')}</span>
-            ))}
-            {(account.permissions?.length ?? 0) > 5 && <span>+{account.permissions.length - 5} more</span>}
-          </div>
-        </small>
-      </div>
-      <span
-        className={account.active ? 'status in-stock' : 'status out-of-stock'}
-      >
-        {account.active ? 'Active' : 'Inactive'}
-      </span>
-      {!ownerMode && (
-        <>
-          <button
-            className="outline small-button"
-            type="button"
-            data-testid={`staff-edit-${account.id}`}
-            onClick={onEdit}
-          >
-            <Edit3 size={13} />
-            Edit
-          </button>
-          <button
-            className="outline small-button"
-            type="button"
-            data-testid={`staff-reset-${account.id}`}
-            onClick={onReset}
-          >
-            <KeyRound size={13} />
-            Reset
-          </button>
-          <button
-            className="outline small-button"
-            type="button"
-            onClick={onToggle}
-          >
-            {account.active ? 'Deactivate' : 'Reactivate'}
-          </button>
-        </>
-      )}
-      <span>{account.active ? <Check size={17} /> : '—'}</span>
-    </div>
-  );
+  const roleLabel = account.role === 'SALES_CASHIER' ? 'Sales + Cashier' : account.role === 'SALES_OFFICER' ? 'Sales Officer' : account.role === 'CASHIER' ? 'Cashier' : account.role === 'STOCK_MANAGER' ? 'Stock Manager' : 'Branch Manager';
+  return <div className="staff-row"><span className="staff-index">{index}</span><div className="staff-identity"><span className="staff-avatar">{account.fullName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</span><strong>{account.fullName}</strong></div><span className="staff-username">{account.username}</span><span className="staff-role-pill">{roleLabel}</span><span className={`status ${account.active ? 'in-stock' : 'out-of-stock'}`}>{account.active ? 'Active' : 'Inactive'}</span>{!ownerMode ? <div className="staff-actions"><button className="outline small-button" type="button" data-testid={`staff-edit-${account.id}`} onClick={onEdit}><Edit3 size={13} /> Edit</button><button className="outline small-button" type="button" data-testid={`staff-reset-${account.id}`} onClick={onReset}><KeyRound size={13} /> Reset Password</button><button className="outline small-button danger-button" type="button" onClick={onToggle}>{account.active ? 'Deactivate' : 'Reactivate'}</button></div> : <span />}</div>;
 }
 function CreateModal({
   form,

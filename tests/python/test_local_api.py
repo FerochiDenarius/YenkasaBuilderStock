@@ -131,6 +131,11 @@ def test_owner_setup_is_locked_after_credentials_exist_and_owner_logout_relocks_
     assert client.get('/api/owner/security', headers={'X-Role': 'HQ_ADMIN'}).status_code == 403
     assert client.post('/api/owner/logout', headers=headers).json()['ok'] is True
     assert client.get('/api/owner/security', headers=headers).status_code == 403
+    manager_after_owner_logout = client.post('/api/auth/login', json={
+        'branchId': branch.json()['id'], 'username': 'lock.manager',
+        'password': 'LockManager123', 'loginRole': 'BRANCH_MANAGER',
+    })
+    assert manager_after_owner_logout.status_code == 200
     relogin = client.post('/api/owner/login', json={'username': OWNER_SETUP['username'], 'password': OWNER_SETUP['password']})
     assert relogin.status_code == 200
     assert client.get('/api/owner/security', headers={'X-Owner-Session': relogin.json()['token']}).status_code == 200

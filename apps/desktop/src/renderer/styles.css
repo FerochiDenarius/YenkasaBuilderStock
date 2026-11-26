@@ -5747,23 +5747,61 @@ footer {
 .staff-list {
   overflow: hidden;
 }
+.staff-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 15px;
+  padding: 0 3px 14px;
+  border-bottom: 1px solid #e5ebf2;
+}
+.staff-hero-title { display: flex; gap: 12px; align-items: center; }
+.staff-hero .setup-title-icon { width: 46px; height: 46px; }
+.staff-hero h2 { margin: 0; color: #13284b; font-size: 25px; }
+.staff-hero p { margin: 3px 0 0; color: #6b7d96; font-size: 11px; }
+.staff-grid-head,
+.staff-row {
+  display: grid;
+  grid-template-columns: 34px minmax(190px, 1.6fr) minmax(110px, 1fr) minmax(125px, 1.1fr) 74px minmax(285px, 1.65fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 880px;
+}
+.staff-grid-head {
+  padding: 10px 18px;
+  color: #71809a;
+  background: #f5f8fc;
+  font-size: 10px;
+  font-weight: 800;
+}
 .staff-empty {
   padding: 40px 20px;
   color: #697b91;
   font-size: 12px;
 }
 .staff-row {
-  display: grid;
-  grid-template-columns: 28px 1fr 80px 110px 28px;
-  gap: 12px;
-  align-items: center;
-  padding: 15px 20px;
+  padding: 11px 18px;
   border-top: 1px solid #e8edf2;
-  color: #157b3d;
+  color: #203654;
+  font-size: 11px;
 }
+.staff-index { color: #5e718c; font-weight: 700; }
+.staff-identity { display: flex; gap: 9px; align-items: center; min-width: 0; }
+.staff-avatar { display: inline-grid; flex: 0 0 auto; width: 28px; height: 28px; place-items: center; border-radius: 50%; color: #1761d0; background: #e1edff; font-size: 10px; font-weight: 800; }
+.staff-identity strong { overflow: hidden; color: #172b4b; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.staff-username { overflow: hidden; color: #5c718d; text-overflow: ellipsis; white-space: nowrap; }
+.staff-role-pill { width: max-content; padding: 5px 8px; border-radius: 999px; color: #1d4fa7; background: #eaf1ff; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.staff-actions { display: flex; gap: 5px; align-items: center; }
+.staff-actions .small-button { white-space: nowrap; }
+.staff-actions .danger-button { color: #c62828; border-color: #efaaa6; }
+.staff-table { overflow-x: auto; }
+.staff-row .status { justify-self: start; }
+.staff-row > span:last-child { min-height: 1px; }
 .staff-row div {
-  display: grid;
+  display: flex;
   gap: 3px;
+  align-items: center;
 }
 .staff-row strong {
   color: #182943;
@@ -5815,14 +5853,17 @@ footer {
   .staff-fields {
     grid-template-columns: 1fr;
   }
+  .staff-hero { align-items: flex-start; flex-direction: column; }
   .staff-permission-grid {
     grid-template-columns: 1fr 1fr;
   }
   .staff-row {
     grid-template-columns: 25px 1fr;
   }
+  .staff-row .staff-username,
+  .staff-row .staff-role-pill,
   .staff-row .status,
-  .staff-row .small-button,
+  .staff-row .staff-actions,
   .staff-row > span:last-child {
     grid-column: 2;
   }

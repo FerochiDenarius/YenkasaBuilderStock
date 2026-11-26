@@ -189,7 +189,6 @@ export function Dashboard() {
       return null;
     }
   });
-  const [ownerStatusLoaded, setOwnerStatusLoaded] = useState(false);
   const [installationStatus, setInstallationStatus] = useState<InstallationStatus>(initialInstallationStatus);
   const [initialSetupMode, setInitialSetupMode] = useState(false);
   const [companyLogo, setCompanyLogo] = useState('');
@@ -274,8 +273,7 @@ export function Dashboard() {
     fetch(`${window.desktopBridge?.apiBaseUrl ?? import.meta.env.VITE_LOCAL_API_URL ?? 'http://127.0.0.1:8765'}/api/owner/status`)
       .then((response) => response.ok ? response.json() : Promise.reject(new Error('Unable to read owner setup status')))
       .then(() => undefined)
-      .catch(() => undefined)
-      .finally(() => setOwnerStatusLoaded(true));
+      .catch(() => undefined);
     window.addEventListener('yenkasa-session-changed', sync);
     window.addEventListener('yenkasa-owner-session-changed', ownerSync);
     return () => {
@@ -346,7 +344,6 @@ export function Dashboard() {
     setActive('Branch Login');
   };
   const navigate = (page: string) => {
-    if (!ownerStatusLoaded) return;
     if (page === 'Installation Welcome') {
       setActive(page);
       setSidebarOpen(false);
