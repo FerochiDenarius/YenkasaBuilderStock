@@ -35,6 +35,7 @@ jobs:
         if: runner.os != 'Windows'
       - run: npm.cmd ci
         if: runner.os == 'Windows'
+        shell: cmd
       - run: python -m venv services/local-api/.venv
         if: runner.os != 'Windows'
       - name: Create Windows Python environment
@@ -56,6 +57,7 @@ jobs:
         if: runner.os != 'Windows'
       - run: npm.cmd --workspace apps/desktop run ${{ matrix.command }}
         if: runner.os == 'Windows'
+        shell: cmd
       - uses: actions/upload-artifact@v4
         with:
           name: YenkasaBuildersStock-${{ matrix.artifact }}
