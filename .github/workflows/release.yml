@@ -46,6 +46,7 @@ jobs:
         if: runner.os != 'Windows'
       - run: services/local-api/.venv/Scripts/python.exe -m pip install -r services/local-api/requirements.txt -r services/local-api/requirements-build.txt
         if: runner.os == 'Windows'
+        shell: cmd
       - run: npm --workspace apps/desktop run ${{ matrix.command }}
         if: runner.os != 'Windows'
       - run: npm.cmd --workspace apps/desktop run ${{ matrix.command }}
