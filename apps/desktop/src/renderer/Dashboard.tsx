@@ -322,7 +322,7 @@ export function Dashboard() {
     sessionStorage.removeItem('yenkasa-owner-session-data');
     setBranchSession(null);
     setOwnerSession(null);
-    setActive('Branch Login');
+    setActive('Installation Welcome');
     if (userId)
       fetch(
         `${window.desktopBridge?.apiBaseUrl ?? import.meta.env.VITE_LOCAL_API_URL ?? 'http://127.0.0.1:8765'}/api/auth/logout`,
@@ -341,7 +341,7 @@ export function Dashboard() {
     sessionStorage.removeItem('yenkasa-owner-session');
     sessionStorage.removeItem('yenkasa-owner-session-data');
     setOwnerSession(null);
-    setActive('Branch Login');
+    setActive('Installation Welcome');
   };
   const navigate = (page: string) => {
     if (page === 'Installation Welcome') {
@@ -349,9 +349,12 @@ export function Dashboard() {
       setSidebarOpen(false);
       return;
     }
+    // Owner authentication is a separate signed-out flow. Never discard an
+    // authenticated branch session merely because owner login was requested.
     if (page === 'Owner Login' && branchSession) {
-      sessionStorage.removeItem('yenkasa-session');
-      setBranchSession(null);
+      setActive('Dashboard');
+      setSidebarOpen(false);
+      return;
     }
     if (setupItems.some(([, label]) => label === page) && (!setupUnlocked || !!branchSession)) {
       setActive(installationStatus ? 'Installation Welcome' : 'Owner Login');
@@ -434,16 +437,6 @@ export function Dashboard() {
                     <span>{label}</span>
                   </button>
                 ))}
-              </div>
-              <div className="nav-section-label">OWNER ACCOUNT</div>
-              <div className="setup-subnav">
-                <button
-                  className={active === 'Owner Login' ? 'selected' : ''}
-                  onClick={() => navigate('Owner Login')}
-                >
-                  <Crown size={16} />
-                  <span>Owner Login</span>
-                </button>
               </div>
             </>
           ) : !setupUnlocked ? (
