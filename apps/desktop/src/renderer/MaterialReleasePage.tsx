@@ -16,7 +16,7 @@ type ReleaseInvoice = SaleRecord & {
 };
 
 export function MaterialReleasePage({ session }: { session: AuthSession }) {
-  const [screen, setScreen] = useState<'history' | 'new'>('history');
+  const [screen, setScreen] = useState<'history' | 'pending'>('pending');
   const [invoices, setInvoices] = useState<ReleaseInvoice[]>([]);
   const [selected, setSelected] = useState<ReleaseInvoice | null>(null);
   const [quantities, setQuantities] = useState<Record<string, string>>({});
@@ -125,7 +125,7 @@ export function MaterialReleasePage({ session }: { session: AuthSession }) {
   };
 
   if (screen === 'history') {
-    return <MaterialReleaseHistory session={session} onNew={() => setScreen('new')} />;
+    return <MaterialReleaseHistory session={session} onPending={() => setScreen('pending')} />;
   }
 
   return (
@@ -138,11 +138,12 @@ export function MaterialReleasePage({ session }: { session: AuthSession }) {
             <p>Verify payment and release purchased materials from the branch store.</p>
           </div>
         </div>
-        <div className="release-title-actions"><button className="outline" type="button" onClick={() => setScreen('history')}>View Release History</button><div className="release-branch-badge"><Truck size={17} /> {session.branchName}</div></div>
+        <div className="release-title-actions"><div className="release-branch-badge"><Truck size={17} /> {session.branchName}</div></div>
       </div>
+      <MaterialReleaseTabs active="pending" pendingCount={invoices.length} onPending={() => setScreen('pending')} onHistory={() => setScreen('history')} />
       <div className="release-grid">
         <section className="panel release-search-panel">
-          <h3><Search size={21} /> Find paid invoice</h3>
+          <h3><Search size={21} /> Pending materials to release</h3>
           <div className="release-search-row">
             <input
               value={query}
@@ -152,7 +153,7 @@ export function MaterialReleasePage({ session }: { session: AuthSession }) {
             />
             <button className="primary-button" type="button" onClick={() => void load()}>Search</button>
           </div>
-          <small className="release-help">Only fully paid invoices awaiting collection are shown.</small>
+          <small className="release-help">All fully paid invoices awaiting collection are listed automatically. Search only filters this list.</small>
           <div className="release-invoice-list">
             {loading ? <small>Loading paid invoices…</small> : invoices.length ? invoices.map((invoice) => (
               <button
@@ -251,7 +252,7 @@ export function MaterialReleasePage({ session }: { session: AuthSession }) {
   );
 }
 
-function MaterialReleaseHistory({ session, onNew }: { session: AuthSession; onNew: () => void }) {
+function MaterialReleaseHistory({ session, onPending }: { session: AuthSession; onPending: () => void }) {
   const [rows, setRows] = useState<MaterialReleaseHistoryRecord[]>([]);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -285,8 +286,9 @@ function MaterialReleaseHistory({ session, onNew }: { session: AuthSession; onNe
   return <div className="release-page release-history-page">
     <div className="release-title-row">
       <div className="release-title"><div className="release-title-icon"><PackageCheck size={30} /></div><div><h2>Material Release History</h2><p>View and manage material releases against their exact invoices and customer orders.</p></div></div>
-      <button className="primary-button release-new-button" type="button" onClick={onNew}><Plus size={20} /> New Material Release</button>
+      <button className="primary-button release-new-button" type="button" onClick={onPending}><Plus size={20} /> Pending Materials</button>
     </div>
+    <MaterialReleaseTabs active="history" onPending={onPending} onHistory={() => undefined} />
     <section className="release-history-filters panel">
       <label className="release-history-search"><Search size={18} /><input aria-label="Search material releases" placeholder="Search release no., invoice no. or customer..." value={query} onChange={(event) => setQuery(event.target.value)} /></label>
       <label><span>From</span><div><CalendarDays size={16} /><input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></div></label>
@@ -302,5 +304,16 @@ function MaterialReleaseHistory({ session, onNew }: { session: AuthSession; onNe
     </section>
     {error && <small className="release-error" role="alert">{error}</small>}
     {selected && <div className="cashier-modal-backdrop"><section className="release-slip-preview" role="dialog" aria-modal="true"><div className="cashier-preview-header"><div><h3><PackageCheck size={20} /> Release Slip Preview</h3><small>{selected.invoiceNumber} · {selected.customerName}</small></div><button aria-label="Close release preview" onClick={() => setSelected(null)}><X size={20} /></button></div><div className="release-slip-card"><strong>YenkasaBuildersStock</strong><span>MATERIAL RELEASE SLIP</span><hr /><div><span>Release No.</span><b>{selected.releaseNumber}</b></div><div><span>Receipt No.</span><b>{selected.receiptNumber || '—'}</b></div><div><span>Invoice No.</span><b>{selected.invoiceNumber}</b></div><div><span>Customer</span><b>{selected.customerName}</b></div><hr />{selected.items.map((item) => <div key={`${selected.id}-${item.sku}`}><span>{item.name}</span><b>{item.quantity} {item.unit}</b></div>)}<p>Released by {selected.releasedBy} · {new Date(selected.createdAt).toLocaleString('en-GH')}</p></div><div className="cashier-preview-actions"><button className="outline" onClick={() => setSelected(null)}>Close</button><button className="outline" onClick={() => void download()}><Download size={17} /> Download PDF</button><button className="primary-button" onClick={() => void print()}><Printer size={17} /> Print Slip</button></div></section></div>}
+  </div>;
+}
+
+function MaterialReleaseTabs({ active, pendingCount, onPending, onHistory }: { active: 'pending' | 'history'; pendingCount?: number; onPending: () => void; onHistory: () => void }) {
+  return <div className="release-tabs" role="tablist" aria-label="Material release views">
+    <button type="button" role="tab" aria-selected={active === 'pending'} className={active === 'pending' ? 'active' : ''} onClick={onPending}>
+      <ClipboardCheck size={18} /> Pending Materials{pendingCount !== undefined && <span>{pendingCount}</span>}
+    </button>
+    <button type="button" role="tab" aria-selected={active === 'history'} className={active === 'history' ? 'active' : ''} onClick={onHistory}>
+      <PackageCheck size={18} /> Release History
+    </button>
   </div>;
 }

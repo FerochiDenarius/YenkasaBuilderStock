@@ -1345,6 +1345,10 @@ footer {
 .release-page .panel h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 17px; color: #102951; font-size: 20px; }
 .release-page .panel h3 svg { color: #0b963d; }
 .release-new-button { display: inline-flex; align-items: center; gap: 8px; }
+.release-tabs { display: flex; gap: 8px; margin: 0 0 20px; padding: 5px; width: fit-content; border: 1px solid #d7e1ec; border-radius: 12px; background: #f4f7fb; }
+.release-tabs button { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border: 0; border-radius: 9px; background: transparent; color: #526983; font-weight: 750; cursor: pointer; }
+.release-tabs button.active { background: #fff; color: #075ee5; box-shadow: 0 2px 8px #183a6820; }
+.release-tabs button span { min-width: 22px; padding: 2px 7px; border-radius: 999px; background: #e1ebfa; color: #174d91; font-size: 11px; text-align: center; }
 .release-history-filters { display: grid; grid-template-columns: minmax(250px, 2fr) repeat(3, minmax(140px, 1fr)) auto auto; gap: 12px; align-items: end; margin-bottom: 16px; }
 .release-history-filters label { display: grid; gap: 5px; color: #173259; font-size: 12px; font-weight: 700; }
 .release-history-filters label > div, .release-history-search { display: flex !important; align-items: center; gap: 8px; min-height: 42px; padding: 0 11px; border: 1px solid #c9d6e6; border-radius: 9px; background: white; }
