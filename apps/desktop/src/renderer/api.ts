@@ -26,6 +26,28 @@ export interface DeviceRecord {
   validity: string;
   active: boolean;
   createdAt: string;
+  updatedAt?: string;
+  installationId?: string;
+  hostname?: string;
+  operatingSystem?: string;
+  operatingSystemVersion?: string;
+  architecture?: string;
+  networkInterface?: string;
+  macAddress?: string;
+  localIpAddress?: string;
+  applicationVersion?: string;
+}
+
+export interface DeviceInformation {
+  installation_id: string;
+  hostname: string;
+  operating_system: string;
+  operating_system_version: string;
+  architecture: string;
+  network_interface: string;
+  mac_address: string;
+  local_ip_address: string;
+  application_version: string;
 }
 
 export const LOCAL_API_URL =
@@ -139,14 +161,14 @@ export const branchApi = {
 };
 
 export const deviceApi = {
+  information: () => request<DeviceInformation>('/api/device-information', { headers: ownerHeaders() }),
   list: () =>
     request<DeviceRecord[]>('/api/devices', {
       headers: ownerHeaders(),
     }),
   create: (payload: {
     branchId: string;
-    deviceName: string;
-    deviceType: string;
+    deviceRole: string;
     validity: string;
   }) =>
     request<DeviceRecord>('/api/devices', {

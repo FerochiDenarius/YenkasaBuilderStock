@@ -7470,6 +7470,23 @@ const FileText = createLucideIcon("FileText", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
+const Fingerprint = createLucideIcon("Fingerprint", [
+  ["path", { d: "M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4", key: "1nerag" }],
+  ["path", { d: "M14 13.12c0 2.38 0 6.38-1 8.88", key: "o46ks0" }],
+  ["path", { d: "M17.29 21.02c.12-.6.43-2.3.5-3.02", key: "ptglia" }],
+  ["path", { d: "M2 12a10 10 0 0 1 18-6", key: "ydlgp0" }],
+  ["path", { d: "M2 16h.01", key: "1gqxmh" }],
+  ["path", { d: "M21.8 16c.2-2 .131-5.354 0-6", key: "drycrb" }],
+  ["path", { d: "M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2", key: "1tidbn" }],
+  ["path", { d: "M8.65 22c.21-.66.45-1.32.57-2", key: "13wd9y" }],
+  ["path", { d: "M9 6.8a6 6 0 0 1 9 5.2v2", key: "1fr1j5" }]
+]);
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
 const History = createLucideIcon("History", [
   ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
   ["path", { d: "M3 3v5h5", key: "1xhq8a" }],
@@ -8107,6 +8124,7 @@ const branchApi = {
   })
 };
 const deviceApi = {
+  information: () => request("/api/device-information", { headers: ownerHeaders() }),
   list: () => request("/api/devices", {
     headers: ownerHeaders()
   }),
@@ -13059,8 +13077,7 @@ function Stat({ label, value }) {
 }
 const blank$1 = {
   branchId: "",
-  deviceName: "",
-  deviceType: "Windows PC",
+  deviceRole: "Branch Workstation",
   validity: "Permanent"
 };
 function DeviceActivationPage() {
@@ -13073,6 +13090,8 @@ function DeviceActivationPage() {
   const [error, setError] = reactExports.useState("");
   const [status, setStatus] = reactExports.useState("");
   const [code, setCode] = reactExports.useState("");
+  const [information, setInformation] = reactExports.useState(null);
+  const [refreshing, setRefreshing] = reactExports.useState(false);
   const load = async () => {
     try {
       const [branchList, deviceList] = await Promise.all([
@@ -13092,11 +13111,24 @@ function DeviceActivationPage() {
     }
   };
   reactExports.useEffect(() => {
-    load();
+    void load();
+    void refreshInformation();
   }, []);
+  const refreshInformation = async () => {
+    setRefreshing(true);
+    setError("");
+    try {
+      setInformation(await deviceApi.information());
+      setStatus("Device information refreshed");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to detect this device.");
+    } finally {
+      setRefreshing(false);
+    }
+  };
   const create = async () => {
-    if (!form.branchId || !form.deviceName.trim()) {
-      setError("Select a branch and enter a device name.");
+    if (!form.branchId || !information) {
+      setError("Select a branch and refresh the detected device information first.");
       return;
     }
     setSaving(true);
@@ -13105,8 +13137,7 @@ function DeviceActivationPage() {
       const created = await deviceApi.create(form);
       setDevices((current) => [created, ...current]);
       setCode(created.activationCode);
-      setForm((current) => ({ ...current, deviceName: "" }));
-      setStatus("Activation code generated and saved to SQLite");
+      setStatus("Device information saved and activated in SQLite");
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Unable to generate activation code."
@@ -13174,13 +13205,31 @@ function DeviceActivationPage() {
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "device-grid", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "panel device-form", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "panel-heading", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("h2", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 19 }),
-            " Activate New Device"
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-heading", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("h2", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Monitor, { size: 19 }),
+              " Device Information"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Detected automatically from this computer. The fields are read-only." })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Generate a secure activation code for a branch computer." })
-        ] }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "outline small-button", type: "button", onClick: () => void refreshInformation(), disabled: refreshing, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCw, { size: 14 }),
+            " ",
+            refreshing ? "Refreshing…" : "Refresh Information"
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "device-information-grid", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ReadOnlyField, { label: "Device name (hostname)", value: information?.hostname, icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Monitor, { size: 15 }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ReadOnlyField, { label: "Operating system", value: information?.operating_system, icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Monitor, { size: 15 }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ReadOnlyField, { label: "OS version", value: information?.operating_system_version }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ReadOnlyField, { label: "System architecture", value: information?.architecture }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ReadOnlyField, { label: "Network interface", value: information?.network_interface, icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Wifi, { size: 15 }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ReadOnlyField, { label: "MAC address", value: information?.mac_address }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ReadOnlyField, { label: "Local IP address", value: information?.local_ip_address }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ReadOnlyField, { label: "Installation ID", value: information?.installation_id, icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Fingerprint, { size: 15 }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ReadOnlyField, { label: "Application version", value: information?.application_version })
+        ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "setup-fields one-column", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
             "Select Branch ",
@@ -13204,31 +13253,18 @@ function DeviceActivationPage() {
             )
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
-            "Device Name ",
-            /* @__PURE__ */ jsxRuntimeExports.jsx("em", { children: "*" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "input",
-              {
-                "data-testid": "device-name",
-                value: form.deviceName,
-                onChange: (event) => setForm({ ...form, deviceName: event.target.value }),
-                placeholder: "Oyarifa-PC-02"
-              }
-            )
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
-            "Device Type",
+            "Device Role",
             /* @__PURE__ */ jsxRuntimeExports.jsxs(
               "select",
               {
-                "data-testid": "device-type",
-                value: form.deviceType,
-                onChange: (event) => setForm({ ...form, deviceType: event.target.value }),
+                "data-testid": "device-role",
+                value: form.deviceRole,
+                onChange: (event) => setForm({ ...form, deviceRole: event.target.value }),
                 children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Windows PC" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "macOS" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Linux" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Tablet" })
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Branch Workstation" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Headquarters Workstation" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Cashier / POS" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Production Workstation" })
                 ]
               }
             )
@@ -13269,7 +13305,7 @@ function DeviceActivationPage() {
             onClick: create,
             children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldCheck, { size: 16 }),
-              saving ? "Generating…" : "Generate Activation Code"
+              saving ? "Saving…" : "Save & Activate Device"
             ]
           }
         ),
@@ -13300,7 +13336,7 @@ function DeviceActivationPage() {
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "#" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Device Name" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Branch" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Code" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Installation ID" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Type" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Status" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Action" })
@@ -13309,7 +13345,7 @@ function DeviceActivationPage() {
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: index + 1 }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: device.deviceName }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: device.branchName }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: device.activationCode || "—" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: device.installationId || "—" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: device.deviceType }),
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               "span",
@@ -13331,6 +13367,13 @@ function DeviceActivationPage() {
         ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "page-loading", children: "No registered devices match this search." })
       ] })
     ] })
+  ] });
+}
+function ReadOnlyField({ label, value, icon }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "device-readonly-field", children: [
+    icon,
+    label,
+    /* @__PURE__ */ jsxRuntimeExports.jsx("input", { readOnly: true, value: value || "Not Available" })
   ] });
 }
 function Summary$1({

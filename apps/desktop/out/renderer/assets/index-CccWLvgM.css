@@ -7319,3 +7319,8 @@ footer {
   .installation-access-grid { grid-template-columns: 1fr; max-width: 520px; }
   .installation-footer-actions { flex-wrap: wrap; }
 }
+.device-information-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin: 12px 0 14px; padding: 10px; border: 1px solid #dce6f1; border-radius: 9px; background: #f8fbff; }
+.device-readonly-field { display: grid; grid-template-columns: auto 1fr; gap: 4px 6px; color: #526b87; font-size: 9px; font-weight: 700; }
+.device-readonly-field input { grid-column: 1 / -1; min-width: 0; padding: 8px 9px; border: 1px solid #d4dfed; border-radius: 6px; color: #223959; background: #eef4fb; font: inherit; font-size: 10px; }
+.device-readonly-field svg { color: #1769d5; }
+@media (max-width: 640px) { .device-information-grid { grid-template-columns: 1fr; } }

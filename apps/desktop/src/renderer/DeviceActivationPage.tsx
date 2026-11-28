@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Clipboard, Monitor, Plus, Search, ShieldCheck } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Clipboard, Fingerprint, Monitor, RefreshCw, Search, ShieldCheck, Wifi } from 'lucide-react';
 import type { Branch } from '@yenkasa/contracts';
-import { branchApi, deviceApi, type DeviceRecord } from './api';
+import { branchApi, deviceApi, type DeviceInformation, type DeviceRecord } from './api';
 
 const blank = {
   branchId: '',
-  deviceName: '',
-  deviceType: 'Windows PC',
+  deviceRole: 'Branch Workstation',
   validity: 'Permanent',
 };
 export function DeviceActivationPage() {
@@ -19,6 +18,8 @@ export function DeviceActivationPage() {
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [code, setCode] = useState('');
+  const [information, setInformation] = useState<DeviceInformation | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const load = async () => {
     try {
       const [branchList, deviceList] = await Promise.all([
@@ -38,11 +39,24 @@ export function DeviceActivationPage() {
     }
   };
   useEffect(() => {
-    load();
+    void load();
+    void refreshInformation();
   }, []);
+  const refreshInformation = async () => {
+    setRefreshing(true);
+    setError('');
+    try {
+      setInformation(await deviceApi.information());
+      setStatus('Device information refreshed');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to detect this device.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
   const create = async () => {
-    if (!form.branchId || !form.deviceName.trim()) {
-      setError('Select a branch and enter a device name.');
+    if (!form.branchId || !information) {
+      setError('Select a branch and refresh the detected device information first.');
       return;
     }
     setSaving(true);
@@ -51,8 +65,7 @@ export function DeviceActivationPage() {
       const created = await deviceApi.create(form);
       setDevices((current) => [created, ...current]);
       setCode(created.activationCode);
-      setForm((current) => ({ ...current, deviceName: '' }));
-      setStatus('Activation code generated and saved to SQLite');
+      setStatus('Device information saved and activated in SQLite');
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -126,11 +139,23 @@ export function DeviceActivationPage() {
         <section className="panel device-form">
           <div className="panel-heading">
             <div>
-              <h2>
-                <Plus size={19} /> Activate New Device
-              </h2>
-              <p>Generate a secure activation code for a branch computer.</p>
+              <h2><Monitor size={19} /> Device Information</h2>
+              <p>Detected automatically from this computer. The fields are read-only.</p>
             </div>
+            <button className="outline small-button" type="button" onClick={() => void refreshInformation()} disabled={refreshing}>
+              <RefreshCw size={14} /> {refreshing ? 'Refreshing…' : 'Refresh Information'}
+            </button>
+          </div>
+          <div className="device-information-grid">
+            <ReadOnlyField label="Device name (hostname)" value={information?.hostname} icon={<Monitor size={15} />} />
+            <ReadOnlyField label="Operating system" value={information?.operating_system} icon={<Monitor size={15} />} />
+            <ReadOnlyField label="OS version" value={information?.operating_system_version} />
+            <ReadOnlyField label="System architecture" value={information?.architecture} />
+            <ReadOnlyField label="Network interface" value={information?.network_interface} icon={<Wifi size={15} />} />
+            <ReadOnlyField label="MAC address" value={information?.mac_address} />
+            <ReadOnlyField label="Local IP address" value={information?.local_ip_address} />
+            <ReadOnlyField label="Installation ID" value={information?.installation_id} icon={<Fingerprint size={15} />} />
+            <ReadOnlyField label="Application version" value={information?.application_version} />
           </div>
           <div className="setup-fields one-column">
             <label>
@@ -151,29 +176,18 @@ export function DeviceActivationPage() {
               </select>
             </label>
             <label>
-              Device Name <em>*</em>
-              <input
-                data-testid="device-name"
-                value={form.deviceName}
-                onChange={(event) =>
-                  setForm({ ...form, deviceName: event.target.value })
-                }
-                placeholder="Oyarifa-PC-02"
-              />
-            </label>
-            <label>
-              Device Type
+              Device Role
               <select
-                data-testid="device-type"
-                value={form.deviceType}
+                data-testid="device-role"
+                value={form.deviceRole}
                 onChange={(event) =>
-                  setForm({ ...form, deviceType: event.target.value })
+                  setForm({ ...form, deviceRole: event.target.value })
                 }
               >
-                <option>Windows PC</option>
-                <option>macOS</option>
-                <option>Linux</option>
-                <option>Tablet</option>
+                <option>Branch Workstation</option>
+                <option>Headquarters Workstation</option>
+                <option>Cashier / POS</option>
+                <option>Production Workstation</option>
               </select>
             </label>
             <label>
@@ -209,7 +223,7 @@ export function DeviceActivationPage() {
             onClick={create}
           >
             <ShieldCheck size={16} />
-            {saving ? 'Generating…' : 'Generate Activation Code'}
+            {saving ? 'Saving…' : 'Save & Activate Device'}
           </button>
           {status && (
             <small className="save-status device-message" role="status">
@@ -246,7 +260,7 @@ export function DeviceActivationPage() {
                 <span>#</span>
                 <span>Device Name</span>
                 <span>Branch</span>
-                <span>Code</span>
+                <span>Installation ID</span>
                 <span>Type</span>
                 <span>Status</span>
                 <span>Action</span>
@@ -256,7 +270,7 @@ export function DeviceActivationPage() {
                   <span>{index + 1}</span>
                   <strong>{device.deviceName}</strong>
                   <span>{device.branchName}</span>
-                  <span>{device.activationCode || '—'}</span>
+                  <span>{device.installationId || '—'}</span>
                   <span>{device.deviceType}</span>
                   <span
                     className={`status ${device.active ? 'in-stock' : 'out-of-stock'}`}
@@ -282,6 +296,10 @@ export function DeviceActivationPage() {
       </div>
     </div>
   );
+}
+
+function ReadOnlyField({ label, value, icon }: { label: string; value?: string; icon?: ReactNode }) {
+  return <label className="device-readonly-field">{icon}{label}<input readOnly value={value || 'Not Available'} /></label>;
 }
 function Summary({
   label,

@@ -20,6 +20,7 @@ from sqlalchemy import String, Text, create_engine, delete, select, inspect, tex
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.pool import StaticPool
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from yenkasa_telemetry import detect_device_information
 
 BRANCH_ROLES = {'BRANCH_MANAGER', 'STOCK_MANAGER', 'SALES_OFFICER', 'CASHIER', 'SALES_CASHIER'}
 SALES_ROLES = {'BRANCH_MANAGER', 'SALES_OFFICER', 'SALES_CASHIER'}
@@ -247,6 +248,22 @@ class DeviceActivation(Base):
     device_type: Mapped[str] = mapped_column(String(80), default='Desktop')
     validity: Mapped[str] = mapped_column(String(80), default='Permanent')
     active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[str] = mapped_column(String(40), default='')
+    installation_id: Mapped[str] = mapped_column(String(36), default='', index=True)
+    hostname: Mapped[str] = mapped_column(String(160), default='')
+    operating_system: Mapped[str] = mapped_column(String(120), default='')
+    operating_system_version: Mapped[str] = mapped_column(String(200), default='')
+    architecture: Mapped[str] = mapped_column(String(80), default='')
+    network_interface: Mapped[str] = mapped_column(String(120), default='')
+    mac_address: Mapped[str] = mapped_column(String(80), default='')
+    local_ip_address: Mapped[str] = mapped_column(String(80), default='')
+    application_version: Mapped[str] = mapped_column(String(60), default='')
+    updated_at: Mapped[str] = mapped_column(String(40), default='')
+
+class InstallationIdentity(Base):
+    __tablename__ = 'installation_identity'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    installation_id: Mapped[str] = mapped_column(String(36), unique=True, index=True)
     created_at: Mapped[str] = mapped_column(String(40), default='')
 
 class SaleRecordModel(Base):
@@ -487,9 +504,11 @@ class PasswordResetPayload(BaseModel):
 
 class DevicePayload(BaseModel):
     branchId: str
-    deviceName: str
+    deviceName: str = ''
     deviceType: str = 'Desktop'
     validity: str = 'Permanent'
+    installationId: str = ''
+    deviceRole: str = 'Branch Workstation'
 
 class SaleItemPayload(BaseModel):
     sku: str
@@ -613,7 +632,7 @@ def ensure_device_columns() -> None:
     if not settings.local_database_url.startswith('sqlite'):
         return
     columns = {column['name'] for column in inspect(engine).get_columns('device_activations')}
-    additions = {'activation_code': "VARCHAR(40) DEFAULT ''", 'device_type': "VARCHAR(80) DEFAULT 'Desktop'", 'validity': "VARCHAR(80) DEFAULT 'Permanent'"}
+    additions = {'activation_code': "VARCHAR(40) DEFAULT ''", 'device_type': "VARCHAR(80) DEFAULT 'Desktop'", 'validity': "VARCHAR(80) DEFAULT 'Permanent'", 'installation_id': "VARCHAR(36) DEFAULT ''", 'hostname': "VARCHAR(160) DEFAULT ''", 'operating_system': "VARCHAR(120) DEFAULT ''", 'operating_system_version': "VARCHAR(200) DEFAULT ''", 'architecture': "VARCHAR(80) DEFAULT ''", 'network_interface': "VARCHAR(120) DEFAULT ''", 'mac_address': "VARCHAR(80) DEFAULT ''", 'local_ip_address': "VARCHAR(80) DEFAULT ''", 'application_version': "VARCHAR(60) DEFAULT ''", 'updated_at': "VARCHAR(40) DEFAULT ''"}
     with engine.begin() as connection:
         for name, definition in additions.items():
             if name not in columns:
@@ -1023,15 +1042,53 @@ def list_devices(request: Request) -> list[dict]:
         branches = {branch.id: branch.name for branch in session.scalars(select(Branch).where(Branch.company_id == 1))}
         return [to_device_payload(device, branches.get(device.branch_id, 'Unknown branch')) for device in session.scalars(select(DeviceActivation).where(DeviceActivation.company_id == 1).order_by(DeviceActivation.created_at.desc()))]
 
+def get_installation_id(session: Session) -> str:
+    identity = session.get(InstallationIdentity, 'local-installation')
+    if identity is None:
+        identity = InstallationIdentity(id='local-installation', installation_id=str(uuid4()), created_at=now_iso())
+        session.add(identity)
+        session.flush()
+    return identity.installation_id
+
+@app.get('/api/device-information')
+def device_information(request: Request) -> dict:
+    require_hq(request)
+    with Session(engine) as session:
+        installation_id = get_installation_id(session)
+        session.commit()
+    info = detect_device_information(os.getenv('YENKASA_APP_VERSION', '0.1.0'), installation_id)
+    return info.local_record()
+
 @app.post('/api/devices')
 def create_device(payload: DevicePayload, request: Request) -> dict:
     require_hq(request)
-    if not payload.deviceName.strip(): raise HTTPException(422, 'Device name is required')
+    if not payload.deviceRole.strip(): raise HTTPException(422, 'Device role is required')
     with Session(engine) as session:
         branch = session.scalar(select(Branch).where(Branch.company_id == 1, Branch.id == payload.branchId, Branch.status == 'Active'))
         if branch is None: raise HTTPException(404, 'Active branch not found')
+        installation_id = get_installation_id(session)
+        info = detect_device_information(os.getenv('YENKASA_APP_VERSION', '0.1.0'), installation_id)
+        existing = session.scalar(select(DeviceActivation).where(DeviceActivation.company_id == 1, DeviceActivation.installation_id == installation_id))
+        if existing is not None:
+            if existing.branch_id != branch.id:
+                raise HTTPException(409, 'This installation is already activated for another branch')
+            if not existing.active:
+                raise HTTPException(409, 'This installation is revoked and must be reactivated by an authorized administrator')
+            existing.device_name = info.hostname
+            existing.device_type = payload.deviceRole.strip()
+            existing.hostname = info.hostname
+            existing.operating_system = info.operating_system
+            existing.operating_system_version = info.operating_system_version
+            existing.architecture = info.architecture
+            existing.network_interface = info.network_interface
+            existing.mac_address = info.mac_address
+            existing.local_ip_address = info.local_ip_address
+            existing.application_version = info.application_version
+            existing.updated_at = now_iso()
+            session.commit(); session.refresh(existing)
+            return to_device_payload(existing, branch.name)
         code = f"YK-{uuid4().hex[:4].upper()}-{uuid4().hex[:4].upper()}"
-        device = DeviceActivation(id=str(uuid4()), company_id=1, branch_id=branch.id, device_name=payload.deviceName.strip(), activation_code=code, device_type=payload.deviceType.strip(), validity=payload.validity.strip(), active=True, created_at=now_iso())
+        device = DeviceActivation(id=str(uuid4()), company_id=1, branch_id=branch.id, device_name=info.hostname, activation_code=code, device_type=payload.deviceRole.strip(), validity=payload.validity.strip(), active=True, created_at=now_iso(), installation_id=info.installation_id, hostname=info.hostname, operating_system=info.operating_system, operating_system_version=info.operating_system_version, architecture=info.architecture, network_interface=info.network_interface, mac_address=info.mac_address, local_ip_address=info.local_ip_address, application_version=info.application_version, updated_at=now_iso())
         session.add(device); session.commit(); session.refresh(device); return to_device_payload(device, branch.name)
 
 @app.patch('/api/devices/{device_id}')
@@ -2148,7 +2205,7 @@ def to_sale_payload(record: SaleRecordModel, actor_name: str = '') -> dict:
     return {'id': record.id, 'saleNumber': record.sale_number, 'documentType': record.document_type, 'branchId': record.branch_id, 'actorUserId': record.actor_user_id, 'actorUserName': actor_name or record.actor_user_id, 'customerName': record.customer_name, 'status': record.status, 'subtotal': record.subtotal, 'discount': record.discount, 'tax': record.tax, 'total': record.total, 'amountPaid': record.amount_paid or 0, 'paymentStatus': record.payment_status or 'UNPAID', 'fulfilmentStatus': record.fulfilment_status or 'AWAITING_PAYMENT', 'createdAt': record.created_at, 'items': details.get('items', []), 'vatPercent': details.get('vatPercent', 0), 'notes': details.get('notes', ''), 'templateId': details.get('templateId', ''), 'templateName': details.get('templateName', ''), 'templateVersion': details.get('templateVersion', 0), 'templateSnapshot': details.get('template', {})}
 
 def to_device_payload(device: DeviceActivation, branch_name: str) -> dict:
-    return {'id': device.id, 'branchId': device.branch_id, 'branchName': branch_name, 'deviceName': device.device_name, 'activationCode': device.activation_code, 'deviceType': device.device_type, 'validity': device.validity, 'active': device.active, 'createdAt': device.created_at}
+    return {'id': device.id, 'branchId': device.branch_id, 'branchName': branch_name, 'deviceName': device.device_name, 'activationCode': device.activation_code, 'deviceType': device.device_type, 'validity': device.validity, 'active': device.active, 'createdAt': device.created_at, 'updatedAt': device.updated_at, 'installationId': device.installation_id, 'hostname': device.hostname, 'operatingSystem': device.operating_system, 'operatingSystemVersion': device.operating_system_version, 'architecture': device.architecture, 'networkInterface': device.network_interface, 'macAddress': device.mac_address, 'localIpAddress': device.local_ip_address, 'applicationVersion': device.application_version}
 
 def ensure_sync_status(session: Session, company_id: int, branch_id: str, device_id: str = 'local-device') -> SyncStatusModel:
     status = session.scalar(select(SyncStatusModel).where(SyncStatusModel.company_id == company_id, SyncStatusModel.branch_id == branch_id))
